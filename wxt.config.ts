@@ -4,13 +4,14 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   imports: false,
   modules: ["@wxt-dev/module-react"],
+  targetBrowsers: ["chrome", "edge", "firefox", "safari"],
   srcDir: "src",
   publicDir: "extension-public",
   alias: {
     "-": resolve("assets"),
   },
   zip: {
-    includeSources: [".gitignore", ".yarnrc.yml", ".yarn/releases/yarn-4.12.0.cjs", "src/**"],
+    includeSources: [".gitignore", ".yarnrc.yml", ".yarn/releases/yarn-4.17.1.cjs", "package.json", "src/**"],
     excludeSources: ["db/**", "jobs/**", "logs/**", "tsconfig.tsbuildinfo"],
   },
   manifest: ({ browser }) => ({

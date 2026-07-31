@@ -74,6 +74,9 @@ const checkForAvailabilityForDepartment = async (department: string, semester: s
 
     for (const [sectionNumber, sections] of Object.entries(grouped)) {
       const course = sectionToCourseMap[sectionNumber];
+      if (!course) {
+        continue;
+      }
       const correspondingSection = course.sections?.find((s) => s.sisSectionId === sectionNumber);
       if (!correspondingSection) {
         continue;

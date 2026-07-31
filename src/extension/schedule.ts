@@ -149,11 +149,15 @@ export function parseSchedule(data: Schedule) {
       continue;
     }
     const classInfo = singleClass.Title.split(" ");
+    const [className, sectionName] = classInfo;
+    if (!className || !sectionName) {
+      continue;
+    }
     const time = {
       day: [startDay],
       time: [startTime, endTime],
-      section: classInfo[1].slice(1, -2),
-      classname: classInfo[0],
+      section: sectionName.slice(1, -2),
+      classname: className,
     };
     currentScheduleArr.push(time);
   }
@@ -196,8 +200,13 @@ export function parseSchedule(data: Schedule) {
             if (!secDay) {
               continue;
             }
+            const [currentStartTime, currentEndTime] = currClass.time;
+            const [sectionStartTime, sectionEndTime] = secHours;
+            if (!currentStartTime || !currentEndTime || !sectionStartTime || !sectionEndTime) {
+              continue;
+            }
             //Class already registered/scheduled
-            if (timesOverlap(currClass.time[0], currClass.time[1], secHours[0], secHours[1])) {
+            if (timesOverlap(currentStartTime, currentEndTime, sectionStartTime, sectionEndTime)) {
               addConflictOverlay(this, currClass.classname);
               return;
             }

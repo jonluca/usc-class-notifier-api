@@ -95,7 +95,11 @@ function addNotifyButtons(parent: JQuery<HTMLElement>) {
     return;
   }
 
-  const fullCourseId = findCourseIdForTable(parent[0]);
+  const tableElement = parent[0];
+  if (!tableElement) {
+    return;
+  }
+  const fullCourseId = findCourseIdForTable(tableElement);
   const department = fullCourseId?.split(/\s+/)[0] || "";
   const semester = getClassesPageSemester();
   if (!department) {
@@ -171,6 +175,9 @@ function parseCoursePage() {
         continue;
       }
       const instructorCell = cells[headerIndex];
+      if (!instructorCell) {
+        continue;
+      }
       const instructorNames = (instructorCell.textContent || "").split(",").map((l) => l.trim());
       const toAdd = [] as string[];
       for (const name of instructorNames) {

@@ -24,7 +24,11 @@ export function isAuthenticated(req: NextRequest | IncomingMessage) {
     return false;
   }
 
-  const auth = Buffer.from(authheader.split(" ")[1], "base64").toString().split(":");
+  const encodedCredentials = authheader.split(" ")[1];
+  if (!encodedCredentials) {
+    return false;
+  }
+  const auth = Buffer.from(encodedCredentials, "base64").toString().split(":");
   const pass = auth[1];
 
   if (adminPassword && pass == adminPassword) {

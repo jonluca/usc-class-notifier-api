@@ -53,7 +53,7 @@ function insertProfessorRating(row: HTMLElement, professors: Rating[]) {
       /* Very specific edge case - if you have two professors and you could not find the first, it'll insert an empty cell. However, if you can
                find the second you still want his score to be visible, so we need to remove the previously inserted blank one */
       if ($(row).find(".empty_rating").length !== 0) {
-        $(row).find(".empty_rating")[0].remove();
+        $(row).find(".empty_rating")[0]?.remove();
       }
     }
   }

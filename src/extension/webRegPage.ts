@@ -23,7 +23,11 @@ function addUnitsToTitle(row: HTMLElement) {
 
     // 3 is because the header has two elements that start with type_alt
     if (rows.length > 3) {
-      let actualUnits = $(rows)[3].innerText;
+      const unitsRow = $(rows)[3];
+      if (!unitsRow) {
+        continue;
+      }
+      let actualUnits = unitsRow.innerText;
       actualUnits = actualUnits.replace("Units: ", "").trim();
       if (actualUnits.trim() === "0.0") {
         continue;
@@ -127,7 +131,7 @@ function parseRegistrationNumbers(section: HTMLElement, classInfo: ClassInfo) {
     regNum = regNum.split("of");
     if (regNum.length !== 2) {
       classInfo.currectSectionIsClosed = true;
-      if (regNum[0] !== null && regNum[0].trim() === "Closed" && !classInfo.classHasLectureSection) {
+      if (regNum[0]?.trim() === "Closed" && !classInfo.classHasLectureSection) {
         classInfo.allLecturesClosed = true;
       }
       if (!$(section).hasClass("blank_rating")) {
@@ -139,7 +143,10 @@ function parseRegistrationNumbers(section: HTMLElement, classInfo: ClassInfo) {
         }
       }
     } else {
-      addRegistrationNumbers(section, regNum[0].trim(), regNum[1].trim(), classInfo);
+      const [enrolled, total] = regNum;
+      if (enrolled && total) {
+        addRegistrationNumbers(section, enrolled.trim(), total.trim(), classInfo);
+      }
     }
   }
 }

@@ -13,7 +13,10 @@ function insertExportButton() {
     `<li><a class="exportCal" href="https://my.usc.edu/ical/?term=${getCurrentTerm()}">Export To Calendar</a></li>`,
   );
   const cals = $(".exportCal");
-  $(cals[1]).remove();
+  const duplicateCalendarLink = cals[1];
+  if (duplicateCalendarLink) {
+    $(duplicateCalendarLink).remove();
+  }
 }
 
 let initializationId = 0;

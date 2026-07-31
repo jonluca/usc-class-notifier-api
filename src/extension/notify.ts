@@ -150,15 +150,15 @@ $(document).on("click", ".notify", function () {
         id = sectionInput.value;
       }
     }
-    const titleTopbar = $(form).parents(".accordion-content-area");
+    const titleTopbar = form ? $(form).parents(".accordion-content-area") : $();
     const header = $(titleTopbar).prev();
     //get the department by matching form ID to the row above
     const courseSearch = $(header).find(".crsID");
     let departmentFromAbove = "";
     if (courseSearch.length) {
-      const spanElem = $(courseSearch[0]).text();
+      const spanElem = courseSearch.first().text();
       const departmentString = spanElem.split("-");
-      departmentFromAbove = departmentString[0];
+      departmentFromAbove = departmentString[0] ?? "";
     }
 
     let fullCourseId;
