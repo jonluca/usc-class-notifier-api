@@ -3,6 +3,7 @@
 USC Schedule Helper improves USC class search and registration with professor ratings, schedule insights, and class availability notifications. This repository contains the Next.js notification service and the cross-browser WXT extension.
 
 The Chrome extension is available from the [Chrome Web Store](https://chrome.google.com/webstore/detail/usc-schedule-helper/gchplemiinhmilinflepfpmjhmbfnlhk).
+Its privacy policy is available both [in this repository](./PRIVACY.md) and on the live service at [usc.jonlu.ca/privacy](https://usc.jonlu.ca/privacy).
 
 ## Extension builds
 
