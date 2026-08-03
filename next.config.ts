@@ -7,6 +7,7 @@ const nextConfig = {
   experimental: {
     largePageDataBytes: 100000000,
     optimizeServerReact: true,
+    useTypeScriptCli: true,
   },
 } satisfies NextConfig;
 

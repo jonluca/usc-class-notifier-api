@@ -1,10 +1,5 @@
 import "@/styles/globals.css";
-import {
-  extensionEnabledStorage,
-  showConflictsStorage,
-  showUnitsStorage,
-  useStorageItem,
-} from "@/extension/storage";
+import { extensionEnabledStorage, showConflictsStorage, showUnitsStorage, useStorageItem } from "@/extension/storage";
 
 function IndexPopup() {
   const [enabled, setEnabled] = useStorageItem(extensionEnabledStorage, true);

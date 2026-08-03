@@ -22,6 +22,6 @@
       "@app/prisma": ["./prisma/generated/client.ts"],
       "@app/prisma/*": ["./prisma/generated/*"],
       "-/*": ["./assets/*"]
-    },
+    }
   }
 }

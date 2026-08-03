@@ -107,7 +107,7 @@ const ExtensionView = () => {
   useEffect(() => {
     window.dataLayer = window.dataLayer || [];
     window.gtag = function gtag() {
-      window.dataLayer.push(arguments); // eslint-disable-line
+      window.dataLayer.push(arguments); // oxlint-disable-line
     };
     window.gtag("js", new Date());
   }, []);

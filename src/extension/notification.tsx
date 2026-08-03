@@ -142,7 +142,7 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
                 style={{ position: "relative" }}
                 className={"my-2"}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line nextjs/no-img-element */}
                 <img src={venmoImageSrc} alt="Venmo QR Code" />
 
                 <span
@@ -156,7 +156,7 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
                   {data.paidId}
                 </span>
               </a>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* oxlint-disable-next-line nextjs/no-img-element */}
               <img src={venmoQrImageSrc} alt="Venmo QR Code" style={{ maxHeight: 250 }} />
               <span className={"font-bold"}>If it asks for a last 4 digits of the phone number, use 9020</span>
             </>

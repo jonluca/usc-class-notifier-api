@@ -27,8 +27,8 @@ const PrivacyPolicy: NextPage = () => {
 
       <h2>Information sent to the notification service</h2>
       <p>
-        Nothing is sent to USC Schedule Helper merely because the extension is installed. When a user explicitly
-        submits a class-notification request, the extension sends the following to https://usc.jonlu.ca:
+        Nothing is sent to USC Schedule Helper merely because the extension is installed. When a user explicitly submits
+        a class-notification request, the extension sends the following to https://usc.jonlu.ca:
       </p>
       <ul>
         <li>the user&apos;s email address;</li>
@@ -39,8 +39,8 @@ const PrivacyPolicy: NextPage = () => {
       <p>
         The service also creates account-verification and payment-reference identifiers and records watched classes,
         notification status, payment status, and relevant timestamps. Its web server and infrastructure providers may
-        receive standard request information such as IP address, browser type, and request time for operation,
-        security, and troubleshooting.
+        receive standard request information such as IP address, browser type, and request time for operation, security,
+        and troubleshooting.
       </p>
 
       <h2>How information is used</h2>
@@ -81,10 +81,10 @@ const PrivacyPolicy: NextPage = () => {
 
       <h2>Retention, security, and user choices</h2>
       <p>
-        Local extension preferences remain until the user changes them, clears extension data, or removes the
-        extension. Notification account and watched-class records are kept while needed to provide the service and for
-        reasonable security, backup, payment, and legal purposes. Data that is no longer required is deleted or
-        de-identified where practical.
+        Local extension preferences remain until the user changes them, clears extension data, or removes the extension.
+        Notification account and watched-class records are kept while needed to provide the service and for reasonable
+        security, backup, payment, and legal purposes. Data that is no longer required is deleted or de-identified where
+        practical.
       </p>
       <p>
         Users may stop future notifications, remove the extension, or request access, correction, or deletion of their
