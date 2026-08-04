@@ -11,7 +11,21 @@ export default defineConfig({
     "-": resolve("assets"),
   },
   zip: {
-    includeSources: [".gitignore", ".yarnrc.yml", ".yarn/releases/yarn-4.17.1.cjs", "package.json", "src/**"],
+    includeSources: [
+      ".gitignore",
+      ".yarnrc.yml",
+      ".yarn/releases/yarn-4.18.0.cjs",
+      "SOURCE_CODE_REVIEW.md",
+      "assets/**",
+      "extension-public/**",
+      "package.json",
+      "prisma.config.ts",
+      "prisma/schema.prisma",
+      "src/**",
+      "tsconfig.json",
+      "wxt.config.ts",
+      "yarn.lock",
+    ],
     excludeSources: ["db/**", "jobs/**", "logs/**", "tsconfig.tsbuildinfo"],
   },
   manifest: ({ browser }) => ({
