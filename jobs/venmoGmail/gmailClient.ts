@@ -3,8 +3,8 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { convert } from "html-to-text";
 import { prisma } from "@/server/db.ts";
-import { sendPaidNotificationsEmails } from "@/server/paid-notifications-emails.ts";
 import logger from "@/server/logger.ts";
+import { isExpectedVenmoPaymentSubject, parseVenmoPaidIds } from "./venmoEmail.ts";
 
 /**
  * ENV:
@@ -12,7 +12,6 @@ import logger from "@/server/logger.ts";
  *  GMAIL_IMAP_APP_PASSWORD=xxxx xxxx xxxx xxxx   (16-char app password, spaces optional)
  */
 export class GmailVenmoImapClient {
-  private processedUids = new Set<number>();
   private submitPaidIds = async (ids: string[]) => {
     const result = await prisma.watchedSection.updateMany({
       where: {
@@ -28,26 +27,7 @@ export class GmailVenmoImapClient {
     return result.count;
   };
   private parsePaidIds(text: string): string[] {
-    const valid = new Set<string>();
-    if (!text) {
-      return [];
-    }
-
-    // numbers on their own lines
-    for (const line of text.split("\n")) {
-      const t = line.trim();
-      if (/^\d{8}$/.test(t)) {
-        valid.add(t);
-      }
-    }
-
-    // regex fallback - find all 8-digit numbers
-    const matches = text.match(/\b\d{8}\b/g);
-    if (matches) {
-      matches.forEach((m) => valid.add(m));
-    }
-
-    return [...valid];
+    return parseVenmoPaidIds(text);
   }
 
   private normalizeBody(parsed: Awaited<ReturnType<typeof simpleParser>>): string {
@@ -98,32 +78,27 @@ export class GmailVenmoImapClient {
         await client.mailboxOpen("INBOX");
       }
 
-      // IMAP SEARCH is not identical to Gmail web search, but sender filters work well.
-      // Search criteria: FROM venmo@venmo.com, and limit to recent messages by date.
-      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      // Keep enough overlap to recover after an extended deployment or provider outage.
+      // The database update is idempotent, so refetching this bounded window is safe.
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
       const uids = await client.search({
         since,
         from: "venmo@venmo.com",
       });
 
-      if (!uids) {
-        logger.warn("No emails found");
+      if (!uids || uids.length === 0) {
+        logger.info("Venmo Gmail scan completed: 0 messages found");
         return [];
       }
       // Fetch newest first
       uids.sort((a, b) => b - a);
 
       for await (const msg of client.fetch(uids, { uid: true, envelope: true, source: true })) {
-        const uid = msg.uid;
-        if (this.processedUids.has(uid)) {
-          continue;
-        }
-
         const subject = msg.envelope?.subject ?? "";
 
         // Match your prior logic
-        if (!subject.toLowerCase().includes("paid you")) {
+        if (!isExpectedVenmoPaymentSubject(subject)) {
           continue;
         }
 
@@ -138,8 +113,6 @@ export class GmailVenmoImapClient {
         if (ids.length) {
           allPaidIds.push(...ids);
         }
-
-        this.processedUids.add(uid);
       }
     } finally {
       // close connection cleanly
@@ -156,13 +129,14 @@ export class GmailVenmoImapClient {
   checkEmails = async (): Promise<void> => {
     const paidIds = await this.fetchVenmoPaidYouIds();
     if (paidIds.length === 0) {
+      logger.info("Venmo Gmail scan completed: 0 payment IDs found");
       return;
     }
 
-    const updatedCount = await this.submitPaidIds(paidIds);
-    logger.info(`Marked ${updatedCount} sections as paid based on Venmo emails`);
-    if (updatedCount) {
-      await sendPaidNotificationsEmails();
-    }
+    const uniquePaidIds = [...new Set(paidIds)];
+    const updatedCount = await this.submitPaidIds(uniquePaidIds);
+    logger.info(
+      `Venmo Gmail scan completed: ${uniquePaidIds.length} payment IDs found, ${updatedCount} sections newly marked paid`,
+    );
   };
 }
