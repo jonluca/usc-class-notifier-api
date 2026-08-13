@@ -1,9 +1,10 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import { getPrismaCliDatabaseUrl } from "./src/server/postgresConfig.ts";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING,
+    url: getPrismaCliDatabaseUrl(process.env),
   },
 });

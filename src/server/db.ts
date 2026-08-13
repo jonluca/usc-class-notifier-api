@@ -2,14 +2,15 @@ import "dotenv/config";
 import "@/server/logger";
 import { PrismaClient } from "@app/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { getPostgresPoolMax, getPrismaRuntimeDatabaseUrl } from "@/server/postgresConfig.ts";
 
 const adapter = new PrismaPg({
-  connectionString: process.env.POSTGRES_PRISMA_URL!,
+  connectionString: getPrismaRuntimeDatabaseUrl(process.env)!,
   keepAlive: true,
   statement_timeout: undefined,
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 60_000,
-  max: 80,
+  max: getPostgresPoolMax(process.env),
 });
 
 const baseClient = new PrismaClient({

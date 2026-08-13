@@ -187,9 +187,16 @@ export const runRefresh = async () => {
 };
 
 const refreshSemester = async (semester: string) => {
-  const departments = await prisma.$queryRawUnsafe<{ department: string }[]>(
-    `select distinct coalesce(prefix, department) as department from "ClassInfo" where section in (SELECT DISTINCT section FROM "WatchedSection" WHERE semester = '${semester}' and notified = false) and semester='${semester}'`,
-  );
+  const departments = await prisma.$queryRaw<{ department: string }[]>`
+    SELECT DISTINCT COALESCE(class_info.prefix, class_info.department) AS department
+    FROM "ClassInfo" AS class_info
+    WHERE class_info.section IN (
+      SELECT DISTINCT watched_section.section
+      FROM "WatchedSection" AS watched_section
+      WHERE watched_section.semester = ${semester} AND watched_section.notified = false
+    )
+      AND class_info.semester = ${semester}
+  `;
 
   if (!departments.length) {
     return;
