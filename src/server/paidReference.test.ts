@@ -1,13 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  acquirePaidReferenceAllocationLock,
   generatePaidReferenceCandidates,
+  PAID_REFERENCE_ALLOCATION_LOCK_ID,
   PAID_REFERENCE_MAX_EXCLUSIVE,
   PAID_REFERENCE_MIN,
   needsPaidReferenceRotation,
   selectAvailablePaidReference,
   selectPaidReferenceRepairRows,
 } from "./paidReference.ts";
+
+test("acquires the allocation lock through the execution-only raw query API", async () => {
+  const calls: Array<{ query: readonly string[]; values: unknown[] }> = [];
+
+  await acquirePaidReferenceAllocationLock({
+    $executeRaw: async (query, ...values) => {
+      calls.push({ query: [...query], values });
+      return 1;
+    },
+  });
+
+  assert.deepEqual(calls, [
+    {
+      query: ["SELECT pg_advisory_xact_lock(", ")"],
+      values: [PAID_REFERENCE_ALLOCATION_LOCK_ID],
+    },
+  ]);
+});
 
 test("generates eight-digit payment references with a cryptographic-compatible random integer source", () => {
   const calls: Array<[number, number]> = [];

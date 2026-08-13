@@ -9,6 +9,16 @@ export const PAID_REFERENCE_PATTERN = /^\d{8}$/;
 // assigning a payment reference. The number is stable and private to this app.
 export const PAID_REFERENCE_ALLOCATION_LOCK_ID = 8_578_367_167_080_773n;
 
+export interface PaidReferenceLockTransaction {
+  $executeRaw(query: TemplateStringsArray, ...values: unknown[]): Promise<unknown>;
+}
+
+export async function acquirePaidReferenceAllocationLock(transaction: PaidReferenceLockTransaction): Promise<void> {
+  // pg_advisory_xact_lock returns PostgreSQL's void type. Use the
+  // execution-only API so Prisma does not try to deserialize that value.
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(${PAID_REFERENCE_ALLOCATION_LOCK_ID})`;
+}
+
 export type RandomInteger = (min: number, maxExclusive: number) => number;
 
 export function generatePaidReferenceCandidates(

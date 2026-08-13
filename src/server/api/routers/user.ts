@@ -11,11 +11,10 @@ import {
   assertMonitoredSemester,
   notificationSemesterSchema,
 } from "@/server/api/notificationSignup";
-import { prisma } from "@/server/db";
 import {
+  acquirePaidReferenceAllocationLock,
   generatePaidReferenceCandidates,
   needsPaidReferenceRotation,
-  PAID_REFERENCE_ALLOCATION_LOCK_ID,
   selectAvailablePaidReference,
 } from "@/server/paidReference";
 export const userRouter = {
@@ -144,7 +143,7 @@ export const userRouter = {
         const updatedSection = await ctx.prisma.$transaction(async (transaction) => {
           // Serialize and reload before deciding whether a legacy reference
           // needs rotation. Concurrent re-adds must return the same final code.
-          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(${PAID_REFERENCE_ALLOCATION_LOCK_ID})`;
+          await acquirePaidReferenceAllocationLock(transaction);
           const currentSection = await transaction.watchedSection.findUnique({
             where: { id: section.id },
           });
@@ -211,7 +210,7 @@ export const userRouter = {
         // The schema's uniqueness constraint includes semester, but Venmo receipts
         // contain only paidId. Serialize allocation across every API instance so a
         // reference can never be reused by a different semester.
-        await transaction.$queryRaw`SELECT pg_advisory_xact_lock(${PAID_REFERENCE_ALLOCATION_LOCK_ID})`;
+        await acquirePaidReferenceAllocationLock(transaction);
 
         const candidates = generatePaidReferenceCandidates();
         const matchingSections = await transaction.watchedSection.findMany({
@@ -245,10 +244,10 @@ export const userRouter = {
           },
         });
       });
-      await prisma.$queryRawUnsafe(`UPDATE "WatchedSection" ws
+      await ctx.prisma.$executeRaw`UPDATE "WatchedSection" ws
 SET "classInfoId" = ci.id
 FROM "ClassInfo" ci
-WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.semester;`);
+WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.semester`;
       await nowWatchingEmail({
         verificationKey: student.verificationKey,
         email: student.email,

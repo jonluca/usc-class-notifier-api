@@ -3,8 +3,8 @@ import { adminProcedure } from "../trpc";
 import { z } from "zod/v4";
 import { runRefresh } from "@/server/api/controller";
 import {
+  acquirePaidReferenceAllocationLock,
   generatePaidReferenceCandidates,
-  PAID_REFERENCE_ALLOCATION_LOCK_ID,
   selectAvailablePaidReference,
   selectPaidReferenceRepairRows,
 } from "@/server/paidReference";
@@ -97,7 +97,7 @@ export const adminRouter = {
     }),
   repairLegacyUnpaidPaidIds: adminProcedure.mutation(async ({ ctx }) => {
     return ctx.prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(${PAID_REFERENCE_ALLOCATION_LOCK_ID})`;
+      await acquirePaidReferenceAllocationLock(transaction);
 
       const rows = await transaction.watchedSection.findMany({
         select: { id: true, paidId: true, isPaid: true },
