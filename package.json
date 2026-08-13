@@ -38,7 +38,7 @@
     "submit:firefox": "web-ext sign --source-dir .output/firefox-mv3 --channel=listed --amo-metadata=amo-metadata.json --upload-source-code=.output/class-notifier-api-${npm_package_version}-sources.zip --artifacts-dir=.output/firefox-signed"
   },
   "dependencies": {
-    "@aws-sdk/client-ses": "^3.1109.0",
+    "@aws-sdk/client-ses": "^3.1110.0",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
