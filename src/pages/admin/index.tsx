@@ -39,9 +39,13 @@ const AddPaidIdForm = () => {
             }
             const result = await mutateAsync({ paidIds: ids });
             if (result.updated === 0) {
-              alert("No sections found with those paid IDs");
+              alert(
+                `No unambiguous current sections were marked paid (${result.unmatched} unmatched, ${result.ambiguous} ambiguous)`,
+              );
             } else {
-              alert(`Marked ${result.updated} section(s) as paid`);
+              alert(
+                `Marked ${result.updated} section(s) as paid (${result.unmatched} unmatched, ${result.ambiguous} ambiguous skipped)`,
+              );
               setPaidIds("");
             }
           }
@@ -51,6 +55,8 @@ const AddPaidIdForm = () => {
     </div>
   );
 };
+
+const formatIsoDate = (date: Date | string) => new Date(date).toISOString().slice(0, 10);
 
 const PaidIdLookupForm = () => {
   const [paidId, setPaidId] = useState("");
@@ -115,8 +121,7 @@ const PaidIdLookupForm = () => {
             </div>
             {lookupResult.student.createdAt && (
               <div>
-                <span className="font-semibold">Created:</span>{" "}
-                {new Date(lookupResult.student.createdAt).toLocaleDateString()}
+                <span className="font-semibold">Created:</span> {formatIsoDate(lookupResult.student.createdAt)}
               </div>
             )}
           </div>
@@ -143,7 +148,7 @@ const PaidIdLookupForm = () => {
   );
 };
 
-export default () => {
+const AdminPage = () => {
   const [email, setEmail] = useState("");
   const { mutateAsync, data } = api.admin.getUserKey.useMutation();
   const utils = api.useUtils();
@@ -200,3 +205,5 @@ export default () => {
     </>
   );
 };
+
+export default AdminPage;

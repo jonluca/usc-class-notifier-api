@@ -4,7 +4,7 @@
   "homepage": "https://usc.jonlu.ca",
   "description": "A tool to help you find classes at USC",
   "author": "JonLuca DeCaro <usc-schedule-helper@jonlu.ca>",
-  "version": "15.5.0",
+  "version": "15.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -83,6 +83,7 @@
     "postcss": "^8.5.26",
     "prisma": "^7.9.1",
     "prisma-json-types-generator": "^5.1.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-email": "^6.9.2",

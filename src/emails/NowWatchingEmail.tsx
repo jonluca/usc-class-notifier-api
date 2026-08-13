@@ -2,6 +2,7 @@ import { Button, Row, Section, Text, Link } from "react-email";
 import * as React from "react";
 import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
+import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
 import type { WatchedSection, ClassInfo } from "@app/prisma";
 
 export interface NowWatchingEmailProps {
@@ -35,11 +36,20 @@ const NowWatchingEmail = ({
   isVerifiedAccount,
   showVenmoInfo,
 }: NowWatchingEmailProps) => {
-  const headerTitle = classInfo?.courseNumber;
-  const previewText = `Watching ${headerTitle}!`;
+  const courseNumber = classInfo?.courseNumber;
+  const semester = formatSemester(sectionEntry.semester);
+  const watchDetails = `${courseNumber ? `${courseNumber} · ` : ""}Section ${sectionEntry.section} · ${semester}`;
+  const previewText = `Watching ${watchDetails}`;
   const accountUrl = isVerifiedAccount
     ? `${baseDomain}/dashboard?key=${verificationKey}`
     : `${baseDomain}/verify?key=${verificationKey}`;
+  const paymentUrl = buildVenmoPaymentUrl(sectionEntry.paidId);
+  const paymentHelpUrl = buildPaymentHelpUrl({
+    paidId: sectionEntry.paidId,
+    section: sectionEntry.section,
+    semester: sectionEntry.semester,
+    courseNumber,
+  });
 
   return (
     <EmailBase previewText={previewText}>
@@ -60,7 +70,7 @@ const NowWatchingEmail = ({
       <Section style={{ marginLeft: "auto", marginRight: "auto", marginTop: "24px" }}>
         <Row>
           <Text style={{ color: "#000000", fontSize: "16px", paddingLeft: "8px", paddingRight: "8px", margin: 0 }}>
-            You are now watching {headerTitle ? `${headerTitle} - ` : ""}Section {sectionEntry.section}.
+            You are now watching {courseNumber ? `${courseNumber}, ` : ""}Section {sectionEntry.section} for {semester}.
           </Text>
           {showVenmoInfo && (
             <>
@@ -74,8 +84,20 @@ const NowWatchingEmail = ({
                   margin: 0,
                 }}
               >
-                To receive text notifications, send a venmo to{" "}
-                <Link href={"https://venmo.com/u/jonluca"}>@JonLuca</Link> with just the following code in it:
+                Text alerts are optional and cost exactly $1.00 for this one section. Venmo must receive the required
+                eight-digit payment note below so the payment can be matched automatically.
+              </Text>
+              <Text
+                style={{
+                  color: "#000000",
+                  fontSize: "14px",
+                  padding: "16px 8px 0",
+                  margin: 0,
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                Required Venmo payment note
               </Text>
               <Text
                 style={{
@@ -90,24 +112,35 @@ const NowWatchingEmail = ({
               >
                 {sectionEntry.paidId}
               </Text>
+              <Text
+                style={{
+                  color: "#000000",
+                  fontSize: "15px",
+                  padding: "0 8px",
+                  margin: 0,
+                  textAlign: "center",
+                }}
+              >
+                Send these eight digits exactly as shown. Do not replace them with a course name, phone number, or “text
+                notifications.”
+              </Text>
             </>
           )}
         </Row>
       </Section>
       {showVenmoInfo && (
         <>
-          <Button
-            style={buttonStyle}
-            href={`venmo://paycharge?txn=pay&recipients=JonLuca&amount=1&note=${sectionEntry.paidId}`}
-          >
-            Send Venmo (app)
+          <Button style={buttonStyle} href={paymentUrl}>
+            Pay exactly $1.00 in Venmo — note prefilled
           </Button>
-          <Button
-            style={buttonStyle}
-            href={`https://account.venmo.com/pay?recipients=JonLuca&amount=1&note=${sectionEntry.paidId}`}
-          >
-            Send Venmo (website)
-          </Button>
+          <Text style={{ color: "#000000", fontSize: "15px", padding: "8px", margin: "12px 0 0" }}>
+            Send one separate $1.00 payment for each section. Payment processing can take up to 20 minutes. If Venmo
+            asks you to verify the recipient, that verification value is not your payment note.
+          </Text>
+          <Text style={{ color: "#000000", fontSize: "15px", padding: "0 8px", margin: 0 }}>
+            Already paid with the wrong or missing note? Do not pay again.{" "}
+            <Link href={paymentHelpUrl}>Get payment help</Link>.
+          </Text>
         </>
       )}
       {!isVerifiedAccount && (

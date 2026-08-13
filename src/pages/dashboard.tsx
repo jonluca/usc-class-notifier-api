@@ -13,17 +13,21 @@ export const getServerSideProps: GetServerSideProps = async ({ query, res }) => 
     return { props: {} };
   }
 
+  const student = await prisma.student.findUnique({
+    where: { verificationKey: key },
+    select: { validAccount: true },
+  });
+
+  if (!student) {
+    return { props: {} };
+  }
+
   setCookie(res, cookieKey, key, {
     expires: dayjs().add(1, "year").toDate(),
     httpOnly: false,
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-  });
-
-  const student = await prisma.student.findUnique({
-    where: { verificationKey: key },
-    select: { validAccount: true },
   });
 
   // Older "Now Watching" emails linked straight to the dashboard. Route

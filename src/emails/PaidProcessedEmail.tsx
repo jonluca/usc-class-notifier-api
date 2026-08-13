@@ -1,7 +1,8 @@
-import { Button, Row, Section, Text } from "react-email";
+import { Button, Link, Row, Section, Text } from "react-email";
 import * as React from "react";
 import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
+import { buildPaymentHelpUrl, formatSemester } from "@/utils/venmoPayment";
 import type { WatchedSection, ClassInfo } from "@app/prisma";
 
 export interface PaidProcessedEmailProps {
@@ -42,8 +43,16 @@ const secondaryButtonStyle = {
 };
 
 const PaidProcessedEmail = ({ classInfo, sectionEntry, verificationKey }: PaidProcessedEmailProps) => {
-  const headerTitle = classInfo?.courseNumber || `Section ${sectionEntry.section}`;
-  const previewText = `Payment received for ${headerTitle}!`;
+  const courseNumber = classInfo?.courseNumber;
+  const semester = formatSemester(sectionEntry.semester);
+  const paymentDetails = `${courseNumber ? `${courseNumber} · ` : ""}Section ${sectionEntry.section} · ${semester}`;
+  const previewText = `Payment received for ${paymentDetails}`;
+  const paymentHelpUrl = buildPaymentHelpUrl({
+    paidId: sectionEntry.paidId,
+    section: sectionEntry.section,
+    semester: sectionEntry.semester,
+    courseNumber,
+  });
 
   return (
     <EmailBase previewText={previewText}>
@@ -64,7 +73,8 @@ const PaidProcessedEmail = ({ classInfo, sectionEntry, verificationKey }: PaidPr
       <Section style={{ marginLeft: "auto", marginRight: "auto", marginTop: "24px" }}>
         <Row>
           <Text style={{ color: "#000000", fontSize: "16px", paddingLeft: "8px", paddingRight: "8px", margin: 0 }}>
-            Your payment has been processed for {headerTitle ? `${headerTitle} - ` : ""}Section {sectionEntry.section}.
+            Your $1.00 payment has been processed for {courseNumber ? `${courseNumber}, ` : ""}Section{" "}
+            {sectionEntry.section} for {semester}.
           </Text>
         </Row>
         <Row>
@@ -79,6 +89,17 @@ const PaidProcessedEmail = ({ classInfo, sectionEntry, verificationKey }: PaidPr
             }}
           >
             You will now receive text notifications when spots open up for this section.
+          </Text>
+        </Row>
+        <Row>
+          <Text style={{ color: "#000000", fontSize: "14px", padding: "12px 8px 0", margin: 0 }}>
+            Payment note: <strong>{sectionEntry.paidId}</strong>. This payment covers this section for {semester}; you
+            do not need to pay again for additional alerts for the same section.
+          </Text>
+        </Row>
+        <Row>
+          <Text style={{ color: "#000000", fontSize: "14px", padding: "8px 8px 0", margin: 0 }}>
+            Something look wrong? <Link href={paymentHelpUrl}>Get payment help</Link>.
           </Text>
         </Row>
       </Section>

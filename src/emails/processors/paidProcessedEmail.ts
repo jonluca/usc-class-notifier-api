@@ -2,7 +2,7 @@ import sendEmail from "../utilities/sendEmail";
 import type { PaidProcessedEmailProps } from "@/emails/PaidProcessedEmail";
 import PaidProcessedEmail from "@/emails/PaidProcessedEmail";
 import { prisma } from "@/server/db";
-import logger from "@/server/logger";
+import { formatSemester } from "@/utils/venmoPayment";
 
 export const paidProcessedEmail = async (props: PaidProcessedEmailProps) => {
   const { email, sectionEntry } = props;
@@ -12,13 +12,12 @@ export const paidProcessedEmail = async (props: PaidProcessedEmailProps) => {
       section: sectionEntry.section,
     },
   });
-  const headerTitle = classInfo?.courseNumber || `Section ${sectionEntry.section}`;
-  const subject = `Payment received for ${headerTitle}!`;
+  const courseNumber = classInfo?.courseNumber || "Course";
+  const subject = `Payment received · ${courseNumber} · Section ${sectionEntry.section} · ${formatSemester(sectionEntry.semester)}`;
   await sendEmail({
     EmailTemplate: PaidProcessedEmail({ ...props, classInfo }),
     recipient: email,
     subject,
     previewText: subject,
   });
-  logger.info(`Sent payment processed email to ${email} for section ${sectionEntry.section}`);
 };

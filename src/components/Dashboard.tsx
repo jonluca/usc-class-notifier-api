@@ -12,9 +12,10 @@ import PencilIcon from "@mui/icons-material/Edit";
 import Close from "@mui/icons-material/Close";
 import Save from "@mui/icons-material/Check";
 import LinkIcon from "@mui/icons-material/Link";
-import Link from "next/link";
 import Cookies from "js-cookie";
 import { cookieKey } from "@/server/auth";
+import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
+import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 type Section = RouterOutputs["user"]["getWatchedClasses"][number];
 type ColDef = AgGridReactProps<Section>["columnDefs"];
@@ -90,6 +91,9 @@ const PhoneOverride = ({ data }: { data: Section }) => {
         />
         <input
           type="text"
+          aria-label={`Phone number for section ${data.section}`}
+          autoComplete="tel"
+          inputMode="tel"
           value={phone}
           onChange={(e) => {
             setPhone(e.target.value);
@@ -106,14 +110,84 @@ const PhoneOverride = ({ data }: { data: Section }) => {
   );
 };
 
-const VenmoLink = ({ data }: { data: Section }) => {
+const isCurrentPaymentSemester = (semester: string) => getValidSemesters().includes(semester);
+const hasValidPaymentNote = (paidId: string) => /^\d{8}$/.test(paidId);
+
+const PaymentNoteCell = ({ data }: { data: Section }) => {
+  if (!data) {
+    return null;
+  }
+
+  const isCurrentSemester = isCurrentPaymentSemester(data.semester);
+  const validPaymentNote = hasValidPaymentNote(data.paidId);
+  const helpUrl = buildPaymentHelpUrl({
+    paidId: data.paidId,
+    section: data.section,
+    semester: data.semester,
+    courseNumber: data.ClassInfo?.courseNumber,
+  });
+
   return (
-    <Link href={`https://account.venmo.com/pay?recipients=JonLuca&amount=1&note=${data.paidId}`} target={"_blank"}>
-      <span className={"flex h-full gap-2 items-center"}>
-        {data.paidId || ""}
-        <LinkIcon sx={iconStyle} />
+    <span className="flex h-full items-center gap-2">
+      <span className="font-mono text-xs font-semibold tracking-wide">
+        {validPaymentNote ? data.paidId : "Unavailable"}
       </span>
-    </Link>
+      {data.isPaid ? (
+        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-800">Paid</span>
+      ) : isCurrentSemester && validPaymentNote ? (
+        <a
+          className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-gray-700"
+          href={buildVenmoPaymentUrl(data.paidId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Pay $1 for section ${data.section}`}
+        >
+          Pay $1
+          <LinkIcon sx={{ fontSize: 12 }} />
+        </a>
+      ) : isCurrentSemester ? (
+        <a
+          className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 underline"
+          href={helpUrl}
+          aria-label={`Get payment help for section ${data.section}`}
+        >
+          Get help
+        </a>
+      ) : (
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-500">Expired</span>
+      )}
+    </span>
+  );
+};
+
+const LegacyPaymentHelpCard = ({ data }: { data: Section }) => {
+  const helpUrl = buildPaymentHelpUrl({
+    paidId: data.paidId,
+    section: data.section,
+    semester: data.semester,
+    courseNumber: data.ClassInfo?.courseNumber,
+  });
+
+  return (
+    <article className="flex min-w-0 flex-col gap-3 rounded-2xl border border-amber-300 bg-white p-4 text-gray-900 shadow-sm">
+      <div>
+        <p className="text-sm font-bold text-amber-900">Payment note needs to be updated</p>
+        <p className="text-xs text-gray-600">
+          {data.ClassInfo?.courseNumber ? `${data.ClassInfo.courseNumber} · ` : ""}Section {data.section} ·{` `}
+          {formatSemester(data.semester)}
+        </p>
+      </div>
+      <p className="text-sm leading-6">
+        This section has an older payment reference that Venmo cannot safely match. Do not send a payment using the old
+        reference.
+      </p>
+      <a
+        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-center font-bold text-white hover:bg-gray-700"
+        href={helpUrl}
+      >
+        Recover a payment or get an updated note
+      </a>
+    </article>
   );
 };
 
@@ -123,7 +197,7 @@ const columns = [
   { headerName: "Course", field: "ClassInfo.courseNumber", width: 120 },
   { headerName: "Semester", field: "semester", initialSort: "desc", width: 137 },
   { headerName: "Notified", field: "notified", width: 90, filter: false },
-  { headerName: "Venmo ID", field: "paidId", width: 113, cellRenderer: VenmoLink },
+  { headerName: "Payment note", field: "paidId", width: 220, cellRenderer: PaymentNoteCell },
   { headerName: "Phone", field: "phoneOverride", cellRenderer: PhoneOverride, width: 160 },
   { headerName: "Paid", field: "isPaid", width: 80, filter: false },
   { headerName: "Notify", field: "notified", cellRenderer: NotifyButton },
@@ -159,6 +233,9 @@ const EditPhoneGlobal = () => {
         />
         <input
           type="text"
+          aria-label="Account phone number"
+          autoComplete="tel"
+          inputMode="tel"
           value={phone}
           className="w-full h-12 px-4 text-sm text-gray-900 placeholder-gray-500 bg-gray-100 border-2 border-gray-100 rounded-lg"
           onChange={(e) => {
@@ -244,6 +321,7 @@ export default function Dashboard({
   const [showOldSemesters, setShowOldSemesters] = useState(false);
   const { mutateAsync, isPending } = api.user.setAccountLevelPhoneToAllSections.useMutation();
   const utils = api.useUtils();
+  const currentSemesters = useMemo(() => new Set(getValidSemesters()), []);
 
   const setAccountLevelPhoneToAllSections = async () => {
     await toast.promise(mutateAsync(), {
@@ -257,9 +335,13 @@ export default function Dashboard({
     if (showOldSemesters) {
       return data || [];
     }
-    const currentSemesters = getValidSemesters();
-    return data?.filter((section) => currentSemesters.includes(section.semester)) || [];
-  }, [data, showOldSemesters]);
+    return data?.filter((section) => currentSemesters.has(section.semester)) || [];
+  }, [currentSemesters, data, showOldSemesters]);
+  const unpaidCurrentSections = useMemo(
+    () =>
+      data?.filter((watchedSection) => !watchedSection.isPaid && currentSemesters.has(watchedSection.semester)) || [],
+    [currentSemesters, data],
+  );
 
   const matchingSection = data?.find((s) => s.id === section);
   return (
@@ -313,6 +395,50 @@ export default function Dashboard({
         />
       </div>
 
+      {unpaidCurrentSections.length > 0 && (
+        <section
+          className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5"
+          aria-labelledby="text-payment-heading"
+        >
+          <div className="mb-4 max-w-3xl space-y-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#990000]">Optional text notifications</p>
+            <h2 id="text-payment-heading" className="text-2xl font-bold tracking-tight text-gray-950">
+              Activate texts for each section
+            </h2>
+            <p className="text-sm leading-6 text-gray-700">
+              Email availability alerts are free. Text alerts cost $1 per section per semester, and each section has its
+              own required 8-digit payment note.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {unpaidCurrentSections.map((watchedSection) => {
+              const hasPhoneNumber = Boolean(watchedSection.phoneOverride || userInfo?.phone);
+
+              return (
+                <div key={watchedSection.id} className="flex min-w-0 flex-col gap-2">
+                  {!hasPhoneNumber && (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">
+                      Add your phone number above before paying so this section can send text alerts.
+                    </p>
+                  )}
+                  {hasValidPaymentNote(watchedSection.paidId) ? (
+                    <VenmoPaymentPanel
+                      courseNumber={watchedSection.ClassInfo?.courseNumber}
+                      paidId={watchedSection.paidId}
+                      section={watchedSection.section}
+                      semester={watchedSection.semester}
+                      showQr
+                    />
+                  ) : (
+                    <LegacyPaymentHelpCard data={watchedSection} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Grid goes here */}
       {!isLoading && (
         <div style={{ height: "600px", width: "100%" }}>
@@ -325,18 +451,6 @@ export default function Dashboard({
           />
         </div>
       )}
-      <div className="flex flex-col items-start gap-2 bg-gray-100 p-3 md:p-2 rounded-lg shadow-inner w-full max-w-2xl">
-        {/* Beta tag with violet background */}
-        <div className="flex flex-col items-start md:flex-row md:items-center gap-2 w-full">
-          <Typography variant="body2" className="bg-orange-300 text-white px-2 rounded-md font-bold text-[12px]">
-            {"Note"}
-          </Typography>
-          <Typography variant="body2" className="text-neutral-400 font-bold text-[12px] mx-auto">
-            If you want to enable text notifications for a class, make sure the phone number for that section is correct
-            and then click the venmo ID number, or venmo the exact 8 digits in that column to @JonLuca
-          </Typography>
-        </div>
-      </div>
     </div>
   );
 }

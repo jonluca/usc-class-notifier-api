@@ -1,10 +1,16 @@
 import "dotenv/config";
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
-import { convert } from "html-to-text";
 import { prisma } from "@/server/db.ts";
 import logger from "@/server/logger.ts";
-import { isExpectedVenmoPaymentSubject, parseVenmoPaidIds } from "./venmoEmail.ts";
+import { getValidSemesters } from "@/utils/semester.ts";
+import { classifyReceipt } from "./backfillReconciliation.ts";
+import {
+  isReceiptEligibleForRow,
+  reconcilePaymentReference,
+  selectSinglePaymentReference,
+  type PaymentReceiptReference,
+} from "./paymentReconciliation.ts";
 
 /**
  * ENV:
@@ -12,37 +18,82 @@ import { isExpectedVenmoPaymentSubject, parseVenmoPaidIds } from "./venmoEmail.t
  *  GMAIL_IMAP_APP_PASSWORD=xxxx xxxx xxxx xxxx   (16-char app password, spaces optional)
  */
 export class GmailVenmoImapClient {
-  private submitPaidIds = async (ids: string[]) => {
-    const result = await prisma.watchedSection.updateMany({
-      where: {
-        paidId: {
-          in: ids,
-        },
-        isPaid: false,
-      },
-      data: {
+  private submitPayments = async (receipts: PaymentReceiptReference[]) => {
+    const receiptsByPaidId = new Map<string, PaymentReceiptReference[]>();
+    for (const receipt of receipts) {
+      const matchingReceipts = receiptsByPaidId.get(receipt.paidId) || [];
+      matchingReceipts.push(receipt);
+      receiptsByPaidId.set(receipt.paidId, matchingReceipts);
+    }
+    const paidIds = [...receiptsByPaidId.keys()];
+    const rows = await prisma.watchedSection.findMany({
+      where: { paidId: { in: paidIds } },
+      select: {
+        id: true,
+        createdAt: true,
+        paidId: true,
+        semester: true,
         isPaid: true,
       },
     });
-    return result.count;
+    const monitoredSemesters = getValidSemesters();
+    let updatedCount = 0;
+    let unmatchedCount = 0;
+    let ambiguousCount = 0;
+    let unmonitoredCount = 0;
+    let guardMissCount = 0;
+    let predatesSectionCount = 0;
+
+    for (const paidId of paidIds) {
+      const reconciliation = reconcilePaymentReference(paidId, rows, monitoredSemesters);
+      switch (reconciliation.status) {
+        case "unmatched":
+          unmatchedCount += 1;
+          break;
+        case "ambiguous":
+          ambiguousCount += 1;
+          break;
+        case "unmonitored":
+          unmonitoredCount += 1;
+          break;
+        case "already_paid":
+          break;
+        case "eligible": {
+          const hasEligibleReceipt = (receiptsByPaidId.get(paidId) || []).some((receipt) =>
+            isReceiptEligibleForRow(receipt, reconciliation.row),
+          );
+          if (!hasEligibleReceipt) {
+            predatesSectionCount += 1;
+            break;
+          }
+          const update = await prisma.watchedSection.updateMany({
+            where: {
+              id: reconciliation.row.id,
+              paidId,
+              semester: reconciliation.row.semester,
+              isPaid: false,
+            },
+            data: { isPaid: true },
+          });
+          if (update.count === 1) {
+            updatedCount += 1;
+          } else {
+            guardMissCount += 1;
+          }
+          break;
+        }
+      }
+    }
+
+    if (unmatchedCount || ambiguousCount || unmonitoredCount || predatesSectionCount || guardMissCount) {
+      logger.warn(
+        `Venmo payment reconciliation alert: ${unmatchedCount} unmatched, ${ambiguousCount} ambiguous, ${unmonitoredCount} unmonitored-semester, ${predatesSectionCount} predated-section, ${guardMissCount} guarded-update misses; all skipped`,
+      );
+    }
+
+    return updatedCount;
   };
-  private parsePaidIds(text: string): string[] {
-    return parseVenmoPaidIds(text);
-  }
-
-  private normalizeBody(parsed: Awaited<ReturnType<typeof simpleParser>>): string {
-    if (parsed.text && parsed.text.trim()) {
-      return parsed.text;
-    }
-
-    if (parsed.html) {
-      return convert(parsed.html.toString(), { wordwrap: false });
-    }
-
-    return "";
-  }
-
-  async fetchVenmoPaidYouIds(): Promise<string[]> {
+  async fetchVenmoPayments(): Promise<PaymentReceiptReference[]> {
     const user = process.env.GMAIL_IMAP_USER;
     const pass = process.env.GMAIL_IMAP_APP_PASSWORD;
 
@@ -64,7 +115,9 @@ export class GmailVenmoImapClient {
       logger: false,
     });
 
-    const allPaidIds: string[] = [];
+    const receipts: PaymentReceiptReference[] = [];
+    let ambiguousReceiptCount = 0;
+    let unauthenticatedReceiptCount = 0;
 
     try {
       await client.connect();
@@ -73,9 +126,9 @@ export class GmailVenmoImapClient {
       // If it doesn't exist (rare), fall back to INBOX.
       const gmailAllMail = "[Gmail]/All Mail";
       try {
-        await client.mailboxOpen(gmailAllMail);
+        await client.mailboxOpen(gmailAllMail, { readOnly: true });
       } catch {
-        await client.mailboxOpen("INBOX");
+        await client.mailboxOpen("INBOX", { readOnly: true });
       }
 
       // Keep enough overlap to recover after an extended deployment or provider outage.
@@ -94,24 +147,52 @@ export class GmailVenmoImapClient {
       // Fetch newest first
       uids.sort((a, b) => b - a);
 
-      for await (const msg of client.fetch(uids, { uid: true, envelope: true, source: true })) {
-        const subject = msg.envelope?.subject ?? "";
-
-        // Match your prior logic
-        if (!isExpectedVenmoPaymentSubject(subject)) {
-          continue;
-        }
-
+      for await (const msg of client.fetch(uids, { uid: true, envelope: true, internalDate: true, source: true })) {
         const text = msg.source?.toString();
         if (!text) {
           continue;
         }
-        const parsed = await simpleParser(text);
-        const bodyText = this.normalizeBody(parsed);
-
-        const ids = this.parsePaidIds(bodyText);
-        if (ids.length) {
-          allPaidIds.push(...ids);
+        const parsed = await simpleParser(text, {
+          skipHtmlToText: true,
+          skipTextToHtml: true,
+        });
+        const authenticationHeaders: string[] = [];
+        for (const header of parsed.headerLines) {
+          if (header.key.toLowerCase() === "authentication-results") {
+            authenticationHeaders.push(header.line);
+          }
+        }
+        const classification = classifyReceipt({
+          receiptKey: `uid:${msg.uid}`,
+          internalDate: msg.internalDate instanceof Date ? msg.internalDate : null,
+          subject: parsed.subject ?? msg.envelope?.subject ?? "",
+          fromAddresses:
+            parsed.from?.value.flatMap((entry) => {
+              if (entry.address) {
+                return [entry.address];
+              }
+              const groupAddresses: string[] = [];
+              for (const member of entry.group || []) {
+                if (member.address) {
+                  groupAddresses.push(member.address);
+                }
+              }
+              return groupAddresses;
+            }) ?? [],
+          authenticationHeaders,
+          plaintext: parsed.text,
+          html: typeof parsed.html === "string" ? parsed.html : undefined,
+        });
+        const paidId = selectSinglePaymentReference(classification.paidIds);
+        if (classification.status === "genuine_single_id" && paidId && classification.internalDate) {
+          receipts.push({ paidId, receivedAt: classification.internalDate });
+        } else if (classification.status === "genuine_multiple_ids") {
+          ambiguousReceiptCount += 1;
+        } else if (
+          classification.status === "authentication_failed" ||
+          classification.status === "authentication_unknown"
+        ) {
+          unauthenticatedReceiptCount += 1;
         }
       }
     } finally {
@@ -123,18 +204,25 @@ export class GmailVenmoImapClient {
       }
     }
 
-    return allPaidIds;
+    if (ambiguousReceiptCount > 0) {
+      logger.warn(`Venmo Gmail scan skipped ${ambiguousReceiptCount} receipts containing multiple payment references`);
+    }
+    if (unauthenticatedReceiptCount > 0) {
+      logger.warn(`Venmo Gmail scan skipped ${unauthenticatedReceiptCount} receipts that failed sender authentication`);
+    }
+
+    return receipts;
   }
 
   checkEmails = async (): Promise<void> => {
-    const paidIds = await this.fetchVenmoPaidYouIds();
-    if (paidIds.length === 0) {
+    const receipts = await this.fetchVenmoPayments();
+    if (receipts.length === 0) {
       logger.info("Venmo Gmail scan completed: 0 payment IDs found");
       return;
     }
 
-    const uniquePaidIds = [...new Set(paidIds)];
-    const updatedCount = await this.submitPaidIds(uniquePaidIds);
+    const uniquePaidIds = [...new Set(receipts.map((receipt) => receipt.paidId))];
+    const updatedCount = await this.submitPayments(receipts);
     logger.info(
       `Venmo Gmail scan completed: ${uniquePaidIds.length} payment IDs found, ${updatedCount} sections newly marked paid`,
     );

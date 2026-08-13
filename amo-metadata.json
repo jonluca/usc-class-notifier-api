@@ -15,6 +15,9 @@
   "requires_payment": true,
   "version": {
     "license": "all-rights-reserved",
+    "release_notes": {
+      "en-US": "Improved optional SMS payment instructions with an exact $1 amount, a copyable eight-digit payment note, a prefilled Venmo link, and a section-specific QR code. Added payment-recovery guidance and a clearer secure-login path when a section is already watched. No new permissions or data-collection purposes."
+    },
     "approval_notes": "Build instructions are in SOURCE_CODE_REVIEW.md in the uploaded source archive. No API keys or .env files are required. Functional testing can be performed on public pages under https://classes.usc.edu/term/. USC Web Registration features require a USC-authenticated session; the public classes site exercises the ratings and notification UI. Email notifications are free. Optional SMS notifications cost $1 per section per semester. The extension transmits a user-entered email address, optional phone number, and the selected class department/section/semester to https://usc.jonlu.ca only after the user clicks Submit in the notification form."
   }
 }

@@ -4040,6 +4040,7 @@ __metadata:
     postcss: "npm:^8.5.26"
     prisma: "npm:^7.9.1"
     prisma-json-types-generator: "npm:^5.1.1"
+    qrcode.react: "npm:^4.2.0"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
     react-email: "npm:^6.9.2"
@@ -8193,6 +8194,15 @@ __metadata:
   version: 6.1.0
   resolution: "pure-rand@npm:6.1.0"
   checksum: 10c0/1abe217897bf74dcb3a0c9aba3555fe975023147b48db540aa2faf507aee91c03bf54f6aef0eb2bf59cc259a16d06b28eca37f0dc426d94f4692aeff02fb0e65
+  languageName: node
+  linkType: hard
+
+"qrcode.react@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "qrcode.react@npm:4.2.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/68c691d130e5fda2f57cee505ed7aea840e7d02033100687b764601f9595e1116e34c13876628a93e1a5c2b85e4efc27d30b2fda72e2050c02f3e1c4e998d248
   languageName: node
   linkType: hard
 

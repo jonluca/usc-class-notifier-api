@@ -4,15 +4,12 @@ import Modal from "@mui/material/Modal";
 import { CircularProgress, TextField, Typography } from "@mui/material";
 import { trpc } from "@/extension/data";
 import { toast } from "react-toastify";
-import venmoImage from "-/venmo.png";
-import venmoQrImage from "-/venmo-qr.jpeg";
 import * as EmailValidator from "email-validator";
 import { getCurrentTerm } from "@/extension/getCurrentTerm";
+import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 
 const localStorageEmailKey = "uscScheduleHelperEmail";
 const localStoragePhoneKey = "uscScheduleHelperPhone";
-const venmoImageSrc = venmoImage as string;
-const venmoQrImageSrc = venmoQrImage as string;
 const Input = ({
   label,
   value,
@@ -61,18 +58,21 @@ const Input = ({
 
 const CollectInfo = ({ onClose }: { onClose: () => void }) => {
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass)!;
-  console.log(selectedClass);
 
   const { mutateAsync, isPending, data, error } = trpc.user.addWatchedClass.useMutation();
   const { mutateAsync: sendLoginEmail, isPending: isPendingLogin, isSuccess } = trpc.user.sendLoginEmail.useMutation();
-  const [email, setEmail] = useState(localStorage.getItem(localStorageEmailKey) || "");
-  const [phone, setPhone] = useState(localStorage.getItem(localStoragePhoneKey) || "");
+  const [email, setEmail] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem(localStorageEmailKey) || "",
+  );
+  const [phone, setPhone] = useState(() =>
+    typeof window === "undefined" ? "" : window.localStorage.getItem(localStoragePhoneKey) || "",
+  );
 
   useEffect(() => {
-    localStorage.setItem(localStorageEmailKey, email);
+    window.localStorage.setItem(localStorageEmailKey, email);
   }, [email]);
   useEffect(() => {
-    localStorage.setItem(localStoragePhoneKey, phone);
+    window.localStorage.setItem(localStoragePhoneKey, phone);
   }, [phone]);
   if ("isInvalid" in selectedClass) {
     toast.error("Invalid class");
@@ -97,7 +97,17 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
 
   const renderContent = () => {
     if (data) {
-      const venmoUrl = `https://account.venmo.com/pay?recipients=JonLuca&amount=1&note=${data.paidId}`;
+      if ("loginRequired" in data) {
+        return (
+          <div className="flex w-full flex-col items-center gap-2 text-center">
+            <span className="font-bold">This section is already being watched</span>
+            <span>
+              Use “View Dashboard” below to email yourself a secure login link and see the current instructions.
+            </span>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center gap-2 w-full">
           <span className={"font-bold"}>Success!</span>
@@ -119,47 +129,13 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
               else!
             </span>
           ) : data.showVenmoInfo ? (
-            <>
-              <span className={""}>
-                If you would like to receive text notifications, you can venmo $1 to{" "}
-                <a
-                  href={venmoUrl}
-                  target={"_blank"}
-                  rel="noreferrer"
-                  id="venmo-image"
-                  style={{ position: "relative" }}
-                  className={"my-2 underline"}
-                >
-                  @JonLuca
-                </a>{" "}
-                with just the code {data.paidId}, like below:
-              </span>
-              <a
-                href={venmoUrl}
-                target={"_blank"}
-                rel="noreferrer"
-                id="venmo-image"
-                style={{ position: "relative" }}
-                className={"my-2"}
-              >
-                {/* oxlint-disable-next-line nextjs/no-img-element */}
-                <img src={venmoImageSrc} alt="Venmo QR Code" />
-
-                <span
-                  className={"font-bold"}
-                  style={{
-                    position: "absolute",
-                    left: "13%",
-                    top: "31%",
-                  }}
-                >
-                  {data.paidId}
-                </span>
-              </a>
-              {/* oxlint-disable-next-line nextjs/no-img-element */}
-              <img src={venmoQrImageSrc} alt="Venmo QR Code" style={{ maxHeight: 250 }} />
-              <span className={"font-bold"}>If it asks for a last 4 digits of the phone number, use 9020</span>
-            </>
+            <VenmoPaymentPanel
+              courseNumber={selectedClass.fullCourseId?.replace(/:/gi, "")}
+              paidId={data.paidId}
+              section={selectedClass.sectionId}
+              semester={data.semester}
+              showQr
+            />
           ) : null}
         </div>
       );

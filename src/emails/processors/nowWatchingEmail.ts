@@ -2,6 +2,7 @@ import sendEmail from "../utilities/sendEmail";
 import type { NowWatchingEmailProps } from "@/emails/NowWatchingEmail";
 import NowWatchingEmail from "@/emails/NowWatchingEmail";
 import { prisma } from "@/server/db";
+import { formatSemester } from "@/utils/venmoPayment";
 
 export const nowWatchingEmail = async (props: NowWatchingEmailProps) => {
   const { email, sectionEntry } = props;
@@ -11,8 +12,8 @@ export const nowWatchingEmail = async (props: NowWatchingEmailProps) => {
       section: sectionEntry.section,
     },
   });
-  const headerTitle = classInfo?.courseNumber || `section ${sectionEntry.section}`;
-  const subject = `Watching ${headerTitle}!`;
+  const courseNumber = classInfo?.courseNumber || "Course";
+  const subject = `Watching ${courseNumber} · Section ${sectionEntry.section} · ${formatSemester(sectionEntry.semester)}`;
   await sendEmail({
     EmailTemplate: NowWatchingEmail({ ...props, classInfo }),
     recipient: email,

@@ -22,6 +22,8 @@ export const sendPaidNotificationsEmails = async () => {
   }
 
   logger.info(`Sending ${sectionsToNotify.length} payment succeeded emails`);
+  let sentCount = 0;
+  let failedCount = 0;
 
   for (const section of sectionsToNotify) {
     try {
@@ -37,10 +39,15 @@ export const sendPaidNotificationsEmails = async () => {
         where: { id: section.id },
         data: { paidNotified: true },
       });
-    } catch (error) {
-      logger.error(`Failed to send paid notification for section ${section.id}: ${error}`);
+      sentCount += 1;
+    } catch {
+      failedCount += 1;
     }
   }
 
-  logger.info("Finished sending paid notifications");
+  if (failedCount > 0) {
+    logger.error(`Payment notification batch completed with ${sentCount} sent and ${failedCount} failed`);
+  } else {
+    logger.info(`Payment notification batch completed: ${sentCount} sent, 0 failed`);
+  }
 };
