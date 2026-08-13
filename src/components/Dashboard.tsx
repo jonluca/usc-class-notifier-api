@@ -2,10 +2,9 @@ import { api } from "@/utils/api";
 import { LinearProgress, TextField, Typography } from "@mui/material";
 import React, { useMemo, useState } from "react";
 import type { RouterOutputs } from "@/server/api";
-import type { AgGridReactProps } from "@ag-grid-community/react";
-import { AgGridReact } from "@ag-grid-community/react";
-import { ModuleRegistry } from "@ag-grid-community/core";
-import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
+import type { AgGridReactProps } from "ag-grid-react";
+import { AgGridReact } from "ag-grid-react";
+import { ClientSideRowModelModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { getValidSemesters } from "@/utils/semester";
 import { SettingEntry } from "@/components/SettingsEntry";
 import { toast } from "react-toastify";
@@ -26,6 +25,9 @@ const defaultColDef: NonNullable<ColDef>[number] = {
 };
 
 const NotifyButton = ({ data }: { data: Section }) => {
+  const utils = api.useUtils();
+  const { mutateAsync, isPending } = api.user.continueReceivingNotificationsForSection.useMutation();
+
   if (!data || !data.notified) {
     return null;
   }
@@ -39,9 +41,6 @@ const NotifyButton = ({ data }: { data: Section }) => {
       return null;
     }
   }
-  const utils = api.useUtils();
-
-  const { mutateAsync, isPending } = api.user.continueReceivingNotificationsForSection.useMutation();
   const submit = async () => {
     await toast.promise(mutateAsync({ id: data.id }), {
       pending: "Re-notifying",
@@ -316,9 +315,10 @@ export default function Dashboard({
 
       {/* Grid goes here */}
       {!isLoading && (
-        <div className="ag-theme-quartz" style={{ height: "600px", width: "100%" }}>
+        <div style={{ height: "600px", width: "100%" }}>
           <AgGridReact<Section>
             key={`${userInfo?.id}`}
+            theme={themeQuartz}
             rowData={filteredData}
             columnDefs={columns}
             defaultColDef={defaultColDef}

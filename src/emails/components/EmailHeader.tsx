@@ -1,4 +1,4 @@
-import { Img, Link, Section } from "@react-email/components";
+import { Img, Link, Section } from "react-email";
 import * as React from "react";
 
 const EmailHeader = () => {

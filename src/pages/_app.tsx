@@ -1,7 +1,7 @@
 import { CacheProvider } from "@emotion/react";
 import { CssBaseline, NoSsr } from "@mui/material";
 import createEmotionCache from "@/utils/emotionCache";
-import type { AppPropsType } from "next/dist/shared/lib/utils";
+import type { AppProps } from "next/app";
 import { api } from "@/utils/api";
 import { ToastContainer } from "react-toastify";
 import { Navbar } from "@/components/navbar";
@@ -9,8 +9,6 @@ import dynamic from "next/dynamic";
 
 import "@/styles/globals.css";
 import "react-toastify/dist/ReactToastify.css";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
 
 const clientSideEmotionCache = createEmotionCache();
 
@@ -20,7 +18,7 @@ const ReactQueryDevtools = dynamic(
     ssr: false,
   },
 );
-const App = ({ Component, pageProps }: AppPropsType) => {
+const App = ({ Component, pageProps }: AppProps) => {
   return (
     <CacheProvider value={clientSideEmotionCache}>
       <CssBaseline />

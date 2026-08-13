@@ -1,4 +1,4 @@
-import { Section, Link, Text } from "@react-email/components";
+import { Section, Link, Text } from "react-email";
 import * as React from "react";
 
 const EmailFooter = () => {

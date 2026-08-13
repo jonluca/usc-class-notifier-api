@@ -1,4 +1,4 @@
-import { Button, Row, Section, Text, Link } from "@react-email/components";
+import { Button, Row, Section, Text, Link } from "react-email";
 import * as React from "react";
 import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
