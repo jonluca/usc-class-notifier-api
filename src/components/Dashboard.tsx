@@ -16,6 +16,7 @@ import Cookies from "js-cookie";
 import { cookieKey } from "@/server/auth";
 import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
+import { formatPhoneNumberForDisplay, parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 type Section = RouterOutputs["user"]["getWatchedClasses"][number];
 type ColDef = AgGridReactProps<Section>["columnDefs"];
@@ -76,11 +77,12 @@ const PhoneOverride = ({ data }: { data: Section }) => {
         <Save
           sx={iconStyle}
           onClick={async () => {
-            if (phone.length !== 10) {
-              toast.error("Phone number must be 10 digits");
+            const parsedPhone = parsePhoneNumber(phone);
+            if (!parsedPhone) {
+              toast.error(PHONE_NUMBER_ERROR);
               return;
             }
-            await toast.promise(mutateAsync({ id: data.id, phoneNumber: phone }), {
+            await toast.promise(mutateAsync({ id: data.id, phoneNumber: parsedPhone }), {
               pending: "Saving",
               success: "Saved",
               error: "Failed to save",
@@ -90,10 +92,11 @@ const PhoneOverride = ({ data }: { data: Section }) => {
           }}
         />
         <input
-          type="text"
+          type="tel"
           aria-label={`Phone number for section ${data.section}`}
           autoComplete="tel"
           inputMode="tel"
+          maxLength={35}
           value={phone}
           onChange={(e) => {
             setPhone(e.target.value);
@@ -104,8 +107,14 @@ const PhoneOverride = ({ data }: { data: Section }) => {
   }
   return (
     <span className={"flex h-full gap-2 items-center"}>
-      {data.phoneOverride || ""}
-      <PencilIcon sx={iconStyle} onClick={() => setIsEdit(true)} />
+      {data.phoneOverride ? formatPhoneNumberForDisplay(data.phoneOverride) : ""}
+      <PencilIcon
+        sx={iconStyle}
+        onClick={() => {
+          setPhone(data.phoneOverride || "");
+          setIsEdit(true);
+        }}
+      />
     </span>
   );
 };
@@ -218,11 +227,12 @@ const EditPhoneGlobal = () => {
         <Save
           sx={iconStyle}
           onClick={async () => {
-            if (phone.length !== 10) {
-              toast.error("Phone number must be 10 digits");
+            const parsedPhone = parsePhoneNumber(phone);
+            if (!parsedPhone) {
+              toast.error(PHONE_NUMBER_ERROR);
               return;
             }
-            await toast.promise(mutateAsync({ phoneNumber: phone }), {
+            await toast.promise(mutateAsync({ phoneNumber: parsedPhone }), {
               pending: "Saving",
               success: "Saved",
               error: "Failed to save",
@@ -232,10 +242,11 @@ const EditPhoneGlobal = () => {
           }}
         />
         <input
-          type="text"
+          type="tel"
           aria-label="Account phone number"
           autoComplete="tel"
           inputMode="tel"
+          maxLength={35}
           value={phone}
           className="w-full h-12 px-4 text-sm text-gray-900 placeholder-gray-500 bg-gray-100 border-2 border-gray-100 rounded-lg"
           onChange={(e) => {
@@ -251,8 +262,14 @@ const EditPhoneGlobal = () => {
   }
   return (
     <span className={"flex h-full gap-2 items-center"}>
-      {userInfo.phone || ""}
-      <PencilIcon sx={iconStyle} onClick={() => setIsEdit(true)} />
+      {userInfo.phone ? formatPhoneNumberForDisplay(userInfo.phone) : ""}
+      <PencilIcon
+        sx={iconStyle}
+        onClick={() => {
+          setPhone(userInfo.phone || "");
+          setIsEdit(true);
+        }}
+      />
     </span>
   );
 };
@@ -412,7 +429,9 @@ export default function Dashboard({
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {unpaidCurrentSections.map((watchedSection) => {
-              const hasPhoneNumber = Boolean(watchedSection.phoneOverride || userInfo?.phone);
+              const hasPhoneNumber = Boolean(
+                parsePhoneNumber(watchedSection.phoneOverride || "") || parsePhoneNumber(userInfo?.phone || ""),
+              );
 
               return (
                 <div key={watchedSection.id} className="flex min-w-0 flex-col gap-2">

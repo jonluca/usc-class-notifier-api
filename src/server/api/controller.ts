@@ -19,6 +19,7 @@ import { getCurrentAvailableCourses, searchClasses } from "@/server/api/usc-api.
 import type { Prisma } from "@app/prisma";
 import type { Course } from "@/server/api/types.ts";
 import { isProd } from "@/constants.ts";
+import { parsePhoneNumber } from "@/utils/phoneNumber.ts";
 
 const checkForAvailabilityForDepartment = async (department: string, semester: string) => {
   try {
@@ -90,7 +91,10 @@ const checkForAvailabilityForDepartment = async (department: string, semester: s
         const otherPeople = `${numberOfStudentsWatching} others ${verbText} watching this section.`;
 
         for (const section of sections) {
-          const phoneNumber = section.phoneOverride || section.student.phone;
+          // Prefer the section override, but do not let an old malformed
+          // override mask a valid account-level destination.
+          const phoneNumber =
+            parsePhoneNumber(section.phoneOverride || "") ?? parsePhoneNumber(section.student.phone || "");
           const emailAlreadySent = hasRecordedEmailSinceLastNotification({
             latestEmailSentAt: section.NotificationSent[0]?.createdAt,
             lastNotified: section.lastNotified,
@@ -132,7 +136,6 @@ const checkForAvailabilityForDepartment = async (department: string, semester: s
             if (error instanceof NotificationChannelError) {
               logger.error(
                 `Failed to send ${error.channel} availability notification for watched section ${section.id}; it will be retried`,
-                error.originalError,
               );
               continue;
             }

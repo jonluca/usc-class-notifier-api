@@ -17,6 +17,38 @@ import {
   needsPaidReferenceRotation,
   selectAvailablePaidReference,
 } from "@/server/paidReference";
+import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
+
+const optionalPhoneNumberSchema = z
+  .string()
+  .trim()
+  .max(64)
+  .transform((value, context) => {
+    if (!value) {
+      return undefined;
+    }
+    const parsed = parsePhoneNumber(value);
+    if (!parsed) {
+      context.addIssue({ code: "custom", message: PHONE_NUMBER_ERROR });
+      return z.NEVER;
+    }
+    return parsed;
+  })
+  .optional();
+
+const phoneNumberSchema = z
+  .string()
+  .trim()
+  .max(64)
+  .transform((value, context) => {
+    const parsed = parsePhoneNumber(value);
+    if (!parsed) {
+      context.addIssue({ code: "custom", message: PHONE_NUMBER_ERROR });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 export const userRouter = {
   verifyByKey: publicProcedure
     .input(
@@ -81,7 +113,7 @@ export const userRouter = {
         sectionNumber: z.string(),
         email: z.email(),
         department: z.string(),
-        phone: z.string().optional(),
+        phone: optionalPhoneNumberSchema,
         uscId: z.string().optional(),
         semester: notificationSemesterSchema,
       }),
@@ -122,7 +154,7 @@ export const userRouter = {
           semester: input.semester,
         },
       });
-      const showVenmoInfo = Boolean(student.phone || input.phone);
+      const showVenmoInfo = Boolean(parsePhoneNumber(student.phone || "") || input.phone);
       const ownsStudent = ctx.user?.id === student.id;
 
       if (section) {
@@ -188,7 +220,9 @@ export const userRouter = {
         });
 
         // Re-adding from an authenticated dashboard is a safe resend/recovery path.
-        const shouldShowVenmoInfo = Boolean(student.phone || updatedSection.phoneOverride) && !updatedSection.isPaid;
+        const shouldShowVenmoInfo =
+          Boolean(parsePhoneNumber(updatedSection.phoneOverride || "") || parsePhoneNumber(student.phone || "")) &&
+          !updatedSection.isPaid;
         await nowWatchingEmail({
           verificationKey: student.verificationKey,
           email: student.email,
@@ -286,12 +320,16 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
       }
     }),
   setAccountLevelPhoneToAllSections: publicProcedureWithUser.mutation(async ({ ctx }) => {
+    const phoneNumber = ctx.user.phone ? parsePhoneNumber(ctx.user.phone) : null;
+    if (ctx.user.phone && !phoneNumber) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: PHONE_NUMBER_ERROR });
+    }
     await ctx.prisma.watchedSection.updateMany({
       where: {
         studentId: ctx.user.id,
       },
       data: {
-        phoneOverride: ctx.user.phone,
+        phoneOverride: phoneNumber,
       },
     });
   }),
@@ -299,7 +337,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
     .input(
       z.object({
         id: z.string(),
-        phoneNumber: z.string().length(10),
+        phoneNumber: phoneNumberSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -319,7 +357,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
   changePhoneNumberForAccount: publicProcedureWithUser
     .input(
       z.object({
-        phoneNumber: z.string().length(10),
+        phoneNumber: phoneNumberSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -364,7 +402,7 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
     .input(
       z.object({
         key: z.string(),
-        phoneNumber: z.string(),
+        phoneNumber: phoneNumberSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {

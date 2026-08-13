@@ -1,6 +1,7 @@
 import tw from "twilio";
 import { isProd } from "@/constants";
 import logger from "@/server/logger";
+import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 
 const { Twilio } = tw;
 
@@ -23,21 +24,7 @@ interface SmsSenderConfig {
 }
 
 export const normalizeUsDestination = (destination: string) => {
-  const trimmed = destination.trim();
-  if (/^\+1\d{10}$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  // Only reinterpret values made up of digits and common phone formatting.
-  // This avoids accidentally treating an international number or extension as US-local.
-  if (/^[\d\s().-]+$/.test(trimmed)) {
-    const digits = trimmed.replace(/\D/g, "");
-    if (digits.length === 10) {
-      return `+1${digits}`;
-    }
-  }
-
-  return trimmed;
+  return parsePhoneNumber(destination) ?? destination.trim();
 };
 
 export const sendMessageWithClient = async (
@@ -51,20 +38,21 @@ export const sendMessageWithClient = async (
     throw new Error("Cannot send text message: missing Twilio sender number");
   }
 
-  const normalizedTo = normalizeUsDestination(to);
-  const normalizedDevelopmentNumber = config.developmentNumber
-    ? normalizeUsDestination(config.developmentNumber)
-    : undefined;
+  const normalizedTo = parsePhoneNumber(to);
+  if (!normalizedTo) {
+    throw new Error(`Cannot send text message: ${PHONE_NUMBER_ERROR}`);
+  }
+  const normalizedDevelopmentNumber = config.developmentNumber ? parsePhoneNumber(config.developmentNumber) : undefined;
   if (!config.isProduction && normalizedTo !== normalizedDevelopmentNumber) {
     return;
   }
 
-  const sentMessage = await config.messageClient.create({
+  await config.messageClient.create({
     body: message,
     to: normalizedTo,
     from: config.fromNumber,
   });
-  logger.debug(`Sent text message to: ${sentMessage.to ?? normalizedTo}`);
+  logger.debug("Sent text message");
 };
 
 export const sendMessage = async ({ to, message }: { message: string; to: string }) =>
