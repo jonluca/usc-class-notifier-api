@@ -487,7 +487,7 @@ const applyCandidates = async (candidates: BackfillApplyCandidate[]): Promise<Ap
   return result;
 };
 
-const helpText = `Usage: yarn tsx jobs/venmoGmail/backfill.ts [options]
+const helpText = `Usage: pnpm exec tsx jobs/venmoGmail/backfill.ts [options]
 
 Dry-run is the default and performs no database writes.
 

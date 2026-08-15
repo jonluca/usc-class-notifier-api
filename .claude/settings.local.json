@@ -2,8 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "Bash(yarn add:*)",
-      "Bash(npx prettier:*)"
+      "Bash(pnpm add:*)",
+      "Bash(pnpm exec oxfmt:*)"
     ]
   }
 }

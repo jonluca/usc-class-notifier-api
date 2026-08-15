@@ -1,1 +1,1 @@
-monitor: NODE_ENV=production yarn monitor
+monitor: NODE_ENV=production pnpm run monitor

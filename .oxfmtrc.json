@@ -6,5 +6,5 @@
   "tabWidth": 2,
   "trailingComma": "all",
   "sortPackageJson": false,
-  "ignorePatterns": [".yarn", "public/js", "prisma/generated", ".plasmo", ".next", ".expo", ".claude", ".cursor"]
+  "ignorePatterns": ["public/js", "prisma/generated", ".plasmo", ".next", ".expo", ".claude", ".cursor"]
 }

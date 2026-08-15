@@ -9,10 +9,10 @@ Its privacy policy is available both [in this repository](./PRIVACY.md) and on t
 
 ```sh
 # Chrome
-yarn package:extension
+pnpm run package:extension
 
 # Firefox (Manifest V3)
-yarn package:firefox
+pnpm run package:firefox
 ```
 
 Firefox packages are written to `.output/` as an extension ZIP and a source ZIP for Mozilla review. See `SOURCE_CODE_REVIEW.md` for reproducible build instructions.

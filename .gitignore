@@ -3,9 +3,6 @@
 # dependencies
 /node_modules
 /youtube-server/node_modules
-/youtube-server/.yarn
-/.pnp
-.pnp.js
 
 # testing
 /coverage
@@ -25,8 +22,6 @@
 
 # debug
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
@@ -52,7 +47,6 @@ public/sitemap-0.xml
 public/sitemap.xml
 public/robots.txt
 public/workbox*
-.yarn/install-state.gz
 scripts/*.txt
 .idea/dataSources
 .idea/dataSources*
@@ -69,7 +63,6 @@ bare-apps
 # Node
 node_modules
 npm-debug.log
-yarn-error.log
 
 # Ruby
 .direnv
@@ -118,7 +111,6 @@ templates/**/android/**/generated/*
 templates/**/android/app/build
 templates/**/Pods/**
 templates/**/Podfile.lock
-templates/**/yarn.lock
 
 # Codemod
 .codemod.bookmark
@@ -259,8 +251,6 @@ fabric.properties
 
 # dependencies
 /node_modules
-/.pnp
-.pnp.js
 
 # testing
 /coverage
@@ -271,8 +261,6 @@ fabric.properties
 
 # debug
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .pnpm-debug.log*
 
 # local env files

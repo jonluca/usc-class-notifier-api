@@ -4,9 +4,9 @@ The submitted Firefox extension is built from this source archive with WXT. It d
 
 ## Requirements
 
-- Node.js 22 LTS
+- Node.js 24 LTS
 - Corepack
-- Network access to the public Yarn package registry
+- Network access to the public npm registry
 
 ## Reproduce the submitted extension
 
@@ -14,8 +14,8 @@ From the root of the extracted source archive, run:
 
 ```sh
 corepack enable
-yarn install --immutable
-yarn build:firefox
+pnpm install --frozen-lockfile
+pnpm run build:firefox
 ```
 
 The unpacked extension is written to `.output/firefox-mv3/`.
@@ -23,7 +23,7 @@ The unpacked extension is written to `.output/firefox-mv3/`.
 To create the same submission ZIP and source ZIP, run:
 
 ```sh
-yarn package:firefox
+pnpm run package:firefox
 ```
 
 No generated files are checked into the source archive. WXT and Vite bundle the TypeScript/React entrypoints and their public npm dependencies. The production extension communicates only with `https://usc.jonlu.ca` when a user explicitly submits a class notification request. Email notifications are free; optional SMS notifications cost $1 per section per semester.

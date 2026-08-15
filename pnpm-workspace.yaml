@@ -1,0 +1,27 @@
+allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@aws-sdk/client-ses@3.1110.0"
+  - "imapflow@1.7.0"
+  - "zustand@5.0.15"
+
+overrides:
+  adm-zip: 0.6.0
+  "brace-expansion@^1.1.7": 1.1.18
+  "brace-expansion@^2.0.2": 2.1.4
+  "brace-expansion@^5.0.5": 5.0.9
+  esbuild: 0.28.1
+  fast-uri: 3.1.5
+  nanoid: 3.3.18
+  next: 16.3.0
+  postcss: 8.5.26
+  sharp: 0.35.3
+  shell-quote: 1.10.0
+  svgo: 4.0.2
+  tar: 7.5.22
+  tmp: 0.2.7
+  valibot: 1.4.2

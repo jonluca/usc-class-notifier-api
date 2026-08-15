@@ -22,14 +22,14 @@
     "dev:extension": "NODE_ENV=development wxt",
     "dev:firefox": "NODE_ENV=development wxt -b firefox --mv3",
     "build": "NODE_ENV=production next build",
-    "build:extension": "yarn build:chrome && yarn build:edge && yarn build:firefox && yarn build:safari",
+    "build:extension": "pnpm run build:chrome && pnpm run build:edge && pnpm run build:firefox && pnpm run build:safari",
     "build:chrome": "NODE_ENV=production wxt build -b chrome --mv3",
     "build:edge": "NODE_ENV=production wxt build -b edge --mv3",
     "build:firefox": "NODE_ENV=production wxt build -b firefox --mv3",
     "build:safari": "NODE_ENV=production wxt build -b safari --mv3",
     "package:extension": "NODE_ENV=production wxt zip",
     "package:firefox": "NODE_ENV=production wxt zip -b firefox --mv3",
-    "zip": "yarn zip:chrome && yarn zip:edge && yarn zip:firefox && yarn zip:safari",
+    "zip": "pnpm run zip:chrome && pnpm run zip:edge && pnpm run zip:firefox && pnpm run zip:safari",
     "zip:chrome": "NODE_ENV=production wxt zip -b chrome --mv3",
     "zip:edge": "NODE_ENV=production wxt zip -b edge --mv3",
     "zip:firefox": "NODE_ENV=production wxt zip -b firefox --mv3",
@@ -105,23 +105,7 @@
   "engines": {
     "node": "^22.19.0 || ^24.11.0 || >=26.0.0"
   },
-  "packageManager": "yarn@4.18.0",
-  "resolutions": {
-    "adm-zip": "0.6.0",
-    "brace-expansion@^1.1.7": "1.1.18",
-    "brace-expansion@^2.0.2": "2.1.4",
-    "brace-expansion@^5.0.5": "5.0.9",
-    "esbuild": "0.28.1",
-    "fast-uri": "3.1.5",
-    "next": "16.3.0",
-    "postcss": "8.5.26",
-    "sharp": "0.35.3",
-    "shell-quote": "1.10.0",
-    "svgo": "4.0.2",
-    "tar": "7.5.22",
-    "tmp": "0.2.7",
-    "valibot": "1.4.2"
-  },
+  "packageManager": "pnpm@11.22.0",
   "postcss": {
     "plugins": {
       "@tailwindcss/postcss": {}
