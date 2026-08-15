@@ -22,6 +22,7 @@
     "dev:extension": "NODE_ENV=development wxt",
     "dev:firefox": "NODE_ENV=development wxt -b firefox --mv3",
     "build": "NODE_ENV=production next build",
+    "heroku-build": "NODE_ENV=production next build --webpack",
     "build:extension": "pnpm run build:chrome && pnpm run build:edge && pnpm run build:firefox && pnpm run build:safari",
     "build:chrome": "NODE_ENV=production wxt build -b chrome --mv3",
     "build:edge": "NODE_ENV=production wxt build -b edge --mv3",

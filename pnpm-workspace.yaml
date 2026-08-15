@@ -9,9 +9,6 @@ minimumReleaseAgeExclude:
   - "imapflow@1.7.0"
   - "zustand@5.0.15"
 
-# Heroku's buildpack prunes its cache before the build; copies keep installed packages independent of it.
-packageImportMethod: copy
-
 overrides:
   adm-zip: 0.6.0
   "brace-expansion@^1.1.7": 1.1.18
