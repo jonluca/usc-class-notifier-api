@@ -7,16 +7,33 @@ import type { GetServerSideProps } from "next";
 import { setCookie } from "@/server/utils/cookie";
 import dayjs from "dayjs";
 import { cookieKey } from "@/server/auth";
+import type { ParsedUrlQuery } from "node:querystring";
+
+const readQueryValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
+const createSearchParams = (query: ParsedUrlQuery) => {
+  const searchParams = new URLSearchParams();
+  for (const [name, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        searchParams.append(name, item);
+      }
+    } else if (value !== undefined) {
+      searchParams.set(name, value);
+    }
+  }
+  return searchParams;
+};
 
 export default function Verify() {
   const router = useRouter();
 
-  const key = router.query.key as string;
+  const key = readQueryValue(router.query.key);
 
   const enabled = Boolean(key);
   const { data, isLoading, error } = api.user.verifyByKey.useQuery(
     {
-      key,
+      key: key || "",
     },
     {
       enabled,
@@ -45,7 +62,7 @@ export default function Verify() {
           </div>
           <Link
             className="inline-flex h-10 items-center justify-center rounded-md bg-gray-900 px-8 text-sm font-medium text-gray-50 shadow-sm transition-colors hover:bg-gray-900/90 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50"
-            href={`/dashboard?${new URLSearchParams(router.query as Record<string, string>).toString()}`}
+            href={`/dashboard?${createSearchParams(router.query).toString()}`}
           >
             Continue to App
           </Link>
@@ -61,9 +78,9 @@ export default function Verify() {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const key = context.query.key;
-  if (key && context.res) {
-    setCookie(context.res, cookieKey, key as string, {
+  const key = readQueryValue(context.query.key);
+  if (key) {
+    setCookie(context.res, cookieKey, key, {
       expires: dayjs().add(1, "year").toDate(),
       httpOnly: false,
       path: "/",

@@ -4,12 +4,13 @@ import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
 import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
 import type { WatchedSection, ClassInfo } from "@app/prisma";
+import type { PreviewableEmail } from "@/emails/utilities/previewableEmail";
 
 export interface NowWatchingEmailProps {
   verificationKey: string;
   email: string;
-  sectionEntry: WatchedSection;
-  classInfo: ClassInfo | null;
+  sectionEntry: Pick<WatchedSection, "section" | "semester" | "paidId">;
+  classInfo: Pick<ClassInfo, "courseNumber"> | null;
   isVerifiedAccount: boolean;
   showVenmoInfo?: boolean;
 }
@@ -29,7 +30,7 @@ const buttonStyle = {
   display: "block",
 };
 
-const NowWatchingEmail = ({
+const NowWatchingEmail: PreviewableEmail<NowWatchingEmailProps> = ({
   classInfo,
   sectionEntry,
   verificationKey,
@@ -155,13 +156,10 @@ const NowWatchingEmail = ({
   );
 };
 
-// @ts-ignore
 NowWatchingEmail.PreviewProps = {
   sectionEntry: {
-    id: "123",
     section: "12345",
     semester: "20243",
-    notified: false,
     paidId: "12345678",
   },
   showVenmoInfo: true,
@@ -169,11 +167,8 @@ NowWatchingEmail.PreviewProps = {
   email: "usc-schedule-helper@jonlu.ca",
   classInfo: {
     courseNumber: "CSCI 104",
-    department: "CSCI",
-    id: "123",
-    name: "Data Structures",
   },
   verificationKey: "asdf",
-} as NowWatchingEmailProps;
+};
 
 export default NowWatchingEmail;

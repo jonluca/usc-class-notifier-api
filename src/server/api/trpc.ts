@@ -84,11 +84,11 @@ export const createTRPCContext = async (opts: {
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer,
-  errorFormatter({ shape, error }) {
+  errorFormatter({ ["shape"]: errorResponse, error }) {
     return {
-      ...shape,
+      ...errorResponse,
       data: {
-        ...shape.data,
+        ...errorResponse.data,
         zodError: error.cause instanceof ZodError ? z.treeifyError(error.cause) : null,
       },
     };
@@ -117,30 +117,30 @@ export const createTRPCRouter = t.router;
 
 const loggerMiddleware = t.middleware(async ({ path, next, ctx, type }) => {
   const start = Date.now();
-  let result: Awaited<ReturnType<typeof next>> | undefined = undefined;
-  let error: any;
   try {
-    result = await next({
+    const result = await next({
       ctx: { ...ctx },
     });
-  } catch (e) {
-    error = e;
-  } finally {
     const durationInMs = Date.now() - start;
 
-    if (result?.ok) {
+    if (result.ok) {
       logger.info(`[${type}]: ${path} - ${durationInMs}ms - OK`);
     } else {
-      const errors = [error, (result as any)?.error].filter(Boolean);
-      for (const e of errors) {
-        logger.error(`[${type}] ${path} - ${durationInMs}ms - ${e.code} ${e.message}`);
-      }
+      logger.error(`[${type}] ${path} - ${durationInMs}ms - ${result.error.code} ${result.error.message}`);
     }
+    return result;
+  } catch (error) {
+    const durationInMs = Date.now() - start;
+    const errorCode = error instanceof TRPCError ? error.code : "UNCAUGHT";
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[${type}] ${path} - ${durationInMs}ms - ${errorCode} ${message}`);
+    throw error;
   }
-  return result!;
 });
 
 const baseProcedure = t.procedure.use(loggerMiddleware);
+const verificationKeyInputSchema = z.object({ key: z.string().min(1) });
+
 const enforceUser = t.middleware(async ({ ctx, next, getRawInput }) => {
   if (ctx.user) {
     return next({
@@ -153,11 +153,11 @@ const enforceUser = t.middleware(async ({ ctx, next, getRawInput }) => {
   let verificationKey = getVerificationKey(ctx.req);
   if (!verificationKey) {
     const rawInput = await getRawInput();
-
-    if (!rawInput || typeof rawInput !== "object" || !("key" in rawInput)) {
+    const parsedInput = verificationKeyInputSchema.safeParse(rawInput);
+    if (!parsedInput.success) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    verificationKey = rawInput.key as string;
+    verificationKey = parsedInput.data.key;
   }
 
   if (!verificationKey) {

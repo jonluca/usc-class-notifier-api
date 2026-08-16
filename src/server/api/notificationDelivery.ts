@@ -3,7 +3,7 @@ export type NotificationChannel = "email" | "sms";
 export class NotificationChannelError extends Error {
   constructor(
     public readonly channel: NotificationChannel,
-    public readonly originalError: unknown,
+    public readonly originalError: Error,
   ) {
     super(`Failed to send ${channel} notification`);
     this.name = "NotificationChannelError";
@@ -44,7 +44,8 @@ export const deliverAvailabilityNotification = async ({
     try {
       await sendEmail();
     } catch (error) {
-      throw new NotificationChannelError("email", error);
+      const providerError = error instanceof Error ? error : new Error(String(error));
+      throw new NotificationChannelError("email", providerError);
     }
   }
 
@@ -52,7 +53,8 @@ export const deliverAvailabilityNotification = async ({
     try {
       await sendSms();
     } catch (error) {
-      throw new NotificationChannelError("sms", error);
+      const providerError = error instanceof Error ? error : new Error(String(error));
+      throw new NotificationChannelError("sms", providerError);
     }
   }
 

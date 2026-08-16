@@ -23,6 +23,19 @@ const TERM_SUFFIX = {
   fall: "3",
 } as const;
 
+function getTermSuffix(term: string): (typeof TERM_SUFFIX)[keyof typeof TERM_SUFFIX] | undefined {
+  switch (term.toLowerCase()) {
+    case "spring":
+      return TERM_SUFFIX.spring;
+    case "summer":
+      return TERM_SUFFIX.summer;
+    case "fall":
+      return TERM_SUFFIX.fall;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Parses USC term codes from either a raw five-digit code, a classes.usc.edu
  * term URL/path, or the term labels USC renders in its active tab.
@@ -47,8 +60,8 @@ export function parseSemesterTerm(value: string | null | undefined): string | un
     return undefined;
   }
 
-  const term = labelMatch[1].toLowerCase() as keyof typeof TERM_SUFFIX;
-  return `${labelMatch[2]}${TERM_SUFFIX[term]}`;
+  const suffix = getTermSuffix(labelMatch[1]);
+  return suffix ? `${labelMatch[2]}${suffix}` : undefined;
 }
 
 const SPRING_REGISTRATION_RANGE_NEXT_YEAR = [MONTHS.October, MONTHS.November, MONTHS.December];

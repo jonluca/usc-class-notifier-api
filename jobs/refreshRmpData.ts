@@ -67,6 +67,13 @@ export interface PageInfo {
 }
 
 const loadByCursor = async (cursor?: string | null) => {
+  const baseVariables = {
+    query: {
+      schoolID: schoolId,
+    },
+    count: 1000,
+  };
+  const variables = cursor ? { ...baseVariables, cursor } : baseVariables;
   const response = await axios.post<RMPResponse>(
     "https://www.ratemyprofessors.com/graphql",
     {
@@ -131,13 +138,7 @@ fragment TeacherBookmark_teacher on Teacher {
   isSaved
 }
 `,
-      variables: {
-        query: {
-          schoolID: schoolId,
-        },
-        ...(cursor ? { cursor } : {}),
-        count: 1000,
-      },
+      variables,
     },
     {
       headers: {

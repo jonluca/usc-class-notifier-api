@@ -26,7 +26,7 @@ test("allows a semester only when the notification worker monitors it", () => {
 
   assert.throws(
     () => assertMonitoredSemester("20261", ["20262", "20263"]),
-    (error: unknown) =>
+    (error) =>
       error instanceof TRPCError &&
       error.code === "BAD_REQUEST" &&
       error.message ===
@@ -39,7 +39,7 @@ test("rejects a section that has no ClassInfo row for the selected semester", ()
 
   assert.throws(
     () => assertMatchingClassInfo(null, "37905", "20263"),
-    (error: unknown) =>
+    (error) =>
       error instanceof TRPCError &&
       error.code === "BAD_REQUEST" &&
       error.message === "Section 37905 was not found in semester 20263. Refresh the page and select the section again.",

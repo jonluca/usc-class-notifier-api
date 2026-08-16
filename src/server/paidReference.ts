@@ -10,7 +10,7 @@ export const PAID_REFERENCE_PATTERN = /^\d{8}$/;
 export const PAID_REFERENCE_ALLOCATION_LOCK_ID = 8_578_367_167_080_773n;
 
 export interface PaidReferenceLockTransaction {
-  $executeRaw(query: TemplateStringsArray, ...values: unknown[]): Promise<unknown>;
+  $executeRaw(query: TemplateStringsArray, ...values: unknown[]): Promise<number>;
 }
 
 export async function acquirePaidReferenceAllocationLock(transaction: PaidReferenceLockTransaction): Promise<void> {

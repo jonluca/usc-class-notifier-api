@@ -4,12 +4,13 @@ import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
 import { buildPaymentHelpUrl, formatSemester } from "@/utils/venmoPayment";
 import type { WatchedSection, ClassInfo } from "@app/prisma";
+import type { PreviewableEmail } from "@/emails/utilities/previewableEmail";
 
 export interface PaidProcessedEmailProps {
   verificationKey: string;
   email: string;
-  sectionEntry: WatchedSection;
-  classInfo: ClassInfo | null;
+  sectionEntry: Pick<WatchedSection, "section" | "semester" | "paidId">;
+  classInfo: Pick<ClassInfo, "courseNumber"> | null;
 }
 
 const primaryButtonStyle = {
@@ -42,7 +43,11 @@ const secondaryButtonStyle = {
   display: "block",
 };
 
-const PaidProcessedEmail = ({ classInfo, sectionEntry, verificationKey }: PaidProcessedEmailProps) => {
+const PaidProcessedEmail: PreviewableEmail<PaidProcessedEmailProps> = ({
+  classInfo,
+  sectionEntry,
+  verificationKey,
+}) => {
   const courseNumber = classInfo?.courseNumber;
   const semester = formatSemester(sectionEntry.semester);
   const paymentDetails = `${courseNumber ? `${courseNumber} · ` : ""}Section ${sectionEntry.section} · ${semester}`;
@@ -113,25 +118,17 @@ const PaidProcessedEmail = ({ classInfo, sectionEntry, verificationKey }: PaidPr
   );
 };
 
-// @ts-ignore
 PaidProcessedEmail.PreviewProps = {
   sectionEntry: {
-    id: "123",
     section: "12345",
     semester: "20243",
-    notified: false,
     paidId: "12345678",
-    isPaid: true,
-    paidNotified: false,
   },
   email: "usc-schedule-helper@jonlu.ca",
   classInfo: {
     courseNumber: "CSCI 104",
-    department: "CSCI",
-    id: "123",
-    name: "Data Structures",
   },
   verificationKey: "asdf",
-} as PaidProcessedEmailProps;
+};
 
 export default PaidProcessedEmail;

@@ -27,7 +27,7 @@ const serverLink = (ctx: NextPageContext | GetServerSidePropsContext | undefined
       };
     },
     fetch: async (input, init) => {
-      const request = new Request(input, init as RequestInit);
+      const request = new Request(input, init);
 
       return fetchRequestHandler({
         endpoint: "/api/data",

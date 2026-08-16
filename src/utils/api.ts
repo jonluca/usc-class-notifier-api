@@ -24,14 +24,9 @@ export const api = createTRPCNext<AppRouter>({
   config(opts) {
     const ctx = opts?.ctx;
     const queryCache = new QueryCache({
-      onError: (err, query) => {
-        if (err) {
-          if (typeof err === "object" && "message" in err) {
-            toast.error(`[${query["queryKey"][0]}]: ${err.message as string}`);
-          } else {
-            toast.error(`[${query["queryKey"][0]}]: ${err}`);
-          }
-        }
+      onError: (error, query) => {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error(`[${String(query.queryKey[0])}]: ${message}`);
       },
     });
 

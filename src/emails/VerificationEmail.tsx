@@ -2,6 +2,7 @@ import { Button, Row, Section, Text } from "react-email";
 import * as React from "react";
 import EmailBase from "./components/EmailBase";
 import { baseDomain } from "@/constants";
+import type { PreviewableEmail } from "@/emails/utilities/previewableEmail";
 
 interface VerificationEmailProps {
   verificationKey: string;
@@ -23,7 +24,7 @@ const buttonStyle = {
   display: "block",
 };
 
-const VerificationEmail = ({ isVerifiedAlready, verificationKey }: VerificationEmailProps) => {
+const VerificationEmail: PreviewableEmail<VerificationEmailProps> = ({ isVerifiedAlready, verificationKey }) => {
   const previewText = isVerifiedAlready ? "Sign in" : "🎉 Welcome to the USC Schedule Helper!";
   return (
     <EmailBase previewText={previewText}>
@@ -57,6 +58,6 @@ const VerificationEmail = ({ isVerifiedAlready, verificationKey }: VerificationE
   );
 };
 
-VerificationEmail.PreviewProps = { isVerifiedAlready: true, verificationKey: "asdf" } as VerificationEmailProps;
+VerificationEmail.PreviewProps = { isVerifiedAlready: true, verificationKey: "asdf" };
 
 export default VerificationEmail;

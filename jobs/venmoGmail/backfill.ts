@@ -137,7 +137,7 @@ const toValidDate = (value: Date | string | undefined): Date | null => {
 };
 
 const incrementClassificationStats = (stats: ScanStats, status: ReceiptClassificationStatus) => {
-  const keyByStatus: Record<ReceiptClassificationStatus, keyof ScanStats> = {
+  const keyByStatus = {
     rejected_sender: "rejectedSenderMessageCount",
     rejected_subject: "rejectedSubjectMessageCount",
     authentication_failed: "authenticationFailedMessageCount",
@@ -145,7 +145,7 @@ const incrementClassificationStats = (stats: ScanStats, status: ReceiptClassific
     genuine_no_id: "genuineNoPaidIdReceiptCount",
     genuine_single_id: "genuineSinglePaidIdReceiptCount",
     genuine_multiple_ids: "genuineMultiplePaidIdsReceiptCount",
-  };
+  } satisfies Record<ReceiptClassificationStatus, keyof ScanStats>;
   stats[keyByStatus[status]] += 1;
   if (status.startsWith("genuine_")) {
     stats.genuineOneDollarReceiptCount += 1;
@@ -249,7 +249,7 @@ const scanAllRelevantMailboxes = async (options: BackfillCliOptions): Promise<Sc
               stats.fetchedMessageCount += 1;
 
               if (
-                (typeof message.size === "number" && message.size > options.maxMessageBytes) ||
+                (message.size !== undefined && message.size > options.maxMessageBytes) ||
                 (message.source?.length ?? 0) > options.maxMessageBytes
               ) {
                 coverage.incompleteMessageCount += 1;
@@ -293,7 +293,7 @@ const scanAllRelevantMailboxes = async (options: BackfillCliOptions): Promise<Sc
                   fromAddresses,
                   authenticationHeaders,
                   plaintext: parsed.text,
-                  html: typeof parsed.html === "string" ? parsed.html : undefined,
+                  html: parsed.html === false ? undefined : parsed.html,
                 });
 
                 incrementClassificationStats(stats, classification.status);
@@ -607,8 +607,8 @@ const run = async () => {
   }
 };
 
-const sanitizedErrorMessage = (error: unknown): string => {
-  let message = error instanceof Error ? error.message : "Unknown error";
+const sanitizedErrorMessage = (error: Error): string => {
+  let { message } = error;
   for (const secret of [
     process.env.GMAIL_IMAP_USER,
     process.env.GMAIL_IMAP_APP_PASSWORD,
@@ -623,7 +623,8 @@ const sanitizedErrorMessage = (error: unknown): string => {
 
 void run()
   .catch((error) => {
-    process.stderr.write(`Venmo backfill failed: ${sanitizedErrorMessage(error)}\n`);
+    const failure = error instanceof Error ? error : new Error("Unknown error");
+    process.stderr.write(`Venmo backfill failed: ${sanitizedErrorMessage(failure)}\n`);
     process.exitCode = 1;
   })
   .finally(async () => {

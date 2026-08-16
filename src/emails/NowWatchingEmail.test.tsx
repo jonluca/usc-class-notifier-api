@@ -7,15 +7,13 @@ const props = {
   verificationKey: "test-key",
   email: "student@example.com",
   sectionEntry: {
-    id: "watch-id",
     section: "37905",
     semester: "20263",
-    notified: false,
     paidId: "12345678",
   },
   classInfo: null,
   showVenmoInfo: false,
-} as NowWatchingEmailProps;
+} satisfies Omit<NowWatchingEmailProps, "isVerifiedAccount">;
 
 test("unverified accounts receive an activation link", async () => {
   const html = await renderEmailTemplate(NowWatchingEmail({ ...props, isVerifiedAccount: false }));
@@ -38,23 +36,7 @@ test("text alert instructions use one prefilled payment link and an exact eight-
       isVerifiedAccount: true,
       showVenmoInfo: true,
       classInfo: {
-        id: "class-id",
-        createdAt: null,
-        updatedAt: null,
-        section: "37905",
-        semester: "20263",
         courseNumber: "CSCI 104",
-        department: "CSCI",
-        courseTitle: "Data Structures",
-        instructor: null,
-        type: null,
-        prefix: null,
-        units: null,
-        day: null,
-        session: null,
-        location: null,
-        isDistanceLearning: false,
-        hasDClearance: false,
       },
     }),
   );

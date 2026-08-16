@@ -181,7 +181,7 @@ export class GmailVenmoImapClient {
             }) ?? [],
           authenticationHeaders,
           plaintext: parsed.text,
-          html: typeof parsed.html === "string" ? parsed.html : undefined,
+          html: parsed.html === false ? undefined : parsed.html,
         });
         const paidId = selectSinglePaymentReference(classification.paidIds);
         if (classification.status === "genuine_single_id" && paidId && classification.internalDate) {

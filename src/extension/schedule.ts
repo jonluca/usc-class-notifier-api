@@ -1,8 +1,12 @@
 import { splitDays } from "@/extension/utils";
+import { parseScheduleDocument, type Schedule } from "@/extension/scheduleDocument";
 import $ from "jquery";
 import { insertAllOverlap } from "./insert-class-info";
 
 import moment from "moment";
+export { parseScheduleDocument } from "@/extension/scheduleDocument";
+export type { Schedule, ScheduleEntry } from "@/extension/scheduleDocument";
+
 const USC_TIMEZONE = "America/Los_Angeles";
 const uscDayFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -14,31 +18,6 @@ const uscTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour12: true,
   timeZone: USC_TIMEZONE,
 });
-export interface Schedule {
-  Data: Datum[];
-}
-
-export interface Datum {
-  Id: string;
-  Term: string;
-  Title: string;
-  SectionId: string;
-  Status: Status;
-  Start: string | Date;
-  End: string | Date;
-  StartTimezone: null;
-  EndTimezone: null;
-  RecurrenceRule: null;
-  RecurrenceException: null;
-  Description: null;
-  IsAllDay: boolean;
-}
-
-export enum Status {
-  Conflicted = "Conflicted",
-  Scheduled = "Scheduled",
-}
-
 function parseScheduleDate(dateLike: string | Date) {
   if (dateLike instanceof Date) {
     return Number.isNaN(dateLike.getTime()) ? null : dateLike;
@@ -82,19 +61,11 @@ function timesOverlap(firstStartTime: string, firstEndTime: string, secondStartT
 }
 
 export async function getCurrentSchedule(): Promise<Schedule | null> {
-  const data = await fetch("https://webreg.usc.edu/Calendar");
-  const text = await data.text();
-  const syncScript = text.split("<script>kendo.syncReady")[1]?.split("\n")[0];
-  if (!syncScript) {
+  const response = await fetch("https://webreg.usc.edu/Calendar");
+  if (!response.ok) {
     return null;
   }
-  // there's a json object of the form "data":{"Data" that we want to parse
-  const json = syncScript.split('data":{"Data":')[1]?.split("]")[0];
-  if (json) {
-    const dataObject = JSON.parse(`{"Data":${json}]}`) as Schedule;
-    return dataObject;
-  }
-  return null;
+  return parseScheduleDocument(await response.text());
 }
 
 function addConflictOverlay(row: HTMLElement, name: string) {
