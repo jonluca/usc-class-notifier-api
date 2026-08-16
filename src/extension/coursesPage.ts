@@ -179,7 +179,7 @@ function parseCoursePage() {
         continue;
       }
       const instructorNames = (instructorCell.textContent || "").split(",").map((l) => l.trim());
-      const toAdd = [] as string[];
+      const toAdd: string[] = [];
       for (const name of instructorNames) {
         const professors = getProfessorRatings(name);
         if (professors) {
@@ -208,11 +208,7 @@ function parseCoursePage() {
 // Create a MutationObserver to watch for course table elements
 function observeMatTableInsertion(callback: () => void) {
   // Check if an element is or contains a relevant table
-  function checkForTables(element: HTMLElement) {
-    if (element.nodeType !== Node.ELEMENT_NODE) {
-      return [];
-    }
-
+  function checkForTables(element: Element) {
     const tables = [];
 
     // Check if the element itself is a table (class, attribute, or tag)
@@ -232,7 +228,7 @@ function observeMatTableInsertion(callback: () => void) {
     return tables;
   }
 
-  function isTableRelatedElement(element: HTMLElement) {
+  function isTableRelatedElement(element: Element) {
     return checkForTables(element).length > 0 || Boolean(element.closest("table, .mat-table, [mat-table], mat-table"));
   }
 
@@ -248,7 +244,10 @@ function observeMatTableInsertion(callback: () => void) {
         if (shouldCallback) {
           return;
         }
-        const tables = checkForTables(node as HTMLElement);
+        if (!(node instanceof Element)) {
+          return;
+        }
+        const tables = checkForTables(node);
         if (tables.length) {
           shouldCallback = true;
         }
@@ -259,7 +258,7 @@ function observeMatTableInsertion(callback: () => void) {
       }
 
       const target = mutation.target;
-      if (target instanceof HTMLElement && isTableRelatedElement(target)) {
+      if (target instanceof Element && isTableRelatedElement(target)) {
         shouldCallback = true;
       }
     });

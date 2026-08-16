@@ -16,7 +16,12 @@ const WEEK = 7 * DAY;
 const MONTH = 30 * DAY; // Approximate value
 const YEAR = 365 * DAY;
 
-export function getTimeOffset(pastDate: Date, isFutureDate: boolean): { value: number; timestep: string } {
+export interface TimeOffset {
+  value: number;
+  timestep: (typeof TimeSteps)[keyof typeof TimeSteps];
+}
+
+export function getTimeOffset(pastDate: Date, isFutureDate: boolean): TimeOffset {
   const now = new Date();
   const delta = isFutureDate ? pastDate.getTime() - now.getTime() : now.getTime() - pastDate.getTime();
   const seconds = Math.floor(delta / 1000);

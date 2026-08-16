@@ -447,8 +447,7 @@ export const buildBackfillPlan = (
     }
 
     const receiptDates = evidence
-      .filter((receipt) => receipt.paidIds.length === 1 && receipt.internalDate)
-      .map((receipt) => receipt.internalDate as Date)
+      .flatMap((receipt) => (receipt.paidIds.length === 1 && receipt.internalDate ? [receipt.internalDate] : []))
       .sort((left, right) => left.getTime() - right.getTime());
     const earliestReceiptDate = receiptDates[0];
     if (!earliestReceiptDate) {

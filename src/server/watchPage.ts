@@ -1,4 +1,3 @@
-import type { ParsedUrlQuery } from "node:querystring";
 import { cookieKey } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { setCookie } from "@/server/utils/cookie";
@@ -11,8 +10,8 @@ export async function loadWatchPageProps({
   query,
   res,
 }: Pick<GetServerSidePropsContext, "query" | "res">): Promise<{ didSucceed: boolean; section: string }> {
-  const key = readQueryValue((query as ParsedUrlQuery).key);
-  const section = readQueryValue((query as ParsedUrlQuery).section);
+  const key = readQueryValue(query.key);
+  const section = readQueryValue(query.section);
   let didSucceed = false;
 
   if (key) {

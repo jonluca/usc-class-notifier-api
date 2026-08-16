@@ -210,7 +210,7 @@ const columns = [
   { headerName: "Phone", field: "phoneOverride", cellRenderer: PhoneOverride, width: 160 },
   { headerName: "Paid", field: "isPaid", width: 80, filter: false },
   { headerName: "Notify", field: "notified", cellRenderer: NotifyButton },
-] as ColDef;
+] satisfies NonNullable<ColDef>;
 
 const EditPhoneGlobal = () => {
   const { data: userInfo } = api.user.getUserInfo.useQuery();

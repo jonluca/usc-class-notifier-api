@@ -62,14 +62,19 @@ function insertProfessorRating(row: HTMLElement, professors: Rating[]) {
 export function parseProfessor(instructors: string[], row: HTMLElement) {
   const instructorsNameParts = instructors.map((instructor) => instructor.split(/[, ]/).filter(Boolean));
   //generate actual name
-  const professors = instructorsNameParts
-    .flatMap(
-      (nameParts) =>
-        professorRatings.get(getCleanName(`${nameParts[1]} ${nameParts[0]}`)) ||
-        professorRatings.get(getCleanName([nameParts.pop(), ...nameParts].join(" "))) ||
-        professorRatings.get(getCleanName(nameParts.reverse().join(" "))),
-    )
-    .filter(Boolean) as Rating[];
+  const professors = instructorsNameParts.flatMap((nameParts) => {
+    const nameWithoutLastPart = nameParts.slice(0, -1);
+    const lastNameFirst = `${nameParts[1]} ${nameParts[0]}`;
+    const lastPartFirst = [nameParts[nameParts.length - 1], ...nameWithoutLastPart].join(" ");
+    const reversedRemainingParts = [...nameWithoutLastPart].reverse().join(" ");
+
+    return (
+      professorRatings.get(getCleanName(lastNameFirst)) ??
+      professorRatings.get(getCleanName(lastPartFirst)) ??
+      professorRatings.get(getCleanName(reversedRemainingParts)) ??
+      []
+    );
+  });
   //If instructor name in json
   if (professors && professors.length) {
     insertProfessorRating(row, professors);
@@ -151,8 +156,8 @@ export const baseClassInfo = {
   currectSectionIsClosed: false,
 };
 
-export function isNumber(n: unknown): n is number {
-  return typeof n === "number" && !isNaN(n) && isFinite(n);
+export function isNumber(n: number) {
+  return Number.isFinite(n);
 }
 
 export type ClassInfo = typeof baseClassInfo;

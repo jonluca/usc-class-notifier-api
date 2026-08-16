@@ -299,7 +299,7 @@ test("classifies a synthetic authenticated multipart receipt using the HTML-only
       .filter((header) => header.key.toLowerCase() === "authentication-results")
       .map((header) => header.line),
     plaintext: parsed.text,
-    html: typeof parsed.html === "string" ? parsed.html : undefined,
+    html: parsed.html === false ? undefined : parsed.html,
   });
 
   assert.equal(classification.status, "genuine_single_id");

@@ -18,6 +18,7 @@ import {
   selectAvailablePaidReference,
 } from "@/server/paidReference";
 import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
+import type { Prisma } from "@app/prisma";
 
 const optionalPhoneNumberSchema = z
   .string()
@@ -202,19 +203,19 @@ export const userRouter = {
             paidId = availablePaidId;
           }
 
+          const sectionUpdate: Prisma.WatchedSectionUpdateInput = { paidId };
+          if (ownsStudent) {
+            sectionUpdate.notified = false;
+            if (input.phone) {
+              sectionUpdate.phoneOverride = input.phone;
+            }
+          }
+
           return transaction.watchedSection.update({
             where: {
               id: section.id,
             },
-            data: {
-              paidId,
-              ...(ownsStudent
-                ? {
-                    notified: false,
-                    ...(input.phone ? { phoneOverride: input.phone } : {}),
-                  }
-                : {}),
-            },
+            data: sectionUpdate,
             include: { ClassInfo: true },
           });
         });

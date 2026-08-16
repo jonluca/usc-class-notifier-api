@@ -2,6 +2,7 @@
 import { V4MAPPED, ADDRCONFIG, ALL, promises as dnsPromises, lookup as dnsLookup } from "node:dns";
 import { promisify } from "node:util";
 import os from "node:os";
+import { isFunction } from "lodash-es";
 
 const { Resolver: AsyncResolver } = dnsPromises;
 
@@ -9,10 +10,10 @@ const kCacheableLookupCreateConnection = Symbol("cacheableLookupCreateConnection
 const kCacheableLookupInstance = Symbol("cacheableLookupInstance");
 const kExpires = Symbol("expires");
 
-const supportsALL = typeof ALL === "number";
+const supportsALL = Number.isInteger(ALL);
 
 const verifyAgent = (agent) => {
-  if (!(agent && typeof agent.createConnection === "function")) {
+  if (!(agent && isFunction(agent.createConnection))) {
     throw new Error("Expected an Agent instance as the first argument");
   }
 };
@@ -140,10 +141,10 @@ export default class CacheableLookup {
   }
 
   lookup(hostname, options, callback) {
-    if (typeof options === "function") {
+    if (isFunction(options)) {
       callback = options;
       options = {};
-    } else if (typeof options === "number") {
+    } else if (Number.isInteger(options)) {
       options = {
         family: options,
       };
@@ -163,7 +164,7 @@ export default class CacheableLookup {
   }
 
   async lookupAsync(hostname, options = {}) {
-    if (typeof options === "number") {
+    if (Number.isInteger(options)) {
       options = {
         family: options,
       };

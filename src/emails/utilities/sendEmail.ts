@@ -1,11 +1,11 @@
 import "dotenv/config";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { SESClient, SendEmailCommand, type SendEmailCommandOutput } from "@aws-sdk/client-ses";
 import renderEmailTemplate from "./renderEmailTemplate";
 import type React from "react";
 import { isProd } from "@/constants";
 
 export interface SesEmailClient {
-  send(command: SendEmailCommand): Promise<unknown>;
+  send(command: SendEmailCommand): Promise<SendEmailCommandOutput>;
 }
 
 const sendEmail = async (

@@ -61,19 +61,27 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
 
   const { mutateAsync, isPending, data, error } = trpc.user.addWatchedClass.useMutation();
   const { mutateAsync: sendLoginEmail, isPending: isPendingLogin, isSuccess } = trpc.user.sendLoginEmail.useMutation();
-  const [email, setEmail] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem(localStorageEmailKey) || "",
-  );
-  const [phone, setPhone] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem(localStoragePhoneKey) || "",
-  );
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [contactInfoLoaded, setContactInfoLoaded] = useState(false);
 
   useEffect(() => {
-    window.localStorage.setItem(localStorageEmailKey, email);
-  }, [email]);
+    setEmail(window.localStorage.getItem(localStorageEmailKey) ?? "");
+    setPhone(window.localStorage.getItem(localStoragePhoneKey) ?? "");
+    setContactInfoLoaded(true);
+  }, []);
   useEffect(() => {
+    if (!contactInfoLoaded) {
+      return;
+    }
+    window.localStorage.setItem(localStorageEmailKey, email);
+  }, [contactInfoLoaded, email]);
+  useEffect(() => {
+    if (!contactInfoLoaded) {
+      return;
+    }
     window.localStorage.setItem(localStoragePhoneKey, phone);
-  }, [phone]);
+  }, [contactInfoLoaded, phone]);
   if ("isInvalid" in selectedClass) {
     toast.error("Invalid class");
     return null;

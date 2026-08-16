@@ -3,15 +3,17 @@ import test from "node:test";
 import { createWindowFetch } from "./windowFetch";
 
 test("calls fetch with the window receiver required by Firefox", async () => {
-  const response = {} as Response;
-  const targetWindow = {
-    fetch(this: unknown) {
-      assert.equal(this, targetWindow);
+  const response = new Response();
+  let observedReceiver: Pick<Window, "fetch"> | undefined;
+  const targetWindow: Pick<Window, "fetch"> = {
+    fetch() {
+      observedReceiver = this;
       return Promise.resolve(response);
     },
-  } as Pick<Window, "fetch">;
+  };
 
   const result = await createWindowFetch(targetWindow)("https://usc.jonlu.ca/api/data");
 
+  assert.equal(observedReceiver, targetWindow);
   assert.equal(result, response);
 });

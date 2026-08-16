@@ -25,13 +25,15 @@ function useLocationHref() {
     };
 
     const patchHistoryMethod = (methodName: HistoryMethodName) => {
-      const originalMethod = window.history[methodName] as HistoryMethod;
+      const originalMethod: HistoryMethod = window.history[methodName];
+      const callOriginalMethod = originalMethod.bind(window.history);
 
-      window.history[methodName] = function patchedHistoryMethod(...args) {
-        const result = Reflect.apply(originalMethod, window.history, args);
+      const patchedHistoryMethod: HistoryMethod = (...args) => {
+        const result = callOriginalMethod(...args);
         window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT));
         return result;
-      } as HistoryMethod;
+      };
+      window.history[methodName] = patchedHistoryMethod;
 
       return () => {
         window.history[methodName] = originalMethod;

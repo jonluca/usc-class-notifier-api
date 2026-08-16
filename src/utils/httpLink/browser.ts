@@ -5,7 +5,7 @@ import { transformer } from "@/server/api/transformer";
 import { createWindowFetch } from "@/utils/windowFetch";
 
 const getBaseUrl = () => {
-  if (typeof window !== "undefined") {
+  if (globalThis.window) {
     return "";
   } // browser should use relative url
   if (process.env.VERCEL_URL) {
@@ -15,7 +15,7 @@ const getBaseUrl = () => {
 };
 
 const browserLink = (_: NextPageContext | null) => {
-  return httpLink({ transformer, url: `${getBaseUrl()}/api/data`, fetch: createWindowFetch(window) });
+  return httpLink({ transformer, url: `${getBaseUrl()}/api/data`, fetch: createWindowFetch(globalThis.window) });
   // return unstable_httpBatchStreamLink({ transformer, url: `${getBaseUrl()}/api/data`, maxURLLength: 2000 });
 };
 export default browserLink;

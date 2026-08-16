@@ -113,12 +113,13 @@
     }
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.78.0",
     "@react-email/ui": "^6.9.2",
     "@types/html-to-text": "^9.0.4",
     "@types/mailparser": "^3.4.6",
     "@types/pg": "^8.21.0",
     "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0",
+    "oxlint": "1.78.0",
     "web-ext": "^10.6.0"
   }
 }

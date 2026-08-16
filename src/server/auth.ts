@@ -14,10 +14,26 @@ export function getVerificationKey(req: NextRequest | IncomingMessage | null | u
 
 const adminPassword = process.env.ADMIN_PASSWORD;
 
+const normalizeHeaders = (req: NextRequest | IncomingMessage): Headers => {
+  if (req.headers instanceof Headers) {
+    return req.headers;
+  }
+
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        headers.append(name, item);
+      }
+    } else if (value !== undefined) {
+      headers.set(name, value);
+    }
+  }
+  return headers;
+};
+
 export function isAuthenticated(req: NextRequest | IncomingMessage) {
-  // req might be a NextRequest or an IncomingMessage
-  // convert Headers | IncomingHttpHeaders to Headers
-  const headers = req.headers instanceof Headers ? req.headers : new Headers(req.headers as any);
+  const headers = normalizeHeaders(req);
   const authheader = headers.get("authorization") || headers.get("Authorization");
 
   if (!authheader) {
@@ -31,9 +47,5 @@ export function isAuthenticated(req: NextRequest | IncomingMessage) {
   const auth = Buffer.from(encodedCredentials, "base64").toString().split(":");
   const pass = auth[1];
 
-  if (adminPassword && pass == adminPassword) {
-    return true;
-  } else {
-    return false;
-  }
+  return Boolean(adminPassword && pass === adminPassword);
 }

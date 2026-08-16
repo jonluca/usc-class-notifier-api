@@ -46,7 +46,16 @@ export function formatSemester(semester: string): string {
   }
 
   const [, year, term] = match;
-  return `${SEMESTER_NAMES[term as keyof typeof SEMESTER_NAMES]} ${year}`;
+  switch (term) {
+    case "1":
+      return `${SEMESTER_NAMES["1"]} ${year}`;
+    case "2":
+      return `${SEMESTER_NAMES["2"]} ${year}`;
+    case "3":
+      return `${SEMESTER_NAMES["3"]} ${year}`;
+    default:
+      return normalizedSemester;
+  }
 }
 
 function cleanMailDetail(value: string, maxLength = 80): string {
