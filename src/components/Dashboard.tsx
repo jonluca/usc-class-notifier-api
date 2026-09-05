@@ -3,8 +3,7 @@ import { LinearProgress, TextField, Typography } from "@mui/material";
 import React, { useMemo, useState } from "react";
 import type { RouterOutputs } from "@/server/api";
 import type { AgGridReactProps } from "ag-grid-react";
-import { AgGridReact } from "ag-grid-react";
-import { ClientSideRowModelModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
+import dynamic from "next/dynamic";
 import { getValidSemesters } from "@/utils/semester";
 import { SettingEntry } from "@/components/SettingsEntry";
 import { toast } from "react-toastify";
@@ -17,7 +16,10 @@ import { cookieKey } from "@/server/auth";
 import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 import { formatPhoneNumberForDisplay, parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
-ModuleRegistry.registerModules([ClientSideRowModelModule]);
+const WatchedClassesGrid = dynamic(() => import("./WatchedClassesGrid"), {
+  ssr: false,
+  loading: () => <LinearProgress aria-label="Loading watched classes table" />,
+});
 type Section = RouterOutputs["user"]["getWatchedClasses"][number];
 type ColDef = AgGridReactProps<Section>["columnDefs"];
 const defaultColDef: NonNullable<ColDef>[number] = {
@@ -49,7 +51,7 @@ const NotifyButton = ({ data }: { data: Section }) => {
       success: "Re-notified",
       error: "Failed to re-notify",
     });
-    await utils.user.invalidate();
+    await utils.user.getWatchedClasses.invalidate();
   };
 
   return (
@@ -121,7 +123,7 @@ const PhoneOverride = ({ data }: { data: Section }) => {
               success: "Saved",
               error: "Failed to save",
             });
-            await utils.user.invalidate();
+            await utils.user.getWatchedClasses.invalidate();
             setIsEdit(false);
           }}
         />
@@ -278,7 +280,7 @@ const EditPhoneGlobal = () => {
               success: "Saved",
               error: "Failed to save",
             });
-            await utils.user.invalidate();
+            await utils.user.getUserInfo.invalidate();
             setIsEdit(false);
           }}
         />
@@ -387,7 +389,7 @@ export default function Dashboard({
       success: "Set phone number",
       error: "Failed to set phone number",
     });
-    await utils.user.invalidate();
+    await utils.user.getWatchedClasses.invalidate();
   };
   const filteredData = useMemo(() => {
     if (showOldSemesters) {
@@ -499,18 +501,15 @@ export default function Dashboard({
         </section>
       )}
 
-      {/* Grid goes here */}
-      {!isLoading && (
-        <div style={{ height: "600px", width: "100%" }}>
-          <AgGridReact<Section>
-            key={`${userInfo?.id}`}
-            theme={themeQuartz}
-            rowData={filteredData}
-            columnDefs={columns}
-            defaultColDef={defaultColDef}
-          />
-        </div>
-      )}
+      <div style={{ height: "600px", width: "100%" }}>
+        <WatchedClassesGrid
+          key={`${userInfo?.id}`}
+          loading={isLoading}
+          rowData={filteredData}
+          columnDefs={columns}
+          defaultColDef={defaultColDef}
+        />
+      </div>
     </div>
   );
 }

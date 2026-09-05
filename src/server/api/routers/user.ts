@@ -51,7 +51,7 @@ const phoneNumberSchema = z
     return parsed;
   });
 
-export const userRouter = {
+export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
   verifyByKey: publicProcedure
     .input(
       z.object({
@@ -59,27 +59,18 @@ export const userRouter = {
       }),
     )
     .query(async ({ ctx, input }) => {
-      const user = await ctx.prisma.student.findFirst({
+      const update = await ctx.prisma.student.updateMany({
         where: {
           verificationKey: input.key,
         },
+        data: { validAccount: true },
       });
-      if (!user) {
+      if (!update.count) {
         return {
           success: false,
           message: "User not found",
         };
       }
-
-      await ctx.prisma.student.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          validAccount: true,
-        },
-      });
-
       return {
         success: true,
         message: "Verification successful",
@@ -124,21 +115,25 @@ export const userRouter = {
     .mutation(async ({ ctx, input }) => {
       assertMonitoredSemester(input.semester);
 
-      const classInfo = await ctx.prisma.classInfo.findUnique({
-        where: {
-          section_semester: {
-            section: input.sectionNumber,
-            semester: input.semester,
+      const [classInfo, existingStudent] = await Promise.all([
+        ctx.prisma.classInfo.findUnique({
+          where: {
+            section_semester: {
+              section: input.sectionNumber,
+              semester: input.semester,
+            },
           },
-        },
-      });
+          select: { id: true },
+        }),
+        ctx.prisma.student.findUnique({
+          where: {
+            email: input.email,
+          },
+        }),
+      ]);
       assertMatchingClassInfo(classInfo, input.sectionNumber, input.semester);
 
-      let student = await ctx.prisma.student.findUnique({
-        where: {
-          email: input.email,
-        },
-      });
+      let student = existingStudent;
       if (!student) {
         // create user
         student = await ctx.prisma.student.create({
@@ -150,12 +145,15 @@ export const userRouter = {
         });
       }
       // now check if this student is already watching this section
-      const section = await ctx.prisma.watchedSection.findFirst({
+      const section = await ctx.prisma.watchedSection.findUnique({
         where: {
-          section: input.sectionNumber,
-          studentId: student.id,
-          semester: input.semester,
+          semester_studentId_section: {
+            section: input.sectionNumber,
+            studentId: student.id,
+            semester: input.semester,
+          },
         },
+        select: { id: true, cancelledAt: true },
       });
       const showVenmoInfo = Boolean(parsePhoneNumber(student.phone || "") || input.phone);
       const ownsStudent = ctx.user?.id === student.id;
@@ -205,7 +203,11 @@ export const userRouter = {
             paidId = availablePaidId;
           }
 
-          const sectionUpdate: Prisma.WatchedSectionUpdateInput = { cancelledAt: null, paidId };
+          const sectionUpdate: Prisma.WatchedSectionUncheckedUpdateInput = {
+            cancelledAt: null,
+            paidId,
+            classInfoId: classInfo.id,
+          };
           if (ownsStudent) {
             sectionUpdate.notified = false;
             if (input.phone) {
@@ -226,7 +228,7 @@ export const userRouter = {
         const shouldShowVenmoInfo =
           Boolean(parsePhoneNumber(updatedSection.phoneOverride || "") || parsePhoneNumber(student.phone || "")) &&
           !updatedSection.isPaid;
-        await nowWatchingEmail({
+        await sendNowWatchingEmail({
           verificationKey: student.verificationKey,
           email: student.email,
           sectionEntry: updatedSection,
@@ -281,11 +283,7 @@ export const userRouter = {
           },
         });
       });
-      await ctx.prisma.$executeRaw`UPDATE "WatchedSection" ws
-SET "classInfoId" = ci.id
-FROM "ClassInfo" ci
-WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.semester`;
-      await nowWatchingEmail({
+      await sendNowWatchingEmail({
         verificationKey: student.verificationKey,
         email: student.email,
         sectionEntry: created,
@@ -431,4 +429,6 @@ WHERE ws."classInfoId" is null and ws.section = ci.section AND ws.semester = ci.
         },
       });
     }),
-} satisfies TRPCRouterRecord;
+});
+
+export const userRouter = createUserRouter() satisfies TRPCRouterRecord;

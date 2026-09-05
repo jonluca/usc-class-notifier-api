@@ -17,7 +17,8 @@ test("renders one payment-specific Venmo handoff and an exact-note fallback", ()
   assert.match(html, /account\.venmo\.com\/pay\?[^"&amp;]*recipients=JonLuca/);
   assert.match(html, /note=12345678/);
   assert.doesNotMatch(html, /venmo\.com\/u\/jonluca/);
-  assert.match(html, /<svg/);
+  assert.match(html, /Pay from another device: show payment QR/);
+  assert.doesNotMatch(html, /<svg/);
 });
 
 test("does not show a QR when the compact handoff does not request one", () => {

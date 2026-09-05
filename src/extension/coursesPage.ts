@@ -5,32 +5,28 @@ import { syncNotifyButtonDataset } from "@/extension/notifyButtonData";
 import { getProfessorRatings, ratingURLTemplate } from "@/extension/utils";
 
 const COURSE_ID_PATTERN = /\b([A-Z]{2,5}\s+\d+[A-Z]?)\b/;
-const COURSE_PAGE_CLICK_EVENT = "click.usc-helper-course-page";
-const COURSE_PAGE_PARSE_DELAYS_MS = [0, 150, 400];
+const COURSE_TABLE_SELECTOR = "table, .mat-table, [mat-table], mat-table";
+const HELPER_CONTENT_SELECTOR = ".usc-helper-rating-header, .usc-helper-rating-cell, .usc-helper-notify-cell";
 
 let coursePageObserver: MutationObserver | null = null;
-let pendingCoursePageParses: number[] = [];
-
-function clearScheduledCoursePageParses() {
-  for (const pendingParse of pendingCoursePageParses) {
-    window.clearTimeout(pendingParse);
-  }
-  pendingCoursePageParses = [];
-}
+let pendingCoursePageParse: number | undefined;
+const dirtyTables = new Set<Element>();
 
 function scheduleCoursePageParse() {
-  clearScheduledCoursePageParses();
-
-  const scheduledParses: number[] = [];
-  for (const delay of COURSE_PAGE_PARSE_DELAYS_MS) {
-    const timeoutId = window.setTimeout(() => {
-      pendingCoursePageParses = pendingCoursePageParses.filter((pendingParse) => pendingParse !== timeoutId);
-      parseCoursePage();
-    }, delay);
-    scheduledParses.push(timeoutId);
+  if (pendingCoursePageParse !== undefined || dirtyTables.size === 0) {
+    return;
   }
 
-  pendingCoursePageParses = scheduledParses;
+  pendingCoursePageParse = window.setTimeout(() => {
+    pendingCoursePageParse = undefined;
+    const tables = [...dirtyTables];
+    dirtyTables.clear();
+    for (const table of tables) {
+      if (table.isConnected) {
+        parseCoursePage(table);
+      }
+    }
+  }, 0);
 }
 
 function getTextContent(element: Element | undefined) {
@@ -86,7 +82,7 @@ function addNotifyButtons(parent: JQuery<HTMLElement>) {
     return;
   }
 
-  const headerCells = headerRow.find("mat-header-cell, th, td").toArray();
+  const headerCells = headerRow.find("mat-header-cell, th, td").not(".usc-helper-rating-header").toArray();
   const sectionIndex = getColumnIndex(headerCells, "SECTION");
   const registeredIndex = getColumnIndex(headerCells, "REGISTERED");
   const detailsIndex = getColumnIndex(headerCells, "DETAILS");
@@ -108,7 +104,7 @@ function addNotifyButtons(parent: JQuery<HTMLElement>) {
   const rows = parent.find("mat-row, tr").toArray();
 
   for (const row of rows) {
-    const cells = $(row).find("mat-cell, td").toArray();
+    const cells = $(row).find("mat-cell, td").not(".usc-helper-rating-cell").toArray();
     if (cells.length <= Math.max(sectionIndex, registeredIndex)) {
       continue;
     }
@@ -142,9 +138,10 @@ function addNotifyButtons(parent: JQuery<HTMLElement>) {
   }
 }
 
-function parseCoursePage() {
+function parseCoursePage(root: Document | Element = document) {
   // Find all mat-header-cell where the text is "Instructor"
-  const headerCells = $("mat-header-cell, th")
+  const headerCells = $(root)
+    .find("mat-header-cell, th")
     .filter(function () {
       const textValue = $(this).text().trim();
       return textValue === "INSTRUCTOR" || textValue === "INSTRUCTORS";
@@ -185,118 +182,98 @@ function parseCoursePage() {
         if (professors) {
           for (const prof of professors) {
             const url = ratingURLTemplate + prof.legacyId;
-            toAdd.push(`<a href=${url} style="padding-left: 2px;"  target="_blank">${prof.avgRating || "Link"}</a>`);
+            toAdd.push(`<a href="${url}" style="padding-left: 2px;" target="_blank">${prof.avgRating || "Link"}</a>`);
           }
         }
       }
-      const ratingsHTML = toAdd.join(", ");
-      // create new cell
-      const newCell = $(instructorCell).clone();
-      newCell.addClass("rating usc-helper-rating-cell");
-      newCell.html(ratingsHTML || " ");
-      // insert after instructor cell
-      if ($(row).find(".rating").length === 0) {
+      const ratingsHTML = toAdd.join(", ") || " ";
+      const existingCell = $(row).find(".rating").first();
+      if (!existingCell.length) {
+        const newCell = $(instructorCell).clone();
+        newCell.addClass("rating usc-helper-rating-cell");
+        newCell.html(ratingsHTML);
         $(instructorCell).after(newCell);
-      } else {
-        $(row)
-          .find(".rating")
-          .html(ratingsHTML || " ");
+      } else if (existingCell.html() !== ratingsHTML) {
+        existingCell.html(ratingsHTML);
       }
     }
   }
 }
-// Create a MutationObserver to watch for course table elements
-function observeMatTableInsertion(callback: () => void) {
-  // Check if an element is or contains a relevant table
-  function checkForTables(element: Element) {
-    const tables = [];
+function isHelperContent(node: Node) {
+  const element = node instanceof Element ? node : node.parentElement;
+  return Boolean(element?.closest(HELPER_CONTENT_SELECTOR));
+}
 
-    // Check if the element itself is a table (class, attribute, or tag)
-    if (
-      element.tagName?.toLowerCase() === "table" ||
-      element.classList?.contains("mat-table") ||
-      element.hasAttribute?.("mat-table") ||
-      element.tagName?.toLowerCase() === "mat-table"
-    ) {
-      tables.push(element);
-    }
-
-    // Check for descendant tables
-    const descendants = element.querySelectorAll("table, .mat-table, [mat-table], mat-table");
-    tables.push(...descendants);
-
-    return tables;
+function collectTables(element: Element) {
+  const table = element.closest(COURSE_TABLE_SELECTOR);
+  if (table) {
+    dirtyTables.add(table);
+    return;
   }
-
-  function isTableRelatedElement(element: Element) {
-    return checkForTables(element).length > 0 || Boolean(element.closest("table, .mat-table, [mat-table], mat-table"));
+  for (const table of element.querySelectorAll(COURSE_TABLE_SELECTOR)) {
+    dirtyTables.add(table);
   }
+}
 
-  // Create the observer
+function observeCourseTables() {
   const observer = new MutationObserver((mutations) => {
-    let shouldCallback = false;
-    mutations.forEach((mutation) => {
-      if (shouldCallback) {
-        return;
+    for (const mutation of mutations) {
+      if (isHelperContent(mutation.target)) {
+        continue;
       }
-      // Check added nodes
-      mutation.addedNodes.forEach((node) => {
-        if (shouldCallback) {
-          return;
+      // Inserting our own controls must not schedule another parse of the table.
+      if (mutation.type === "childList") {
+        const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+        if (changedNodes.length > 0 && changedNodes.every(isHelperContent)) {
+          continue;
         }
-        if (!(node instanceof Element)) {
-          return;
-        }
-        const tables = checkForTables(node);
-        if (tables.length) {
-          shouldCallback = true;
-        }
-      });
-
-      if (shouldCallback || mutation.type !== "attributes") {
-        return;
       }
 
-      const target = mutation.target;
-      if (target instanceof Element && isTableRelatedElement(target)) {
-        shouldCallback = true;
+      const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+      if (!target) {
+        continue;
       }
-    });
-    if (shouldCallback) {
-      callback();
+      const table = target.closest(COURSE_TABLE_SELECTOR);
+      if (table) {
+        dirtyTables.add(table);
+      }
+      if (mutation.type === "attributes") {
+        // Accordion visibility changes can happen on a table's ancestor.
+        collectTables(target);
+      } else if (mutation.type === "childList") {
+        for (const node of mutation.addedNodes) {
+          const element = node instanceof Element ? node : node.parentElement;
+          if (element && !isHelperContent(node)) {
+            collectTables(element);
+          }
+        }
+      }
     }
+    scheduleCoursePageParse();
   });
 
-  // Start observing
   observer.observe(document.body, {
     attributes: true,
     attributeFilter: ["aria-expanded", "class", "hidden", "style"],
+    characterData: true,
     childList: true,
     subtree: true,
   });
-
-  // Return the observer so it can be disconnected if needed
   return observer;
 }
 
 export function initCoursePage() {
+  cleanupCoursePage();
   parseCoursePage();
-
-  $(document)
-    .off(COURSE_PAGE_CLICK_EVENT)
-    .on(COURSE_PAGE_CLICK_EVENT, () => {
-      scheduleCoursePageParse();
-    });
-
-  coursePageObserver?.disconnect();
-  coursePageObserver = observeMatTableInsertion(() => {
-    scheduleCoursePageParse();
-  });
+  coursePageObserver = observeCourseTables();
 }
 
 export function cleanupCoursePage() {
-  clearScheduledCoursePageParses();
+  if (pendingCoursePageParse !== undefined) {
+    window.clearTimeout(pendingCoursePageParse);
+    pendingCoursePageParse = undefined;
+  }
+  dirtyTables.clear();
   coursePageObserver?.disconnect();
   coursePageObserver = null;
-  $(document).off(COURSE_PAGE_CLICK_EVENT);
 }

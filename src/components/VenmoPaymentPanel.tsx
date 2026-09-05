@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import React, { lazy, Suspense, useState } from "react";
 import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
+
+const QRCodeSVG = lazy(() => import("qrcode.react").then((module) => ({ default: module.QRCodeSVG })));
 
 interface VenmoPaymentPanelProps {
   className?: string;
@@ -37,6 +38,7 @@ export const VenmoPaymentPanel = ({
   showQr = false,
 }: VenmoPaymentPanelProps) => {
   const [didCopy, setDidCopy] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
   const venmoUrl = buildVenmoPaymentUrl(paidId);
   const paymentHelpUrl = buildPaymentHelpUrl({ courseNumber, paidId, section, semester });
 
@@ -93,16 +95,23 @@ export const VenmoPaymentPanel = ({
       </a>
 
       {showQr && (
-        <details className="rounded-xl border border-neutral-200 bg-white p-3">
+        <details
+          className="rounded-xl border border-neutral-200 bg-white p-3"
+          onToggle={(event) => setIsQrOpen(event.currentTarget.open)}
+        >
           <summary className="cursor-pointer text-sm font-bold">Pay from another device: show payment QR</summary>
           <div className="mt-3 flex flex-col items-center gap-2 text-center">
-            <QRCodeSVG
-              value={venmoUrl}
-              size={184}
-              level="M"
-              marginSize={4}
-              title={`Venmo payment for section ${section} with note ${paidId}`}
-            />
+            {isQrOpen && (
+              <Suspense fallback={<div className="flex size-[184px] items-center justify-center">Loading QR…</div>}>
+                <QRCodeSVG
+                  value={venmoUrl}
+                  size={184}
+                  level="M"
+                  marginSize={4}
+                  title={`Venmo payment for section ${section} with note ${paidId}`}
+                />
+              </Suspense>
+            )}
             <p className="m-0 max-w-xs text-xs text-neutral-600">
               This QR is unique to this section and includes the $1 amount and required payment note.
             </p>

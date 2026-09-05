@@ -89,6 +89,7 @@ export const adminRouter = {
         include: {
           student: true,
         },
+        take: 2,
       });
       if (matches.length > 1) {
         throw new Error("Payment reference matches multiple sections and must be reconciled first");

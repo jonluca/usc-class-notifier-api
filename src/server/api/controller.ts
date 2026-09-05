@@ -16,8 +16,12 @@ import {
   SUMMER_REGISTRATION_RANGE,
 } from "@/utils/semester";
 import { getCurrentAvailableCourses, searchClasses } from "@/server/api/usc-api.ts";
-import type { Prisma } from "@app/prisma";
 import type { Course } from "@/server/api/types.ts";
+import {
+  classInfoRefreshSelect,
+  getChangedClassInfo,
+  type ClassInfoRefreshData,
+} from "@/server/api/classInfoRefresh.ts";
 import { isProd } from "@/constants.ts";
 import { parsePhoneNumber } from "@/utils/phoneNumber.ts";
 
@@ -241,6 +245,7 @@ export const createClassInfo = async () => {
               return;
             }
             const departmentCourses = searchResults.courses.filter((c) => c.prefix === department);
+            const sectionInfos: ClassInfoRefreshData[] = [];
             for (const course of departmentCourses) {
               if (!course.sections) {
                 continue;
@@ -271,23 +276,33 @@ export const createClassInfo = async () => {
                       .join(""),
                     location: uniq((section.schedule || []).map((l) => l.location).filter(Boolean)).join(", "),
                     hasDClearance: Boolean(section.hasDClearance),
-                  } satisfies Prisma.ClassInfoCreateInput;
-
-                  await prisma.classInfo.upsert({
-                    where: {
-                      section_semester: { section: sectionNumber, semester },
-                    },
-                    create: sectionInfo,
-                    update: sectionInfo,
-                    select: {
-                      id: true,
-                    },
-                  });
+                  } satisfies ClassInfoRefreshData;
+                  sectionInfos.push(sectionInfo);
                 } catch (e) {
                   console.error(
                     `Error processing section ${section.sisSectionId} for course ${course.fullCourseName} in department ${department} for semester ${semester}: ${e}`,
                   );
                 }
+              }
+            }
+
+            for await (const sectionInfo of getChangedClassInfo(sectionInfos, (sectionNumbers) =>
+              prisma.classInfo.findMany({
+                where: { semester, section: { in: sectionNumbers } },
+                select: classInfoRefreshSelect,
+              }),
+            )) {
+              try {
+                await prisma.classInfo.upsert({
+                  where: { section_semester: { section: sectionInfo.section, semester } },
+                  create: sectionInfo,
+                  update: sectionInfo,
+                  select: { id: true },
+                });
+              } catch (e) {
+                console.error(
+                  `Error saving section ${sectionInfo.section} in department ${department} for semester ${semester}: ${e}`,
+                );
               }
             }
 
