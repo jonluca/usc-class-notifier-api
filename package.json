@@ -4,7 +4,7 @@
   "homepage": "https://usc.jonlu.ca",
   "description": "A tool to help you find classes at USC",
   "author": "JonLuca DeCaro <usc-schedule-helper@jonlu.ca>",
-  "version": "15.5.1",
+  "version": "15.6.0",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,6 +1,6 @@
 # USC Schedule Helper Privacy Policy
 
-Last updated: August 3, 2026
+Last updated: September 4, 2026
 
 USC Schedule Helper is a browser extension and companion notification service operated by JonLuca DeCaro. It improves USC class-search and registration pages with ratings, schedule information, conflict indicators, and optional class-availability notifications.
 
@@ -11,6 +11,8 @@ This policy covers the USC Schedule Helper browser extension and the service at 
 The extension reads the USC Classes and Web Registration pages on which it runs so it can identify course and section information, display ratings and schedule tools, detect schedule conflicts, and offer a notification signup for a selected class. It does not monitor unrelated websites.
 
 The extension stores feature preferences locally, such as whether the extension, conflict display, and units display are enabled. When a user enters an email address or optional phone number in the notification form, the browser may remember those values locally for convenience.
+
+For calendar export, the extension processes the registered schedule and generates the `.ics` file locally. It retrieves public course and session dates from `classes.usc.edu` and term dates and holidays from `www.usc.edu`. Public catalog requests contain course, term, or session identifiers, but do not include sign-in credentials or upload the full registered schedule. If the required data cannot be validated, the extension opens USC's official calendar exporter on `my.usc.edu` for the selected term.
 
 ## Information sent to the notification service
 
