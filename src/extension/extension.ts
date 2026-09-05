@@ -3,21 +3,7 @@ import { cleanupCoursePage, initCoursePage } from "@/extension/coursesPage";
 import { parseWebRegPage } from "@/extension/webRegPage";
 import type { Options } from "@/extension/utils";
 import { getCurrentSchedule, parseSchedule } from "@/extension/schedule";
-import { getCurrentTerm } from "@/extension/getCurrentTerm";
-
-function insertExportButton() {
-  const navbar = $("ul.nav");
-  $(navbar).find(".exportCal").remove();
-
-  $(navbar).append(
-    `<li><a class="exportCal" href="https://my.usc.edu/ical/?term=${getCurrentTerm()}">Export To Calendar</a></li>`,
-  );
-  const cals = $(".exportCal");
-  const duplicateCalendarLink = cals[1];
-  if (duplicateCalendarLink) {
-    $(duplicateCalendarLink).remove();
-  }
-}
+import { ICS_EXPORT_BUTTON_CLASS, insertCalendarExportButton } from "@/extension/calendarExport";
 
 let initializationId = 0;
 
@@ -69,7 +55,7 @@ function cleanupExtension() {
   });
 
   $(".usc-helper-rating-header, .usc-helper-rating-cell, .usc-helper-units").remove();
-  $(".usc-helper-notify-button, .usc-helper-webreg-notify-container, .exportCal").remove();
+  $(`.usc-helper-notify-button, .usc-helper-webreg-notify-container, .${ICS_EXPORT_BUTTON_CLASS}`).remove();
   $("#usc-schedule-helper-styles").remove();
   $(".blank_rating").removeClass("blank_rating");
   $(".closed, .overlaps, .closedAndOverlaps").removeClass("closed overlaps closedAndOverlaps");
@@ -86,7 +72,9 @@ export const initExtension = (options: Options) => {
   const currentURL = window.location.href;
 
   if (currentURL.includes("webreg")) {
-    insertExportButton();
+    if (currentURL.includes("/Calendar")) {
+      insertCalendarExportButton();
+    }
     if (!currentURL.includes("/myCourseBin")) {
       if (options.showConflicts) {
         getCurrentSchedule().then((data) => {

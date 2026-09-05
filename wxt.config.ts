@@ -35,6 +35,7 @@ export default defineConfig({
         "Improve USC class search and registration with ratings, schedule insights, and class notifications.",
       homepage_url: "https://usc.jonlu.ca",
       permissions: ["storage"],
+      host_permissions: ["https://classes.usc.edu/*", "https://www.usc.edu/*"],
       icons: {
         16: "/icon-16.png",
         32: "/icon-32.png",
