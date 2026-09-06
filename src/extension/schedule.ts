@@ -1,9 +1,9 @@
 import { splitDays } from "@/extension/utils";
 import { parseScheduleDocument, type Schedule } from "@/extension/scheduleDocument";
+import { parseTimeRange } from "@/extension/courseBinScrape";
 import $ from "jquery";
 import { insertAllOverlap } from "./insert-class-info";
 
-import moment from "moment";
 export { parseScheduleDocument } from "@/extension/scheduleDocument";
 export type { Schedule, ScheduleEntry } from "@/extension/scheduleDocument";
 
@@ -15,7 +15,7 @@ const uscDayFormatter = new Intl.DateTimeFormat("en-US", {
 const uscTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
   minute: "2-digit",
-  hour12: true,
+  hourCycle: "h23",
   timeZone: USC_TIMEZONE,
 });
 function parseScheduleDate(dateLike: string | Date) {
@@ -44,20 +44,7 @@ function formatScheduleTimeInLosAngeles(dateLike: string | Date) {
   if (!parsedDate) {
     return null;
   }
-  return uscTimeFormatter.format(parsedDate).replace(/\s+/g, "").toLowerCase();
-}
-
-function timesOverlap(firstStartTime: string, firstEndTime: string, secondStartTime: string, secondEndTime: string) {
-  const firstStart = moment(firstStartTime, "hh:mma");
-  const firstEnd = moment(firstEndTime, "hh:mma");
-  const secondStart = moment(secondStartTime, "hh:mma");
-  const secondEnd = moment(secondEndTime, "hh:mma");
-
-  if (!firstStart.isValid() || !firstEnd.isValid() || !secondStart.isValid() || !secondEnd.isValid()) {
-    return false;
-  }
-
-  return firstStart.isBefore(secondEnd) && secondStart.isBefore(firstEnd);
+  return uscTimeFormatter.format(parsedDate);
 }
 
 export async function getCurrentSchedule(): Promise<Schedule | null> {
@@ -108,7 +95,8 @@ export function parseSchedule(data: Schedule) {
   }
   const currentScheduleArr: {
     day: string[];
-    time: string[];
+    start: string;
+    end: string;
     section: string;
     classname: string;
   }[] = [];
@@ -126,7 +114,8 @@ export function parseSchedule(data: Schedule) {
     }
     const time = {
       day: [startDay],
-      time: [startTime, endTime],
+      start: startTime,
+      end: endTime,
       section: sectionName.slice(1, -2),
       classname: className,
     };
@@ -145,12 +134,14 @@ export function parseSchedule(data: Schedule) {
       try {
         const rows = $(this).find(".section_row").toArray();
         //Get hours for current section
-        const secHours = rows
-          .find((r) => r.innerText.includes("Time:"))
-          ?.innerText?.replace("Time: ", "")
-          ?.trim()
-          ?.split("-");
+        const secHours = parseTimeRange(
+          rows
+            .find((r) => r.innerText.includes("Time:"))
+            ?.innerText?.replace("Time: ", "")
+            ?.trim(),
+        );
         if (!secHours) {
+          doAllSectionsOverlap = false;
           return;
         }
         //Get days for class for current section
@@ -171,13 +162,8 @@ export function parseSchedule(data: Schedule) {
             if (!secDay) {
               continue;
             }
-            const [currentStartTime, currentEndTime] = currClass.time;
-            const [sectionStartTime, sectionEndTime] = secHours;
-            if (!currentStartTime || !currentEndTime || !sectionStartTime || !sectionEndTime) {
-              continue;
-            }
-            //Class already registered/scheduled
-            if (timesOverlap(currentStartTime, currentEndTime, sectionStartTime, sectionEndTime)) {
+            // Both ranges use fixed-width HH:mm in USC's local time; touching endpoints do not overlap.
+            if (currClass.start < secHours.end && secHours.start < currClass.end) {
               addConflictOverlay(this, currClass.classname);
               return;
             }
@@ -189,6 +175,7 @@ export function parseSchedule(data: Schedule) {
           doAllSectionsOverlap = false;
         }
       } catch (e) {
+        doAllSectionsOverlap = false;
         console.error(e);
       }
     });

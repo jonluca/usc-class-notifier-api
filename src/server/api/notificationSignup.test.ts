@@ -45,3 +45,10 @@ test("rejects a section that has no ClassInfo row for the selected semester", ()
       error.message === "Section 37905 was not found in semester 20263. Refresh the page and select the section again.",
   );
 });
+
+test("rejects cancelled USC sections even when their catalog entry still exists", () => {
+  assert.throws(
+    () => assertMatchingClassInfo({ id: "cancelled-class", isCancelled: true }, "33854", "20263"),
+    (error) => error instanceof TRPCError && error.code === "BAD_REQUEST" && /cancelled/.test(error.message),
+  );
+});

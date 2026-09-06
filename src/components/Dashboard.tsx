@@ -16,6 +16,7 @@ import { cookieKey } from "@/server/auth";
 import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/utils/venmoPayment";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 import { formatPhoneNumberForDisplay, parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
+import { watchedClassesQueryOptions } from "@/utils/queryOptions";
 const WatchedClassesGrid = dynamic(() => import("./WatchedClassesGrid"), {
   ssr: false,
   loading: () => <LinearProgress aria-label="Loading watched classes table" />,
@@ -376,7 +377,7 @@ export default function Dashboard({
   section?: string;
   isAdmin?: boolean;
 }) {
-  const { data, isLoading } = api.user.getWatchedClasses.useQuery();
+  const { data, isLoading } = api.user.getWatchedClasses.useQuery(undefined, watchedClassesQueryOptions);
   const { data: userInfo } = api.user.getUserInfo.useQuery();
   const [showOldSemesters, setShowOldSemesters] = useState(false);
   const { mutateAsync, isPending } = api.user.setAccountLevelPhoneToAllSections.useMutation();

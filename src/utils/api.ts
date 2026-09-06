@@ -12,6 +12,7 @@ import getLink from "./httpLink";
 import type { AppRouter } from "@/server/api/root";
 import { transformer } from "@/server/api/transformer";
 import { toast } from "react-toastify";
+import { queryClientDefaults } from "./queryOptions";
 
 /** A set of type-safe react-query hooks for your tRPC API. */
 export const api = createTRPCNext<AppRouter>({
@@ -31,18 +32,7 @@ export const api = createTRPCNext<AppRouter>({
     });
 
     const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 1000 * 60 * 15, // 15 minutes
-          refetchIntervalInBackground: false,
-          networkMode: "always",
-          refetchOnMount: false,
-          refetchOnWindowFocus: false,
-        },
-        mutations: {
-          networkMode: "always",
-        },
-      },
+      defaultOptions: queryClientDefaults,
       queryCache,
     });
 

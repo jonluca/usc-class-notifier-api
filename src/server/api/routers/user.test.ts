@@ -36,6 +36,7 @@ const classInfo: ClassInfo = {
   location: null,
   isDistanceLearning: false,
   hasDClearance: false,
+  isCancelled: false,
 };
 const section: WatchedSection & { ClassInfo: ClassInfo } = {
   id: "watched-section-id",
@@ -44,6 +45,11 @@ const section: WatchedSection & { ClassInfo: ClassInfo } = {
   section: classInfo.section,
   semester,
   lastNotified: null,
+  notificationCycle: 0,
+  emailSentCycle: null,
+  smsSentCycle: null,
+  notificationClaimToken: null,
+  notificationClaimUntil: null,
   notified: false,
   cancelledAt: null,
   paidId: "12345678",
@@ -213,6 +219,7 @@ test("re-adding a legacy watch repairs only that section's class relation", asyn
         paidId: section.paidId,
         classInfoId: classInfo.id,
         notified: false,
+        notificationCycle: { increment: 1 },
       },
       include: { ClassInfo: true },
     },

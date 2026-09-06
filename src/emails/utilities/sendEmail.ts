@@ -5,7 +5,7 @@ import type React from "react";
 import { isProd } from "@/constants";
 
 export interface SesEmailClient {
-  send(command: SendEmailCommand): Promise<SendEmailCommandOutput>;
+  send(command: SendEmailCommand, options?: { abortSignal: AbortSignal }): Promise<SendEmailCommandOutput>;
 }
 
 const sendEmail = async (
@@ -52,7 +52,7 @@ const sendEmail = async (
   };
 
   const command = new SendEmailCommand(params);
-  await client.send(command);
+  await client.send(command, { abortSignal: AbortSignal.timeout(30_000) });
 };
 
 export default sendEmail;

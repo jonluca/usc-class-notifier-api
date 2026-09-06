@@ -95,6 +95,13 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
       include: {
         ClassInfo: true,
       },
+      omit: {
+        notificationClaimToken: true,
+        notificationClaimUntil: true,
+        notificationCycle: true,
+        emailSentCycle: true,
+        smsSentCycle: true,
+      },
     });
   }),
   getUserInfo: publicProcedureWithUser.query(async ({ ctx }) => {
@@ -123,7 +130,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
               semester: input.semester,
             },
           },
-          select: { id: true },
+          select: { id: true, isCancelled: true },
         }),
         ctx.prisma.student.findUnique({
           where: {
@@ -210,6 +217,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           };
           if (ownsStudent) {
             sectionUpdate.notified = false;
+            sectionUpdate.notificationCycle = { increment: 1 };
             if (input.phone) {
               sectionUpdate.phoneOverride = input.phone;
             }
@@ -325,6 +333,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         },
         data: {
           notified: false,
+          notificationCycle: { increment: 1 },
         },
       });
       if (update.count !== 1) {

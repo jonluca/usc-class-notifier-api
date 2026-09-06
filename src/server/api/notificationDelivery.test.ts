@@ -1,32 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  deliverAvailabilityNotification,
-  hasRecordedEmailSinceLastNotification,
-  NotificationChannelError,
-  sendAndRecordEmailDelivery,
-} from "./notificationDelivery.ts";
+import { deliverAvailabilityNotification, NotificationChannelError } from "./notificationDelivery.ts";
 
-test("a failed email is never recorded as sent", async () => {
-  const providerError = new Error("SES unavailable");
-  let recorded = false;
-
-  await assert.rejects(
-    sendAndRecordEmailDelivery({
-      sendEmail: async () => {
-        throw providerError;
-      },
-      recordEmail: async () => {
-        recorded = true;
-      },
-    }),
-    (error) => error === providerError,
-  );
-
-  assert.equal(recorded, false);
-});
-
-test("an email failure stops delivery before SMS or persistence", async () => {
+test("an email failure still attempts SMS and leaves the watch pending", async () => {
   const calls: string[] = [];
   const providerError = new Error("SES unavailable");
 
@@ -48,7 +24,7 @@ test("an email failure stops delivery before SMS or persistence", async () => {
       error instanceof NotificationChannelError && error.channel === "email" && error.originalError === providerError,
   );
 
-  assert.deepEqual(calls, ["email"]);
+  assert.deepEqual(calls, ["email", "sms"]);
 });
 
 test("an SMS failure leaves the watch pending after a successful email", async () => {
@@ -111,29 +87,59 @@ test("an email-only notification is marked after email succeeds", async () => {
   assert.deepEqual(calls, ["email", "mark"]);
 });
 
-test("only an email record newer than lastNotified belongs to the current delivery", () => {
-  const lastNotified = new Date("2026-07-11T10:00:00.000Z");
+test("a slow email never blocks SMS and successful SMS is skipped on an email retry", async () => {
+  const email = Promise.withResolvers<void>();
+  let smsCount = 0;
+  let marked = false;
+  const delivery = deliverAvailabilityNotification({
+    emailAlreadySent: false,
+    sendEmail: () => email.promise,
+    sendSms: async () => {
+      smsCount += 1;
+    },
+    markNotified: async () => {
+      marked = true;
+    },
+  });
+  assert.equal(smsCount, 1);
+  assert.equal(marked, false);
+  const failed = assert.rejects(delivery, NotificationChannelError);
+  email.reject(new Error("SES unavailable"));
+  await failed;
+  await deliverAvailabilityNotification({
+    emailAlreadySent: false,
+    smsAlreadySent: true,
+    sendEmail: async () => {},
+    sendSms: async () => {
+      smsCount += 1;
+    },
+    markNotified: async () => {
+      marked = true;
+    },
+  });
+  assert.equal(smsCount, 1);
+  assert.equal(marked, true);
+});
 
-  assert.equal(
-    hasRecordedEmailSinceLastNotification({
-      latestEmailSentAt: new Date("2026-07-11T10:00:01.000Z"),
-      lastNotified,
+test("both channel failures are retained and the watch stays pending", async () => {
+  await assert.rejects(
+    deliverAvailabilityNotification({
+      emailAlreadySent: false,
+      sendEmail: async () => {
+        throw new Error("SES unavailable");
+      },
+      sendSms: async () => {
+        throw new Error("Twilio unavailable");
+      },
+      markNotified: async () => assert.fail("A failed delivery must remain pending"),
     }),
-    true,
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(
+        error.errors.map((failure) => failure.channel),
+        ["email", "sms"],
+      );
+      return true;
+    },
   );
-  assert.equal(
-    hasRecordedEmailSinceLastNotification({
-      latestEmailSentAt: new Date("2026-07-11T09:59:59.000Z"),
-      lastNotified,
-    }),
-    false,
-  );
-  assert.equal(
-    hasRecordedEmailSinceLastNotification({
-      latestEmailSentAt: new Date("2026-07-11T10:00:01.000Z"),
-      lastNotified: null,
-    }),
-    true,
-  );
-  assert.equal(hasRecordedEmailSinceLastNotification({ latestEmailSentAt: null, lastNotified }), false);
 });

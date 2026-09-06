@@ -13,6 +13,7 @@ export const classInfoRefreshSelect = {
   day: true,
   location: true,
   hasDClearance: true,
+  isCancelled: true,
 } satisfies Prisma.ClassInfoSelect;
 
 export type ClassInfoRefreshData = Prisma.ClassInfoGetPayload<{ select: typeof classInfoRefreshSelect }>;

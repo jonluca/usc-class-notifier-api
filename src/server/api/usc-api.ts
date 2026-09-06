@@ -1,6 +1,8 @@
 import axios from "axios";
 import type { Course, CoursesResponse } from "@/server/api/types.ts";
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 const headers = {
   Accept: "application/json",
   "Accept-Language": "en",
@@ -25,6 +27,7 @@ export const getCurrentAvailableCourses = async ({ semester }: { semester: strin
       termCode: semester,
     },
     headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   return response.data;
 };
@@ -35,6 +38,7 @@ export const getCourseInformation = async ({ courseCode, semester }: { courseCod
       courseCode,
     },
     headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   return response.data;
 };
@@ -45,6 +49,7 @@ export const searchClasses = async ({ searchTerm, semester }: { searchTerm: stri
       searchTerm,
     },
     headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   return response.data;
 };

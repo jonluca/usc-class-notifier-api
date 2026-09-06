@@ -22,11 +22,14 @@ export function assertMonitoredSemester(semester: string, monitoredSemesters: re
   }
 }
 
-export function assertMatchingClassInfo<T>(
+export function assertMatchingClassInfo<T extends { id: string; isCancelled?: boolean }>(
   classInfo: T | null | undefined,
   sectionNumber: string,
   semester: string,
 ): asserts classInfo is T {
+  if (classInfo?.isCancelled) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `Section ${sectionNumber} is cancelled.` });
+  }
   if (!classInfo) {
     throw new TRPCError({
       code: "BAD_REQUEST",

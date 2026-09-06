@@ -15,6 +15,7 @@ const sectionInfo: ClassInfoRefreshData = {
   day: "MW",
   location: "SAL 101",
   hasDClearance: false,
+  isCancelled: false,
 };
 
 async function collectChanges(
@@ -67,6 +68,7 @@ test("detects changes to all refreshed catalog fields including nullable values 
     { day: null },
     { location: null },
     { hasDClearance: true },
+    { isCancelled: true },
   ];
   for (const change of changes) {
     const updated = { ...sectionInfo, ...change };

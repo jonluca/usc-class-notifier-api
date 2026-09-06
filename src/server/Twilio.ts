@@ -8,7 +8,7 @@ const { Twilio } = tw;
 const accountSid = process.env.TWILIO_SID;
 const authToken = process.env.TWILIO_TOKEN;
 const fromNumber = process.env.FROM_NUMBER;
-const client = new Twilio(accountSid, authToken);
+const client = new Twilio(accountSid, authToken, { timeout: 30_000 });
 
 interface SmsMessageClient {
   create(options: { body: string; to: string; from: string }): Promise<{ to?: string | null }>;

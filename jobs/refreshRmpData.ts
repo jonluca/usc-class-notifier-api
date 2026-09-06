@@ -6,64 +6,30 @@ import { dirname } from "path";
 
 const schoolId = "U2Nob29sLTEzODE=";
 
-export interface RMPResponse {
-  data: Data;
-}
-
-export interface Data {
-  search: Search;
-}
-
-export interface Search {
-  teachers: Teachers;
-}
-
-export interface Teachers {
-  didFallback: boolean;
-  edges: Edge[];
-  filters: Filter[];
-  pageInfo: PageInfo;
-  resultCount: number;
-}
-
-export interface Edge {
-  cursor: string;
-  node: Professor;
+interface RMPResponse {
+  data: {
+    search: {
+      teachers: {
+        edges: { node: Professor }[];
+        pageInfo: { endCursor: string; hasNextPage: boolean };
+      };
+    };
+  };
 }
 
 export interface Professor {
-  __typename: string;
-  avgDifficulty: number;
   avgRating: number;
-  department: string;
   firstName: string;
-  id: string;
-  isSaved: boolean;
   lastName: string;
   legacyId: number;
-  numRatings: number;
-  school: School;
-  wouldTakeAgainPercent: number;
 }
 
-export interface School {
-  id: string;
-  name: string;
-}
-
-export interface Filter {
-  field: string;
-  options: Option[];
-}
-
-export interface Option {
-  id: string;
-  value: string;
-}
-
-export interface PageInfo {
-  endCursor: string;
-  hasNextPage: boolean;
+export function mergeProfessorRatings(existing: Professor[], refreshed: Professor[]): Professor[] {
+  const professors = new Map<number, Professor>();
+  for (const { avgRating, firstName, lastName, legacyId } of [...existing, ...refreshed]) {
+    professors.set(legacyId, { avgRating, firstName, lastName, legacyId });
+  }
+  return [...professors.values()].sort((a, b) => a.legacyId - b.legacyId);
 }
 
 const loadByCursor = async (cursor?: string | null) => {
@@ -83,59 +49,21 @@ const loadByCursor = async (cursor?: string | null) => {
   ${cursor ? "$cursor: String" : ""}
 ) {
   search: newSearch {
-    ...TeacherSearchPagination_search_1ZLmLD
-  }
-}
-
-fragment TeacherSearchPagination_search_1ZLmLD on newSearch {
-  teachers(query: $query, first: $count, after: ${cursor ? "$cursor" : '""'}) {
-    didFallback
-    edges {
-      node {
-        ...TeacherCard_teacher
-        id
+    teachers(query: $query, first: $count, after: ${cursor ? "$cursor" : '""'}) {
+      edges {
+        node {
+          legacyId
+          avgRating
+          firstName
+          lastName
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-    resultCount
   }
-}
-
-fragment TeacherCard_teacher on Teacher {
-  id
-  legacyId
-  avgRating
-  numRatings
-  ...CardFeedback_teacher
-  ...CardSchool_teacher
-  ...CardName_teacher
-  ...TeacherBookmark_teacher
-}
-
-fragment CardFeedback_teacher on Teacher {
-  wouldTakeAgainPercent
-  avgDifficulty
-}
-
-fragment CardSchool_teacher on Teacher {
-  department
-  school {
-    name
-    id
-  }
-}
-
-fragment CardName_teacher on Teacher {
-  firstName
-  lastName
-}
-
-fragment TeacherBookmark_teacher on Teacher {
-  id
-  isSaved
 }
 `,
       variables,
@@ -183,12 +111,10 @@ const run = async () => {
 
   const ratingsFile = path.join(__dirname, "../src/data/ratings.json");
   const existing = await fs.readFile(ratingsFile, "utf-8");
-  const existingProfessors = JSON.parse(existing);
-  const newProfessorIds = new Set(professors.map((p: Professor) => p.id));
-  const professorsToAdd = existingProfessors.filter((p: Professor) => !newProfessorIds.has(p.id));
-  professors = professors.concat(professorsToAdd);
-  // sort professors by their id
-  professors.sort((a, b) => a.id.localeCompare(b.id));
+  const existingProfessors: Professor[] = JSON.parse(existing);
+  professors = mergeProfessorRatings(existingProfessors, professors);
   await fs.writeFile(ratingsFile, JSON.stringify(professors, null, 4));
 };
-run();
+if (import.meta.main) {
+  await run();
+}

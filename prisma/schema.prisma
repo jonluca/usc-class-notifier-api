@@ -37,9 +37,7 @@ model Student {
 
   @@unique([email])
   @@unique([verificationKey])
-  @@index([email])
   @@index([phone])
-  @@index([verificationKey])
   @@index([email, verificationKey])
 }
 
@@ -51,9 +49,14 @@ model WatchedSection {
   section  String
   semester String
 
-  lastNotified DateTime?
-  notified     Boolean   @default(false)
-  cancelledAt  DateTime?
+  lastNotified           DateTime?
+  notified               Boolean   @default(false)
+  cancelledAt            DateTime?
+  notificationCycle      Int       @default(0)
+  emailSentCycle         Int?
+  smsSentCycle           Int?
+  notificationClaimToken String?
+  notificationClaimUntil DateTime?
 
   paidId        String
   isPaid        Boolean @default(false)
@@ -117,10 +120,10 @@ model ClassInfo {
   location           String?
   isDistanceLearning Boolean          @default(false)
   hasDClearance      Boolean          @default(false)
+  isCancelled        Boolean          @default(false)
   Section            WatchedSection[]
 
   @@unique([section, semester])
-  @@index([section, semester])
   @@index([department])
   @@index([prefix])
   @@index([courseNumber])

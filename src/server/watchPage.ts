@@ -37,7 +37,7 @@ export async function loadWatchPageProps({
       // explicit request to reactivate a watch that was canceled afterward.
       const update = await prisma.watchedSection.updateMany({
         where: { id: section, studentId: student.id },
-        data: { cancelledAt: null, notified: false },
+        data: { cancelledAt: null, notified: false, notificationCycle: { increment: 1 } },
       });
       didSucceed = update.count === 1;
     }

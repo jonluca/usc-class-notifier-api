@@ -10,52 +10,40 @@ export class NotificationChannelError extends Error {
   }
 }
 
-export const hasRecordedEmailSinceLastNotification = ({
-  latestEmailSentAt,
-  lastNotified,
-}: {
-  latestEmailSentAt: Date | null | undefined;
-  lastNotified: Date | null;
-}) => Boolean(latestEmailSentAt && (!lastNotified || latestEmailSentAt.getTime() > lastNotified.getTime()));
-
-export const sendAndRecordEmailDelivery = async ({
-  sendEmail,
-  recordEmail,
-}: {
-  sendEmail: () => Promise<void>;
-  recordEmail: () => Promise<void>;
-}) => {
-  await sendEmail();
-  await recordEmail();
-};
-
 export const deliverAvailabilityNotification = async ({
   emailAlreadySent,
+  smsAlreadySent = false,
   sendEmail,
   sendSms,
   markNotified,
 }: {
   emailAlreadySent: boolean;
+  smsAlreadySent?: boolean;
   sendEmail: () => Promise<void>;
   sendSms?: () => Promise<void>;
   markNotified: () => Promise<void>;
 }) => {
-  if (!emailAlreadySent) {
+  const deliver = async (channel: NotificationChannel, send: () => Promise<void>) => {
     try {
-      await sendEmail();
+      await send();
     } catch (error) {
       const providerError = error instanceof Error ? error : new Error(String(error));
-      throw new NotificationChannelError("email", providerError);
+      throw new NotificationChannelError(channel, providerError);
     }
-  }
+  };
 
-  if (sendSms) {
-    try {
-      await sendSms();
-    } catch (error) {
-      const providerError = error instanceof Error ? error : new Error(String(error));
-      throw new NotificationChannelError("sms", providerError);
-    }
+  // Start both channels even if one provider is down. Each callback persists
+  // its own success before returning, so a retry only sends missing channels.
+  const results = await Promise.allSettled([
+    emailAlreadySent ? Promise.resolve() : deliver("email", sendEmail),
+    !sendSms || smsAlreadySent ? Promise.resolve() : deliver("sms", sendSms),
+  ]);
+  const failures = results.filter((result) => result.status === "rejected").map((result) => result.reason);
+  if (failures.length === 1) {
+    throw failures[0];
+  }
+  if (failures.length > 1) {
+    throw new AggregateError(failures, "Availability notification channels failed");
   }
 
   await markNotified();
