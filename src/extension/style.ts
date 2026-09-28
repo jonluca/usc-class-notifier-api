@@ -40,21 +40,21 @@ export function changeCSSColumnWidth() {
 }
 
 .overlaps {
-    background-color: rgba(255, 134, 47, 0.37);
+    background-color: var(--ush-overlap-bg, rgba(255, 134, 47, 0.37));
     border-radius: 24px;
 }
 
 .closed {
-    background-color: rgba(255,118,96,0.29);
+    background-color: var(--ush-closed-bg, rgba(255,118,96,0.29));
     border-radius: 24px;
 }
 
 .closedAndOverlaps {
-    background: linear-gradient(to right, rgba(240, 65, 36, 0.45), rgba(234,121,39,0.37)) !important;
+    background: var(--ush-closed-overlap-bg, linear-gradient(to right, rgba(240, 65, 36, 0.45), rgba(234,121,39,0.37))) !important;
 }
 
 .crsTitlCustom {
-color: black;
+color: var(--ush-text, black);
 font-size: 1rem;
 }
 

@@ -113,6 +113,7 @@ export interface Options {
   enabled: boolean;
   showConflicts: boolean;
   showUnits: boolean;
+  darkMode: boolean;
 }
 export const emptySpanCell =
   '<span class="usc-helper-rating-cell instr_alt1 empty_rating col-xs-12 col-sm-12 col-md-1 col-lg-1"><span \

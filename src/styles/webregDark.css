@@ -1,0 +1,765 @@
+/*
+ * Dark mode for webreg.usc.edu. Covers /Calendar, /CourseBin, /Departments, /Courses,
+ * /TuitionRefundInsurance, /Checkout, /ClearedSections, /RegisteredCourses,
+ * /RegistrationAppointment, and /Terms - see isDarkModeSupportedPage in
+ * src/extension/darkMode.ts for the exact page list this file is scoped to support.
+ *
+ * Everything below is gated behind `html.usc-helper-dark`, toggled by src/extension/darkMode.ts,
+ * so this file being present in the manifest at document_start is harmless when the setting is
+ * off. Scoped to @media screen so print output (WebReg's "Export Calendar to PDF") is untouched -
+ * this also means every var() below should carry a light-mode fallback where it's reused by
+ * src/extension/style.ts, since those fallbacks are what print resolves to.
+ *
+ * `.k-*` selectors target WebReg's Kendo UI Scheduler widget on Calendar (confirmed by
+ * src/extension/scheduleDocument.ts parsing `kendo.syncReady` payloads out of the Calendar page;
+ * CourseBin loads no Kendo/calendar stylesheets at all, confirmed via devtools). Bootstrap 3
+ * selectors (`.btn`, `.alert`, `.nav-tabs`, `.panel`) target WebReg's own shared page chrome
+ * (confirmed by the `btn btn-default` classes src/extension/calendarExport.ts relies on) and apply
+ * on both pages, since the masthead/nav/footer/layout markup is identical between them.
+ *
+ * Event and legend item colors (Calendar only) are left exactly as WebReg sets them (each event's
+ * fill is an inline style) - we only theme the chrome around them, with three exceptions:
+ * Registered (green), Scheduled (yellow), and Conflict (red) are each remapped to a darker shade
+ * of the same hue, matched by their exact confirmed inline rgb() value since there is no class to
+ * key off (see the Kendo Scheduler section below). The matching legend swatches (which DO have
+ * real classes, .legend-scheduled/.legend-registered/.legend-conflict) are remapped to the same
+ * colors so the legend stays accurate. Appointment/.legend-blocked is intentionally left untouched
+ * for now.
+ *
+ * The myCourseBin section near the end covers the course accordion, section table, search inputs,
+ * and jQuery UI dialogs specific to that page - each selector and its exact WebReg rule/value was
+ * confirmed via a devtools matched-rules report against the live page, not guessed.
+ */
+
+@media screen {
+  html.usc-helper-dark {
+    color-scheme: dark;
+
+    /* surfaces */
+    --ush-surface: #0d0d0d;
+    --ush-surface-raised: #161616;
+    --ush-surface-sunken: #0a0a0a;
+    --ush-surface-hover: #232323;
+    --ush-surface-alt: #131313;
+
+    /* lines */
+    --ush-border: #2a2a2a;
+    --ush-border-strong: #3d3d3d;
+
+    /* type */
+    --ush-text: #e8e8ec;
+    --ush-text-muted: #9a9aa2;
+    --ush-link: #ff9a9a;
+    --ush-link-hover: #ffb8b8;
+
+    /* USC identity - kept saturated, masthead + active tab only */
+    --ush-cardinal: #8b0000;
+    --ush-cardinal-deep: #3d0000;
+    --ush-gold: #ffc72c;
+    --ush-gold-ink: #241a00;
+
+    /* used by src/extension/style.ts overlays */
+    --ush-overlap-bg: rgba(255, 167, 38, 0.28);
+    --ush-closed-bg: rgba(229, 115, 96, 0.24);
+    --ush-closed-overlap-bg: linear-gradient(to right, rgba(200, 90, 60, 0.35), rgba(190, 100, 40, 0.28));
+
+    background: var(--ush-surface) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark body {
+    background: var(--ush-surface) !important;
+    /* CssBaseline (injected by our own React root at idle) writes body { color: rgba(0,0,0,.87) }
+       via a prepended emotion cache, which loads after this sheet - !important is required. */
+    color: var(--ush-text) !important;
+  }
+
+  /* ---------------------------------------------------------------- WebReg page ground */
+  /* html/body being dark isn't enough: WebReg wraps the page in its own layout elements that set
+     an explicit light background, which sit visually on top and show as light gutters/strips. */
+
+  html.usc-helper-dark .page-background {
+    /* beats site_styles.css: .page-background { background: rgb(239, 238, 234); ... } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark #sb-site {
+    /* beats site_styles.css: #sb-site { background-color: rgb(255, 255, 255) } - the id must be
+       repeated here since a plain class chain can't out-specificity a bare id selector. */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark .outer-layout-footer,
+  html.usc-helper-dark .footer {
+    /* beats site_styles.css: .outer-layout-footer / .footer { background-color: rgb(211, 210, 204) } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark .footer-links a {
+    /* beats site_styles.css: .footer-links li a { color: rgb(121, 2, 2) } - dark cardinal text on
+       the near-black footer background above was unreadable. Descendant selector (not a child
+       combinator) since on /Terms unclosed <font> tags in the page body mean .footer is nested
+       several levels deep under .page-background by the time the browser finishes parsing, not a
+       direct child - background/.footer-title are left untouched, link color only. */
+    color: var(--ush-link);
+  }
+  html.usc-helper-dark .footer-links a:hover,
+  html.usc-helper-dark .footer-links a:focus {
+    /* beats site_styles.css: .footer-links li a:focus, .footer-links li a:hover
+       { color: rgb(121, 2, 2) } - same cardinal color on hover/focus as the base state */
+    color: var(--ush-link-hover);
+  }
+
+  html.usc-helper-dark .mycbstat {
+    /* beats site_styles.css: .mycbstat { background-color: rgb(248, 248, 248); color: rgb(124, 124, 124) }
+       Only the background needs fixing here - the `span` rule further down already wins on
+       specificity over WebReg's color declaration, which is why the text was readable but the
+       background wasn't. */
+    background-color: var(--ush-surface-raised);
+  }
+
+  /* ---------------------------------------------------------------- page chrome (Bootstrap 3) */
+
+  html.usc-helper-dark .container,
+  html.usc-helper-dark .container-fluid,
+  html.usc-helper-dark .panel,
+  html.usc-helper-dark .panel-body,
+  html.usc-helper-dark .well,
+  html.usc-helper-dark #content {
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+    color: var(--ush-text);
+  }
+
+  html.usc-helper-dark a {
+    color: var(--ush-link);
+  }
+  html.usc-helper-dark a:hover,
+  html.usc-helper-dark a:focus {
+    color: var(--ush-link-hover);
+  }
+
+  html.usc-helper-dark h1,
+  html.usc-helper-dark h2,
+  html.usc-helper-dark h3,
+  html.usc-helper-dark h4,
+  html.usc-helper-dark h5,
+  html.usc-helper-dark h6,
+  html.usc-helper-dark label,
+  html.usc-helper-dark p,
+  html.usc-helper-dark span,
+  html.usc-helper-dark td,
+  html.usc-helper-dark th {
+    color: var(--ush-text);
+  }
+  html.usc-helper-dark .text-muted,
+  html.usc-helper-dark small {
+    color: var(--ush-text-muted);
+  }
+  html.usc-helper-dark hr,
+  html.usc-helper-dark .panel-heading {
+    border-color: var(--ush-border);
+  }
+
+  /* ---------------------------------------------------------------- masthead + nav tabs */
+
+  html.usc-helper-dark .navbar,
+  html.usc-helper-dark .navbar-default,
+  html.usc-helper-dark #header {
+    background: linear-gradient(180deg, var(--ush-cardinal), var(--ush-cardinal-deep)) !important;
+    background-image: linear-gradient(180deg, var(--ush-cardinal), var(--ush-cardinal-deep)) !important;
+    border-color: var(--ush-cardinal-deep) !important;
+    color: #fff !important;
+  }
+  html.usc-helper-dark .navbar a,
+  html.usc-helper-dark #header a {
+    color: #fff;
+  }
+  html.usc-helper-dark .nav > li > a:hover,
+  html.usc-helper-dark .nav > li > a:focus {
+    /* beats vendor_styles.css: .nav > li > a:focus, .nav > li > a:hover
+       { background-color: rgb(238, 238, 238) } and site_styles.css: .nav > li > a:focus,
+       .nav > li > a:hover { color: rgb(153, 0, 0) } - both tie in specificity with the
+       html.usc-helper-dark .navbar a rule above and win that tie by source order, so !important
+       is needed here even though neither WebReg rule itself is !important. */
+    background-color: var(--ush-surface-hover) !important;
+    color: var(--ush-text) !important;
+  }
+
+  /* ---------------------------------------------------------------- /Terms secondary nav bar */
+  /* /Terms has a second nav.navbar below the masthead ("Welcome, <name>. Logout") whose
+     nav.navbar > .container-fluid carries no WebReg background rule at all - by WebReg's own CSS
+     it's transparent by default, letting the cardinal .navBar.centeralign-nav
+     (site_styles.css: .centeralign-nav { background: rgb(153, 0, 0) }) and the cardinal
+     .row.main-container beneath it (inline style="background-color: #990000") show through, which
+     is why it blends into the header in light mode. Our own generic
+     html.usc-helper-dark .container-fluid rule above (background-color: var(--ush-surface-raised))
+     is correct everywhere else that class appears, but paints this one a flat gray strip since
+     WebReg gave it nothing to override. Scoped to body.terms-page only - every other page's nav is
+     already verified correct and untouched here.
+     A plain transparent background let the masthead's own linear-gradient(--ush-cardinal ->
+     --ush-cardinal-deep) show through and fade to near-black behind this bar, which read as a
+     rendering glitch - solid var(--ush-cardinal) (the gradient's top/flat color, matching the main
+     header) instead.
+     This nav.navbar also carries plain class "navbar", so our own masthead rule above
+     (html.usc-helper-dark .navbar { border-color: var(--ush-cardinal-deep) !important }) matches it
+     too, giving vendor_styles.css's otherwise-invisible `.navbar { border: 1px solid transparent }`
+     a real color and drawing a visible box around the bar - reset to transparent here, scoped the
+     same way. */
+
+  html.usc-helper-dark body.terms-page nav.navbar {
+    border-color: transparent !important;
+  }
+
+  html.usc-helper-dark body.terms-page nav.navbar > .container-fluid {
+    background-color: var(--ush-cardinal);
+  }
+
+  html.usc-helper-dark .nav-tabs {
+    border-bottom-color: var(--ush-border);
+  }
+  html.usc-helper-dark .nav-tabs > li > a {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--ush-text);
+  }
+  html.usc-helper-dark .nav-tabs > li > a:hover {
+    background-color: var(--ush-surface-hover);
+    border-color: transparent;
+  }
+  html.usc-helper-dark .nav-tabs > li.active > a,
+  html.usc-helper-dark .nav-tabs > li.active > a:hover,
+  html.usc-helper-dark .nav-tabs > li.active > a:focus {
+    background-color: var(--ush-gold) !important;
+    border-color: var(--ush-gold) !important;
+    color: var(--ush-gold-ink) !important;
+  }
+
+  /* ---------------------------------------------------------------- nav dropdowns (myInfo, term selector) */
+  /* The dropdown toggle and menu are both nested inside #header, so the `color: #fff` from our own
+     html.usc-helper-dark #header a / .navbar a rule above (an id selector) outranks any plain-class
+     override here regardless of how deep the selector nests - !important is required on `color` in
+     every rule below to win over that. background-color/border-color have no such id rule competing,
+     but are kept !important alongside for consistency within each block. */
+
+  html.usc-helper-dark li.open > a.dropdown-toggle,
+  html.usc-helper-dark li.open > a.dropdown-toggle:hover,
+  html.usc-helper-dark li.open > a.dropdown-toggle:focus {
+    /* beats vendor_styles.css: .nav .open > a, .nav .open > a:focus, .nav .open > a:hover
+       { background-color: rgb(238, 238, 238); border-color: rgb(51, 122, 183) } */
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu {
+    /* beats site_styles.css: .dropdown-menu { background-color: rgb(239, 238, 234); box-shadow: none } */
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu > li > a {
+    /* beats vendor_styles.css: .dropdown-menu > li > a { color: rgb(51, 51, 51) } and
+       site_styles.css: .dropdown-menu > li > a, .dropdown-menu > li > a:hover
+       { background-color: rgb(239, 238, 234); color: rgb(153, 0, 0) } (its non-hover branch) */
+    background-color: transparent !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .dropdown-menu > li > a:hover,
+  html.usc-helper-dark .dropdown-menu > li > a:focus {
+    /* beats vendor_styles.css: .dropdown-menu > li > a:focus, .dropdown-menu > li > a:hover
+       { background-color: rgb(245, 245, 245); color: rgb(38, 38, 38) } and the hover branch of the
+       site_styles.css rule cited above */
+    background-color: var(--ush-surface-hover) !important;
+    color: var(--ush-text) !important;
+  }
+
+  /* ---------------------------------------------------------------- alerts / banners */
+
+  html.usc-helper-dark .alert-info {
+    background-color: #10202b;
+    border-color: #1d3a4d;
+    color: #cfe6f5;
+  }
+  html.usc-helper-dark .alert-warning {
+    background-color: #2b2411;
+    border-color: #4d3f1d;
+    color: #f0e0b8;
+  }
+  html.usc-helper-dark .alert-danger {
+    background-color: #2b1312;
+    border-color: #4d201d;
+    color: #f2c9c6;
+  }
+  html.usc-helper-dark .alert-success {
+    background-color: #12241a;
+    border-color: #204d31;
+    color: #c6e8d3;
+  }
+  html.usc-helper-dark .alert a,
+  html.usc-helper-dark .alert .close {
+    color: inherit;
+  }
+
+  /* ---------------------------------------------------------------- buttons, inputs */
+
+  html.usc-helper-dark .btn-default,
+  html.usc-helper-dark .usc-helper-ics-export,
+  html.usc-helper-dark #export {
+    background: var(--ush-surface-hover) !important;
+    background-image: none !important;
+    border-color: var(--ush-border-strong) !important;
+    color: var(--ush-text) !important;
+    text-shadow: none !important;
+  }
+  html.usc-helper-dark .btn-default:hover,
+  html.usc-helper-dark .usc-helper-ics-export:hover,
+  html.usc-helper-dark #export:hover {
+    background: var(--ush-border-strong) !important;
+  }
+  html.usc-helper-dark .btn-primary {
+    background: #1d4e77 !important;
+    background-image: none !important;
+    border-color: #2a6fa8 !important;
+    color: #fff !important;
+  }
+  html.usc-helper-dark .btn[disabled],
+  html.usc-helper-dark .btn.disabled {
+    opacity: 0.45;
+  }
+
+  html.usc-helper-dark .form-control,
+  html.usc-helper-dark input:not([type="hidden"]):not([type="submit"]):not([type="button"]),
+  html.usc-helper-dark select,
+  html.usc-helper-dark textarea {
+    /* scoped to real text-like inputs so it never paints a hidden input (invisible either way) or
+       a submit/button input (styled as a link or a .btn instead, see below and the buttons
+       section above) with a visible dark box. */
+    background-color: var(--ush-surface-sunken);
+    border-color: var(--ush-border-strong);
+    color: var(--ush-text);
+  }
+
+  /* ---------------------------------------------------------------- myCourseBin */
+  /* Every selector/value here was confirmed against the live /CourseBin page via a devtools
+     matched-rules report; none are guessed. .btn-default, input/select, .container/.panel/.well,
+     .page-background, #sb-site, .footer, .mycbstat, and the h1-h6/span/p/td/th text-color rules
+     above already cover this page too (same shared markup/classes as Calendar) - only classes
+     unique to the course accordion/section table needed new rules. */
+
+  html.usc-helper-dark .course-header {
+    /* beats site_styles.css: .course-header:nth-child(4n+1) { background-color: rgb(242, 241, 241) } -
+       collapses the zebra striping to one flat shade across all nth-child variants. */
+    background-color: var(--ush-surface-alt);
+  }
+
+  html.usc-helper-dark .accordion-content-area {
+    /* beats site_styles.css: .accordion-content-area { background-color: rgb(255, 255, 255);
+       border-bottom: 1px solid rgb(242, 241, 241); border-left: 1px solid rgb(242, 241, 241) } */
+    background-color: var(--ush-surface);
+    border-bottom-color: var(--ush-border);
+    border-left-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .bs-callout {
+    /* beats site_styles.css: .bs-callout { border-top: 1px solid rgb(238, 238, 238); border-color:
+       rgb(238, 238, 238) } - shared by .bs-callout-default, -warning, and -danger (/Restrictions),
+       whose computed background was already transparent so only the border needed fixing. Confirmed
+       via a live /Restrictions report that WebReg gives -danger no severity-specific border or
+       background of its own - same neutral gray border as every other variant - so nothing further
+       is needed here for it. */
+    border-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .alert-title {
+    /* /Restrictions ("you have a hold and may not register"). beats html.usc-helper-dark span
+       above (2 classes + 1 type beats 1 class + 2 types), which was winning over site_styles.css:
+       .alert-title { color: rgb(153, 0, 0) } and silently turning this warning text the same
+       neutral color as everything else - confirmed via live report (computed was --ush-text, not
+       red) and screenshot. rgb(153, 0, 0) is the exact color already mapped to var(--ush-link)
+       elsewhere (a.sessLnk, .footer-links) for the identical reason - WebReg's own cardinal-red UI
+       text needs a legible-on-dark equivalent - so reused here rather than inventing a new red. */
+    color: var(--ush-link);
+  }
+
+  html.usc-helper-dark .cb_srchtxt {
+    /* beats site_styles.css: .cb_srchtxt { background-color: rgb(255, 255, 255) } */
+    background-color: var(--ush-surface-raised);
+  }
+  html.usc-helper-dark .cb_srchCrs,
+  html.usc-helper-dark .cb_srchDept {
+    /* beats site_styles.css: .cb_srchCrs, .cb_srchDept { background-color: rgb(255, 255, 255) } -
+       these are the wrapper spans around each .lnkCrs submit button; the button itself was already
+       correctly transparent, so this white span behind it was the actual "white bar" reported. */
+    background-color: var(--ush-surface-raised);
+  }
+
+  html.usc-helper-dark .section_head,
+  html.usc-helper-dark .section_head_alt1 {
+    /* beats site_styles.css: .section_head, .section_head_alt1 { background-color: rgb(254, 254, 254);
+       border-bottom: 2px solid rgb(224, 224, 224) } */
+    background-color: var(--ush-surface-alt);
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .section-row {
+    /* beats site_styles.css: .section-row { background-color: rgb(249, 249, 249) } */
+    background-color: var(--ush-surface-alt);
+    /* the border-top is inline (style="border-top: solid 1px #F2F1F1;") on every .section-row, so
+       this alone needs !important to win regardless of which selector below also matches. */
+    border-top-color: var(--ush-border) !important;
+  }
+  html.usc-helper-dark .section:nth-child(2n + 1) .section-row {
+    /* beats site_styles.css: .section:nth-child(2n+1) .section-row { background-color: rgb(255,
+       255, 255); border-top: thin solid rgb(224, 224, 224); border-bottom: thin solid rgb(224,
+       224, 224) } - this selector's 3 classes/pseudo-classes out-specify the plain .section-row
+       rule above (2 classes + 1 type), which is why every other row was still white. A slightly
+       lighter surface than the base .section-row keeps the zebra stripe. border-top is already
+       forced by the rule above; border-bottom isn't inline, so no !important needed here. */
+    background-color: var(--ush-surface-raised);
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .section_crsbin {
+    /* beats site_styles.css: .section_crsbin { background-color: rgb(255, 255, 255) } */
+    background-color: var(--ush-surface);
+  }
+
+  html.usc-helper-dark input.lnkCrs {
+    /* beats site_styles.css: .lnkCrs { background-color: rgb(255, 255, 255); color: rgb(153, 153,
+       153); border: 0px solid red; text-decoration: underline } - these <input type="submit"> are
+       WebReg's underlined text links ("Search: CSCI-104 | CSCI"), not real buttons, so exclude them
+       from the generic input rule above (:not(.lnkCrs)) and style them as links instead. */
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--ush-link);
+  }
+
+  html.usc-helper-dark a.sessLnk,
+  html.usc-helper-dark a.sessLnk:link,
+  html.usc-helper-dark a.sessLnk:active {
+    /* beats site_styles.css: .sessLnk, a.sessLnk:active, a.sessLnk:link { color: rgb(153, 0, 0) } -
+       the a.sessLnk:link branch (2 classes/pseudo-classes + 1 type) out-specifies the generic
+       `html.usc-helper-dark a` rule (1 class + 2 types), since specificity compares class-count
+       before type-count. */
+    color: var(--ush-link);
+  }
+
+  html.usc-helper-dark span[style="color: #000"] {
+    /* Seat-count text ("95 of 96") is inline style="color: #000", exact full attribute value per
+       devtools - matched with `=` rather than `*=` so this can't accidentally catch an unrelated
+       inline background-color: #000000 declaration elsewhere. !important required for inline. */
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .ui-widget-content {
+    /* beats vendor_styles.css: .ui-widget-content { background-color: rgb(255, 255, 255); color:
+       rgb(34, 34, 34); border-color: rgb(170, 170, 170) }. Covers the jQuery UI dialogs (Audited
+       Courses, Pass/No Pass) and the course-search autocomplete menu, which all carry this class. */
+    background-color: var(--ush-surface-raised);
+    color: var(--ush-text);
+    border-color: var(--ush-border-strong);
+  }
+  html.usc-helper-dark .ui-widget-header {
+    /* beats vendor_styles.css: .ui-widget-header { background: url(...) ... rgb(204, 204, 204);
+       color: rgb(34, 34, 34); border-color: rgb(170, 170, 170) } - the `background` shorthand also
+       clears the tiled highlight image the vendor rule sets. */
+    background: var(--ush-surface-hover);
+    color: var(--ush-text);
+    border-color: var(--ush-border-strong);
+  }
+  html.usc-helper-dark #dialog_aud,
+  html.usc-helper-dark #dialog_PassNP,
+  html.usc-helper-dark #dialog_empty {
+    /* each is an inline background-color (rgb(255, 237, 166) or rgb(255, 255, 255) per devtools),
+       so !important is required. */
+    background-color: var(--ush-surface-raised) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .modal-content {
+    /* beats vendor_styles.css: .modal-content { background-color: rgb(255, 255, 255); border-color:
+       rgba(0, 0, 0, 0.2) } - the #SessionModal "Loading, please wait..." dialog. */
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border-strong);
+    color: var(--ush-text);
+  }
+
+  /* ---------------------------------------------------------------- myDepartments */
+  html.usc-helper-dark .department-header {
+    /* beats site_styles.css and department_styles.css (identical rule in both):
+       .department-header:nth-child(4n+3) { background-color: rgb(242, 241, 241) } - collapses the
+       zebra striping to one flat shade across all nth-child variants, same fix as .course-header
+       above. Specificity: their rule is 2 classes/pseudo-classes + 0 types; this rule is 2 classes
+       + 1 type (html), so it wins without !important. */
+    background-color: var(--ush-surface-alt);
+  }
+
+  html.usc-helper-dark .dept_srchGo {
+    /* beats site_styles.css: .dept_srchGo { background-color: rgb(224, 224, 224); border: 0px;
+       border-color: currentcolor; border-bottom: 0px } - the "Find" submit button next to the
+       Program search box, shared markup on /Departments and /Courses. text color was already
+       fine (inherits from the generic dark-mode text color), only the light gray fill needed
+       fixing. Specificity: their rule is 1 class + 0 types; this rule is 2 classes + 1 type, so
+       it wins without !important. */
+    background-color: var(--ush-surface-hover);
+  }
+  html.usc-helper-dark .dept_srchGo:hover,
+  html.usc-helper-dark .dept_srchGo:focus {
+    /* WebReg has no dedicated :hover/:focus rule for .dept_srchGo (browser defaults only), so this
+       just gives it the same hover feedback as the other buttons (.btn-default:hover) above. */
+    background-color: var(--ush-border-strong);
+  }
+
+  /* ---------------------------------------------------------------- myCourses */
+  html.usc-helper-dark .crsPgDeptInfo {
+    /* beats site_styles.css: .crsPgDeptInfo { color: rgb(81, 81, 81); border-bottom: 2px solid
+       rgb(236, 236, 236) } - color was already overridden by the generic p/span text-color rule
+       above, only the border-bottom color needed mapping to --ush-border. */
+    border-bottom-color: var(--ush-border);
+  }
+
+  html.usc-helper-dark .pagination > .disabled > a,
+  html.usc-helper-dark .pagination > .disabled > a:focus,
+  html.usc-helper-dark .pagination > .disabled > a:hover,
+  html.usc-helper-dark .pagination > .disabled > span,
+  html.usc-helper-dark .pagination > .disabled > span:focus,
+  html.usc-helper-dark .pagination > .disabled > span:hover {
+    /* beats site_styles.css (same selector list, which itself wins over an identical vendor_styles.css
+       rule by source order): background-color: rgb(255, 255, 255); color: rgb(153, 153, 153) - the
+       disabled "«" (skip-to-previous) / "»" (skip-to-next) pagination items. border-color:
+       rgb(221, 221, 221) is deliberately left alone here (not remapped to --ush-border) since the
+       normal/active pagination links also carry that same border-color unmodified and read fine
+       against the dark background - overriding it here made the disabled item's outline the only
+       one that went missing. Specificity: their rule is 2 classes + 1 type; this rule is 2 classes
+       + 2 types (html + a/span), so it wins without !important. */
+    background-color: var(--ush-surface-alt);
+    color: var(--ush-text-muted);
+  }
+
+  /* ---------------------------------------------------------------- Checkout */
+
+  html.usc-helper-dark .RegAdDrpTitl {
+    /* beats site_styles.css: .RegAdDrpTitl { background-color: rgb(102, 102, 102); color: rgb(255,
+       255, 255); padding: 3px } - the "You are about to REGISTER/DROP for the following sections:"
+       bar. Single class shared by both the REGISTER and DROP variants (report only shows one rule,
+       keyed off the class, not the text), so this covers both without a separate selector. */
+    background-color: var(--ush-surface-raised);
+    color: var(--ush-text);
+    border-bottom: 1px solid var(--ush-border);
+  }
+
+  /* ---------------------------------------------------------------- Registration Appointment */
+
+  html.usc-helper-dark .permit-background {
+    /* beats site_styles.css: .permit-background { background-color: rgb(241, 241, 241); border:
+       thin solid rgb(220, 220, 220); border-color: rgb(220, 220, 220) } - no color is set by
+       WebReg on this element or its child div/span (confirmed by the report: "no matching page
+       rules" for both), so the appointment date text already inherits --ush-text correctly once
+       the background is dark; only the card surface itself needs remapping. */
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+  }
+
+  /* ---------------------------------------------------------------- Kendo Scheduler */
+  /* Both k-state-* (older Kendo) and unprefixed (newer Kendo) names are covered since the exact
+     Kendo version WebReg ships is unconfirmed. */
+
+  html.usc-helper-dark .k-widget,
+  html.usc-helper-dark .k-scheduler {
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-toolbar,
+  html.usc-helper-dark .k-header,
+  html.usc-helper-dark .k-scheduler .k-toolbar {
+    background: var(--ush-surface-raised) !important;
+    background-image: none !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-navigation .k-link,
+  html.usc-helper-dark .k-scheduler-views .k-link,
+  html.usc-helper-dark .k-button {
+    background: var(--ush-surface-hover) !important;
+    background-image: none !important;
+    border-color: var(--ush-border-strong) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-views .k-state-selected,
+  html.usc-helper-dark .k-scheduler-views .k-selected {
+    background: var(--ush-gold) !important;
+    color: var(--ush-gold-ink) !important;
+    border-color: var(--ush-gold) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-header,
+  html.usc-helper-dark .k-scheduler-header-wrap,
+  html.usc-helper-dark .k-scheduler-header th,
+  html.usc-helper-dark .k-scheduler-head {
+    background-color: var(--ush-surface-raised) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text) !important;
+  }
+  html.usc-helper-dark .k-scheduler-times,
+  html.usc-helper-dark .k-scheduler-times th,
+  html.usc-helper-dark .k-scheduler-timecolumn {
+    background-color: var(--ush-surface-sunken) !important;
+    border-color: var(--ush-border) !important;
+    color: var(--ush-text-muted) !important;
+  }
+
+  html.usc-helper-dark .k-scheduler-content,
+  html.usc-helper-dark .k-scheduler-layout,
+  html.usc-helper-dark .k-scheduler-table {
+    background-color: var(--ush-surface) !important;
+  }
+  html.usc-helper-dark .k-scheduler-table td,
+  html.usc-helper-dark .k-scheduler-table th,
+  html.usc-helper-dark .k-scheduler-content td {
+    border-color: var(--ush-border) !important;
+  }
+  html.usc-helper-dark .k-nonwork-hour,
+  html.usc-helper-dark .k-weekend,
+  html.usc-helper-dark .k-alt,
+  html.usc-helper-dark .k-scheduler-table .k-middle-row {
+    background-color: var(--ush-surface-alt) !important;
+  }
+  html.usc-helper-dark .k-today {
+    /* was a faint --ush-gold tint to mirror Kendo's own light-mode "today" column highlight, but
+       read as an unwanted yellow column in dark mode - flattened to the same surface as the rest
+       of the scheduler table (html.usc-helper-dark .k-scheduler-table above) so today's column no
+       longer stands out. */
+    background-color: var(--ush-surface) !important;
+  }
+  html.usc-helper-dark .k-current-time {
+    background-color: var(--ush-gold) !important;
+  }
+
+  /* ---------------------------------------------------------------- Kendo Event edit dialog */
+  /* Confirmed via a devtools matched-rules report on the live Event dialog (double-click an empty
+     Calendar slot). The dialog isn't inside #scheduler and its root doesn't carry class "k-widget"
+     (only "k-window k-focus"), so it fell through every existing Kendo rule above - not a scoping
+     bug, just a genuinely uncovered element. */
+
+  html.usc-helper-dark .k-window {
+    /* beats vendor_kendo_styles.css: .k-window { background-color: rgb(255, 255, 255);
+       color: rgb(51, 51, 51) } and .k-window, .k-window-titlebar { border-color: rgb(221, 221, 221) } */
+    background-color: var(--ush-surface);
+    border-color: var(--ush-border);
+    color: var(--ush-text);
+  }
+
+  html.usc-helper-dark .k-window-titlebar {
+    /* No page rule sets a background here at all (report: "no matching page rules" beyond the
+       shared border-color above), so the titlebar was showing .k-window's own white through it.
+       The "Event" title text itself is already var(--ush-text) via the generic
+       html.usc-helper-dark span rule above, which is why it read as near-invisible light text on
+       that white titlebar - fixing the titlebar background alone makes it legible. Same story for
+       the k-window-titlebar-action close button: it's already themed dark by the generic
+       html.usc-helper-dark .k-button rule (it carries class k-button), but
+       vendor_kendo_styles.css's .k-window-titlebar-action { opacity: 0.5 } was blending that dark
+       button against the white titlebar behind it into the washed-out gray box in the screenshot -
+       no separate close-button rule needed once the titlebar itself is dark. */
+    background-color: var(--ush-surface-raised);
+    border-color: var(--ush-border);
+  }
+
+  /* .k-edit-label > label (Label/Start/End) needs no rule of its own: it's already var(--ush-text)
+     via the generic html.usc-helper-dark label rule above (beats vendor_styles.css:
+     label { color: rgb(77, 77, 77) }) - the "near-invisible" text the report called out is the
+     same white-background problem as the title, resolved by the .k-window fix above. */
+
+  html.usc-helper-dark .k-input-solid {
+    /* beats vendor_kendo_styles.css: .k-input-solid { background-color: rgb(255, 255, 255);
+       color: rgb(34, 34, 34); border-color: rgb(204, 204, 204) } - this is the pill wrapper around
+       each time picker's text input and clock-icon button. The input inside it
+       (html.usc-helper-dark input:not([type="hidden"])... above) is already
+       var(--ush-surface-sunken)/var(--ush-border-strong), and the clock button is already dark via
+       .k-button - it's this wrapper alone that was white, making the whole control look like a
+       dark input floating in a white pill. Matched to the same surface as the input, with
+       var(--ush-border) as the separating edge WebReg's own 204,204,204 border was providing. */
+    background-color: var(--ush-surface-sunken);
+    border-color: var(--ush-border);
+  }
+
+  /* Event item colors are left exactly as WebReg sets them (inline, per event), except
+     Registered/Scheduled/Conflict - each confirmed via devtools to be an inline background-color
+     with no class carrying the color, so each can only be targeted by matching its exact inline
+     value. !important is required to beat an inline style. */
+
+  /* Registered: style="background-color: rgb(60, 167, 15); border-color: rgb(60, 167, 15)".
+     Text stays WebReg's own white (vendor_kendo_styles.css: .k-event { color: rgb(255, 255, 255) }),
+     which already reads fine against the darker green. */
+  html.usc-helper-dark .k-event[style*="background-color: rgb(60, 167, 15)"] {
+    background-color: #1f4d33 !important;
+    border-color: #2e6b47 !important;
+  }
+
+  /* Scheduled: style="background-color: rgb(255, 204, 0); border-color: rgb(255, 204, 0)".
+     These also carry Kendo's own .k-event-inverse class (vendor_kendo_styles.css:
+     .k-event.k-event-inverse { color: rgb(0, 0, 0) }), which forces black text for legibility on
+     the original bright yellow. Black text would vanish on the darkened fill, so it's flipped to
+     the theme's light text color here - no !important needed since this selector already
+     out-specifies Kendo's two-class rule. */
+  html.usc-helper-dark .k-event.k-event-inverse[style*="background-color: rgb(255, 204, 0)"] {
+    background-color: #6b5410 !important;
+    border-color: #8a6f1f !important;
+    color: var(--ush-text);
+  }
+
+  /* Conflict: style="background-color: rgb(255, 0, 0); border-color: rgb(255, 0, 0)". Text is
+     already white via the base .k-event rule, so no color override is needed. */
+  html.usc-helper-dark .k-event[style*="background-color: rgb(255, 0, 0)"] {
+    background-color: #6b1f1f !important;
+    border-color: #8a2f2f !important;
+  }
+
+  html.usc-helper-dark .k-event.k-state-selected,
+  html.usc-helper-dark .k-event.k-selected {
+    outline: 1px solid var(--ush-gold);
+  }
+
+  /* Legend swatches (calendar_styles.css: .legend-scheduled/.legend-registered/.legend-conflict,
+     each a plain class-based background-color, no inline style, no !important) - remapped to the
+     same darkened values as their matching event fills above so the legend stays accurate.
+     .legend-blocked (Appointment) is intentionally left alone. */
+  html.usc-helper-dark .legend-scheduled {
+    background-color: #6b5410;
+  }
+  html.usc-helper-dark .legend-registered {
+    background-color: #1f4d33;
+  }
+  html.usc-helper-dark .legend-conflict {
+    background-color: #6b1f1f;
+  }
+
+  html.usc-helper-dark .k-scheduler-content::-webkit-scrollbar {
+    background: var(--ush-surface-sunken);
+  }
+  html.usc-helper-dark .k-scheduler-content::-webkit-scrollbar-thumb {
+    background: var(--ush-border-strong);
+    border-radius: 4px;
+  }
+
+  /* ---------------------------------------------------------------- our own injected UI */
+
+  html.usc-helper-dark .Toastify__toast {
+    background: var(--ush-surface-raised);
+    color: var(--ush-text);
+  }
+}
+
+@media print {
+  /* Belt-and-braces: everything above is already scoped to @media screen and colors event/legend
+     elements by class rather than inline style, so print should already be untouched. This is a
+     safety net in case a future rule slips outside that block. */
+  html.usc-helper-dark,
+  html.usc-helper-dark body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

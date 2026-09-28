@@ -7,6 +7,9 @@ import { toast } from "react-toastify";
 import * as EmailValidator from "email-validator";
 import { getCurrentTerm } from "@/extension/getCurrentTerm";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
+import { shouldEnableDarkMode } from "@/extension/darkMode";
+import { darkPalette } from "@/extension/darkPalette";
+import { darkModeStorage, extensionEnabledStorage, useStorageItem } from "@/extension/storage";
 
 const localStorageEmailKey = "uscScheduleHelperEmail";
 const localStoragePhoneKey = "uscScheduleHelperPhone";
@@ -15,20 +18,27 @@ const Input = ({
   value,
   onChange,
   type,
+  darkMode,
 }: {
   type?: React.InputHTMLAttributes<unknown>["type"];
   label: string;
   value: string;
   onChange: (value: string) => void;
+  darkMode: boolean;
 }) => {
   return (
-    <div className="flex flex-col items-center gap-1 bg-gray-100 rounded-xl p-1 w-full">
-      <Typography variant="body2" className="font-bold text-neutral-400 text-xs ml-4 -mb-3 w-full">
+    <div
+      className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? darkPalette.bgSurfaceRaised : "bg-gray-100"}`}
+    >
+      <Typography
+        variant="body2"
+        className={`font-bold text-xs ml-4 -mb-3 w-full ${darkMode ? darkPalette.textMutedImportant : "text-neutral-400"}`}
+      >
         {label}
       </Typography>
       <TextField
         type={type}
-        className={`flex w-full bg-white rounded-xl`}
+        className={`flex w-full rounded-xl ${darkMode ? "bg-transparent" : "bg-white"}`}
         size="small"
         variant="outlined"
         sx={{
@@ -56,7 +66,7 @@ const Input = ({
   );
 };
 
-const CollectInfo = ({ onClose }: { onClose: () => void }) => {
+const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boolean }) => {
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass)!;
 
   const { mutateAsync, isPending, data, error } = trpc.user.addWatchedClass.useMutation();
@@ -150,9 +160,17 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
     }
     return (
       <>
-        <div className="flex flex-col items-center gap-1 bg-gray-100 rounded-xl p-1 w-full">
-          <Input label="Email" value={email} onChange={setEmail} type={"email"} />
-          <Input label="Phone (optional, $1 per section per semester)" type={"tel"} value={phone} onChange={setPhone} />
+        <div
+          className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? darkPalette.bgSurfaceRaised : "bg-gray-100"}`}
+        >
+          <Input label="Email" value={email} onChange={setEmail} type={"email"} darkMode={darkMode} />
+          <Input
+            label="Phone (optional, $1 per section per semester)"
+            type={"tel"}
+            value={phone}
+            onChange={setPhone}
+            darkMode={darkMode}
+          />
         </div>
       </>
     );
@@ -197,7 +215,7 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
           {isValidEmail && (
             <button
               disabled={isPendingLogin}
-              className="flex items-center gap-1 px-2 py-1 text-sm font-bold text-neutral-400 hover-scale"
+              className="flex items-center gap-1 rounded-lg border! border-[#8b0000]! bg-transparent! px-2 py-1 text-sm font-bold text-[#8b0000]! hover-scale"
               onClick={() => {
                 sendLoginEmail({ email });
               }}
@@ -207,7 +225,7 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
           )}
           <button
             disabled={isPending || !isValidEmail}
-            className="flex items-center gap-1 bg-gray-100 rounded-lg px-3 py-1 text-sm font-bold hover-scale"
+            className="flex items-center gap-1 rounded-lg bg-[#8b0000]! px-3 py-1 text-sm font-bold text-white! hover-scale"
             onClick={() => {
               if (data || error) {
                 onClose();
@@ -226,6 +244,15 @@ const CollectInfo = ({ onClose }: { onClose: () => void }) => {
 const NotificationModal = () => {
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass)!;
   const setSelectedClass = useScheduleHelperContext((state) => state.setSelectedClass);
+  const [darkModeSetting] = useStorageItem(darkModeStorage, false);
+  const [extensionEnabled] = useStorageItem(extensionEnabledStorage, true);
+  // This modal also mounts on classes.usc.edu (see src/entrypoints/content.tsx's content-script
+  // matches), which has no dark-mode support at all - darkMode.content.ts only runs on
+  // webreg.usc.edu, so classes.usc.edu never gets html.usc-helper-dark or webregDark.css. Reusing
+  // shouldEnableDarkMode's page allowlist here (rather than the raw darkModeStorage value) keeps
+  // this modal light there even when the user's dark-mode setting is on, and also respects the
+  // "Enable Extension" toggle, which the raw storage read didn't.
+  const darkMode = shouldEnableDarkMode({ enabled: extensionEnabled, darkMode: darkModeSetting });
 
   const onClose = () => {
     setSelectedClass(null);
@@ -242,13 +269,15 @@ const NotificationModal = () => {
     >
       <>
         <div
-          className={`flex outline-hidden flex-col items-center gap-4 w-full md:w-[500px] min-h-[200px] absolute bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 px-6 py-6 rounded-t-3xl md:rounded-2xl shadow-lg bg-white max-h-screen overflow-y-auto pb-8 md:pb-4`}
+          className={`flex outline-hidden flex-col items-center gap-4 w-full md:w-[500px] min-h-[200px] absolute bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 px-6 py-6 rounded-t-3xl md:rounded-2xl shadow-lg max-h-screen overflow-y-auto pb-8 md:pb-4 ${
+            darkMode ? `${darkPalette.bgSurface} border ${darkPalette.borderDefault}` : "bg-white"
+          }`}
         >
           {selectedClass ? (
             "isInvalid" in selectedClass ? (
               <div>Invalid class or section</div>
             ) : (
-              <CollectInfo onClose={onClose} />
+              <CollectInfo onClose={onClose} darkMode={darkMode} />
             )
           ) : null}
         </div>

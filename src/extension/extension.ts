@@ -4,6 +4,7 @@ import { parseWebRegPage } from "@/extension/webRegPage";
 import type { Options } from "@/extension/utils";
 import { getCurrentSchedule, parseSchedule } from "@/extension/schedule";
 import { ICS_EXPORT_BUTTON_CLASS, insertCalendarExportButton } from "@/extension/calendarExport";
+import { setDarkModeActive, shouldEnableDarkMode } from "@/extension/darkMode";
 
 let initializationId = 0;
 
@@ -65,9 +66,15 @@ function cleanupExtension() {
 export const initExtension = (options: Options) => {
   const currentInitialization = ++initializationId;
   cleanupExtension();
+  // Applied via classList.toggle and independent of cleanupExtension() so re-running
+  // initExtension (SPA navigation, a settings change) doesn't flicker the theme off and back on.
+  setDarkModeActive(shouldEnableDarkMode(options));
 
   if (!options.enabled) {
-    return cleanupExtension;
+    return () => {
+      setDarkModeActive(false);
+      cleanupExtension();
+    };
   }
   const currentURL = window.location.href;
 
@@ -93,6 +100,7 @@ export const initExtension = (options: Options) => {
   return () => {
     if (currentInitialization === initializationId) {
       initializationId += 1;
+      setDarkModeActive(false);
       cleanupExtension();
     }
   };

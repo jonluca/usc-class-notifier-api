@@ -19,6 +19,10 @@ export const showUnitsStorage = storage.defineItem<boolean>("local:showUnits", {
   fallback: true,
 });
 
+export const darkModeStorage = storage.defineItem<boolean>("local:darkMode", {
+  fallback: false,
+});
+
 export function useStorageItem<T>(item: DefinedStorageItem<T>, initialValue: T) {
   const [value, setValue] = useState(initialValue);
   const [isLoaded, setIsLoaded] = useState(false);
