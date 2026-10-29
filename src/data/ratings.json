@@ -48,7 +48,7 @@
     "legacyId": 15632
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.5,
     "firstName": "Gandhi",
     "lastName": "Puvvada",
     "legacyId": 15633
@@ -306,7 +306,7 @@
     "legacyId": 61229
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "Todd",
     "lastName": "Boyd",
     "legacyId": 63136
@@ -336,7 +336,7 @@
     "legacyId": 101760
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "Rex",
     "lastName": "Kovacevich",
     "legacyId": 103115
@@ -378,13 +378,13 @@
     "legacyId": 136142
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "Jason",
     "lastName": "Glenn",
     "legacyId": 136404
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.7,
     "firstName": "Oussama",
     "lastName": "Safadi",
     "legacyId": 143435
@@ -444,7 +444,7 @@
     "legacyId": 170466
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "Arif",
     "lastName": "Ansari",
     "legacyId": 170468
@@ -558,7 +558,7 @@
     "legacyId": 217371
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "David",
     "lastName": "Schwartz",
     "legacyId": 242884
@@ -690,7 +690,7 @@
     "legacyId": 318347
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.7,
     "firstName": "Carl",
     "lastName": "Voigt",
     "legacyId": 327909
@@ -708,7 +708,7 @@
     "legacyId": 329114
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.2,
     "firstName": "Shahram",
     "lastName": "Ghandeharizadeh",
     "legacyId": 336503
@@ -756,7 +756,7 @@
     "legacyId": 359526
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4,
     "firstName": "Marc",
     "lastName": "Aubertin",
     "legacyId": 360742
@@ -828,7 +828,7 @@
     "legacyId": 385766
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "Sharon",
     "lastName": "Carnicke",
     "legacyId": 385767
@@ -876,7 +876,7 @@
     "legacyId": 400991
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.9,
     "firstName": "Leonard",
     "lastName": "Maltin",
     "legacyId": 401651
@@ -930,7 +930,7 @@
     "legacyId": 412302
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.6,
     "firstName": "Jay",
     "lastName": "Kuo",
     "legacyId": 414206
@@ -1170,7 +1170,7 @@
     "legacyId": 474782
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "David",
     "lastName": "Roman",
     "legacyId": 474784
@@ -1206,7 +1206,7 @@
     "legacyId": 491417
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.5,
     "firstName": "Nick",
     "lastName": "Stoubis",
     "legacyId": 493364
@@ -1272,7 +1272,7 @@
     "legacyId": 508402
   },
   {
-    "avgRating": 1.9,
+    "avgRating": 2,
     "firstName": "Joan",
     "lastName": "Piggott",
     "legacyId": 517597
@@ -1284,7 +1284,7 @@
     "legacyId": 524371
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.5,
     "firstName": "Antonia",
     "lastName": "Szabari",
     "legacyId": 529718
@@ -1548,7 +1548,7 @@
     "legacyId": 610947
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.4,
     "firstName": "Stephanie",
     "lastName": "Bower",
     "legacyId": 614976
@@ -1608,7 +1608,7 @@
     "legacyId": 649926
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 2.7,
     "firstName": "Ali",
     "lastName": "Zahid",
     "legacyId": 653973
@@ -1752,7 +1752,7 @@
     "legacyId": 670974
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 5,
     "firstName": "Kathleen",
     "lastName": "Dunn",
     "legacyId": 671298
@@ -1800,7 +1800,7 @@
     "legacyId": 675118
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.7,
     "firstName": "Jen",
     "lastName": "Floto",
     "legacyId": 675122
@@ -1812,7 +1812,7 @@
     "legacyId": 675126
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.7,
     "firstName": "Lucienne",
     "lastName": "Aarsen",
     "legacyId": 675663
@@ -2160,7 +2160,7 @@
     "legacyId": 719151
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.5,
     "firstName": "Mark",
     "lastName": "Marino",
     "legacyId": 720949
@@ -2238,7 +2238,7 @@
     "legacyId": 739299
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Julia",
     "lastName": "Paull",
     "legacyId": 739310
@@ -2322,7 +2322,7 @@
     "legacyId": 747909
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "Priya",
     "lastName": "Jaikumar",
     "legacyId": 747910
@@ -2484,7 +2484,7 @@
     "legacyId": 813567
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.9,
     "firstName": "Will",
     "lastName": "Berelson",
     "legacyId": 816694
@@ -3036,7 +3036,7 @@
     "legacyId": 945786
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "George",
     "lastName": "Newhouse",
     "legacyId": 946115
@@ -3192,7 +3192,7 @@
     "legacyId": 974952
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.9,
     "firstName": "Stephen",
     "lastName": "Mack",
     "legacyId": 974954
@@ -3492,7 +3492,7 @@
     "legacyId": 1054934
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 4,
     "firstName": "John",
     "lastName": "Rowe",
     "legacyId": 1056552
@@ -3612,7 +3612,7 @@
     "legacyId": 1097667
   },
   {
-    "avgRating": 3,
+    "avgRating": 2.9,
     "firstName": "Marco",
     "lastName": "Papa",
     "legacyId": 1104782
@@ -3684,7 +3684,7 @@
     "legacyId": 1126689
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 3.8,
     "firstName": "Martha",
     "lastName": "Townsend",
     "legacyId": 1128488
@@ -3834,7 +3834,7 @@
     "legacyId": 1155658
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4,
     "firstName": "Mitra",
     "lastName": "Parineh",
     "legacyId": 1156363
@@ -4140,7 +4140,7 @@
     "legacyId": 1207261
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.4,
     "firstName": "Tok",
     "lastName": "Thompson",
     "legacyId": 1207495
@@ -4254,13 +4254,13 @@
     "legacyId": 1223371
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.2,
     "firstName": "Jacob",
     "lastName": "Ross",
     "legacyId": 1223685
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.1,
     "firstName": "Lorena",
     "lastName": "Gallego",
     "legacyId": 1223686
@@ -4518,7 +4518,7 @@
     "legacyId": 1268330
   },
   {
-    "avgRating": 1.9,
+    "avgRating": 1.8,
     "firstName": "Mikhailo",
     "lastName": "Trifunac",
     "legacyId": 1268853
@@ -4626,7 +4626,7 @@
     "legacyId": 1279784
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.9,
     "firstName": "William (Yance)",
     "lastName": "Wyatt",
     "legacyId": 1279789
@@ -4638,7 +4638,7 @@
     "legacyId": 1280011
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.4,
     "firstName": "Shahin",
     "lastName": "Nazarian",
     "legacyId": 1280034
@@ -4728,7 +4728,7 @@
     "legacyId": 1288367
   },
   {
-    "avgRating": 3.1,
+    "avgRating": 3.2,
     "firstName": "Johanna",
     "lastName": "Tolan",
     "legacyId": 1288370
@@ -4806,7 +4806,7 @@
     "legacyId": 1306557
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.6,
     "firstName": "Jeffery",
     "lastName": "Sellers",
     "legacyId": 1307229
@@ -4842,7 +4842,7 @@
     "legacyId": 1307880
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.1,
     "firstName": "Scott",
     "lastName": "Easley",
     "legacyId": 1307919
@@ -5208,7 +5208,7 @@
     "legacyId": 1352051
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.3,
     "firstName": "Dennis",
     "lastName": "Schorr",
     "legacyId": 1352286
@@ -5460,7 +5460,7 @@
     "legacyId": 1378067
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Kyung",
     "lastName": "Jung",
     "legacyId": 1379308
@@ -5736,13 +5736,13 @@
     "legacyId": 1417991
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "Robert",
     "lastName": "English",
     "legacyId": 1419286
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.6,
     "firstName": "Tom",
     "lastName": "Chang",
     "legacyId": 1420444
@@ -5814,7 +5814,7 @@
     "legacyId": 1423678
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.9,
     "firstName": "Emily",
     "lastName": "Liman",
     "legacyId": 1424191
@@ -6114,7 +6114,7 @@
     "legacyId": 1448190
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.8,
     "firstName": "Steve",
     "lastName": "Hsu",
     "legacyId": 1448878
@@ -6402,7 +6402,7 @@
     "legacyId": 1485949
   },
   {
-    "avgRating": 0,
+    "avgRating": 3,
     "firstName": "Alexander",
     "lastName": "Robinson",
     "legacyId": 1486086
@@ -6978,7 +6978,7 @@
     "legacyId": 1525757
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4,
     "firstName": "Sarah",
     "lastName": "Portnoy",
     "legacyId": 1525805
@@ -7008,7 +7008,7 @@
     "legacyId": 1526591
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.2,
     "firstName": "Daniela",
     "lastName": "Bleichmar",
     "legacyId": 1526783
@@ -7224,7 +7224,7 @@
     "legacyId": 1547241
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.3,
     "firstName": "Jennifer",
     "lastName": "Swift",
     "legacyId": 1547396
@@ -7470,7 +7470,7 @@
     "legacyId": 1569826
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Rahsan",
     "lastName": "Akbulut",
     "legacyId": 1569974
@@ -7632,7 +7632,7 @@
     "legacyId": 1580126
   },
   {
-    "avgRating": 4,
+    "avgRating": 4.1,
     "firstName": "Oliver",
     "lastName": "Mayer",
     "legacyId": 1580308
@@ -7686,7 +7686,7 @@
     "legacyId": 1582754
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.1,
     "firstName": "Todd",
     "lastName": "Gish",
     "legacyId": 1583258
@@ -7728,7 +7728,7 @@
     "legacyId": 1586076
   },
   {
-    "avgRating": 2.2,
+    "avgRating": 2.1,
     "firstName": "Thomas",
     "lastName": "Knapp",
     "legacyId": 1586945
@@ -7752,7 +7752,7 @@
     "legacyId": 1591129
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "Sandra",
     "lastName": "Disner",
     "legacyId": 1593520
@@ -7782,7 +7782,7 @@
     "legacyId": 1599590
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 2.8,
     "firstName": "David",
     "lastName": "Weber",
     "legacyId": 1599831
@@ -7962,7 +7962,7 @@
     "legacyId": 1611513
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.8,
     "firstName": "William",
     "lastName": "Gorski",
     "legacyId": 1611818
@@ -8172,7 +8172,7 @@
     "legacyId": 1634233
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Aaron",
     "lastName": "Cote",
     "legacyId": 1634254
@@ -8460,7 +8460,7 @@
     "legacyId": 1656569
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 2.8,
     "firstName": "Sara",
     "lastName": "McSweyn",
     "legacyId": 1656813
@@ -8568,7 +8568,7 @@
     "legacyId": 1666675
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.5,
     "firstName": "Juan",
     "lastName": "Araque",
     "legacyId": 1668327
@@ -8586,7 +8586,7 @@
     "legacyId": 1669958
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Brian",
     "lastName": "Bernards",
     "legacyId": 1670170
@@ -8616,7 +8616,7 @@
     "legacyId": 1670908
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.9,
     "firstName": "Paolo",
     "lastName": "Zanardi",
     "legacyId": 1671075
@@ -8676,7 +8676,7 @@
     "legacyId": 1675024
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Rotem",
     "lastName": "Gilbert",
     "legacyId": 1675399
@@ -9066,7 +9066,7 @@
     "legacyId": 1710668
   },
   {
-    "avgRating": 2.1,
+    "avgRating": 2.2,
     "firstName": "Hajime",
     "lastName": "Hoji",
     "legacyId": 1710843
@@ -9150,7 +9150,7 @@
     "legacyId": 1716232
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.6,
     "firstName": "Shannon",
     "lastName": "Gibson",
     "legacyId": 1716538
@@ -9180,7 +9180,7 @@
     "legacyId": 1719854
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Benjamin",
     "lastName": "Uchiyama",
     "legacyId": 1720581
@@ -9216,7 +9216,7 @@
     "legacyId": 1723715
   },
   {
-    "avgRating": 2.5,
+    "avgRating": 2.6,
     "firstName": "Matthew",
     "lastName": "Michael",
     "legacyId": 1723731
@@ -9384,7 +9384,7 @@
     "legacyId": 1735911
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 3.3,
     "firstName": "Dan",
     "lastName": "Field",
     "legacyId": 1735912
@@ -9576,7 +9576,7 @@
     "legacyId": 1751877
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "David",
     "lastName": "McKemy",
     "legacyId": 1752137
@@ -9714,7 +9714,7 @@
     "legacyId": 1764885
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.5,
     "firstName": "Maki",
     "lastName": "Irie",
     "legacyId": 1765460
@@ -9732,7 +9732,7 @@
     "legacyId": 1766432
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "David",
     "lastName": "Crombecque",
     "legacyId": 1766530
@@ -9858,7 +9858,7 @@
     "legacyId": 1784026
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.8,
     "firstName": "Michael",
     "lastName": "Thom",
     "legacyId": 1784175
@@ -9954,7 +9954,7 @@
     "legacyId": 1788016
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "Erik",
     "lastName": "Kolb",
     "legacyId": 1788276
@@ -10032,7 +10032,7 @@
     "legacyId": 1792713
   },
   {
-    "avgRating": 4,
+    "avgRating": 4.1,
     "firstName": "Masako",
     "lastName": "Tamanaha",
     "legacyId": 1792731
@@ -10380,7 +10380,7 @@
     "legacyId": 1811331
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "Cheryl",
     "lastName": "Wakslak",
     "legacyId": 1811656
@@ -10410,7 +10410,7 @@
     "legacyId": 1812634
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.7,
     "firstName": "Jillian",
     "lastName": "Pierson",
     "legacyId": 1813521
@@ -10434,7 +10434,7 @@
     "legacyId": 1814778
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.3,
     "firstName": "Gabriel",
     "lastName": "Kahn",
     "legacyId": 1814937
@@ -10452,7 +10452,7 @@
     "legacyId": 1815748
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.7,
     "firstName": "Gayle",
     "lastName": "Fiedler-Vierma",
     "legacyId": 1815960
@@ -10536,7 +10536,7 @@
     "legacyId": 1819060
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.4,
     "firstName": "Darren",
     "lastName": "Ruddell",
     "legacyId": 1819302
@@ -10698,7 +10698,7 @@
     "legacyId": 1829298
   },
   {
-    "avgRating": 1.9,
+    "avgRating": 2.4,
     "firstName": "David",
     "lastName": "Gerber",
     "legacyId": 1829683
@@ -10908,13 +10908,13 @@
     "legacyId": 1847978
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.2,
     "firstName": "Indra",
     "lastName": "Mukhopadhyay",
     "legacyId": 1848039
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.1,
     "firstName": "Khalil",
     "lastName": "Iskarous",
     "legacyId": 1848281
@@ -10926,7 +10926,7 @@
     "legacyId": 1848858
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.6,
     "firstName": "Ladan",
     "lastName": "Masoudie",
     "legacyId": 1849372
@@ -10968,7 +10968,7 @@
     "legacyId": 1850829
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.4,
     "firstName": "Leah",
     "lastName": "Pate",
     "legacyId": 1850842
@@ -11112,7 +11112,7 @@
     "legacyId": 1856695
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.7,
     "firstName": "Gourab",
     "lastName": "Mukherjee",
     "legacyId": 1856808
@@ -11592,7 +11592,7 @@
     "legacyId": 1891296
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.6,
     "firstName": "Kadri",
     "lastName": "Vihvelin",
     "legacyId": 1891612
@@ -11682,7 +11682,7 @@
     "legacyId": 1894993
   },
   {
-    "avgRating": 3.1,
+    "avgRating": 3,
     "firstName": "Anna",
     "lastName": "Krylov",
     "legacyId": 1895496
@@ -12060,7 +12060,7 @@
     "legacyId": 1919057
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 2.4,
     "firstName": "Aluizio",
     "lastName": "Prata",
     "legacyId": 1919497
@@ -12246,7 +12246,7 @@
     "legacyId": 1931119
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.4,
     "firstName": "Helaine",
     "lastName": "Lopes",
     "legacyId": 1932246
@@ -12348,7 +12348,7 @@
     "legacyId": 1939371
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.2,
     "firstName": "Pierson",
     "lastName": "Clair",
     "legacyId": 1939963
@@ -12384,7 +12384,7 @@
     "legacyId": 1941911
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.5,
     "firstName": "Henry",
     "lastName": "Jenkins",
     "legacyId": 1941955
@@ -12444,7 +12444,7 @@
     "legacyId": 1945039
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.1,
     "firstName": "Samuel",
     "lastName": "Hires",
     "legacyId": 1945945
@@ -12708,7 +12708,7 @@
     "legacyId": 1970118
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.1,
     "firstName": "Krzysztof",
     "lastName": "Pilch",
     "legacyId": 1970490
@@ -13050,7 +13050,7 @@
     "legacyId": 1992767
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 2.4,
     "firstName": "Sarah",
     "lastName": "Bottjer",
     "legacyId": 1992803
@@ -13158,7 +13158,7 @@
     "legacyId": 1999461
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.4,
     "firstName": "Inna",
     "lastName": "Abramova",
     "legacyId": 1999537
@@ -13188,7 +13188,7 @@
     "legacyId": 2001207
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Karen",
     "lastName": "Perez",
     "legacyId": 2001773
@@ -13218,7 +13218,7 @@
     "legacyId": 2002805
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.7,
     "firstName": "Maria",
     "lastName": "Colman",
     "legacyId": 2002809
@@ -13410,7 +13410,7 @@
     "legacyId": 2014331
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.5,
     "firstName": "Rory",
     "lastName": "Lukins",
     "legacyId": 2015972
@@ -13476,7 +13476,7 @@
     "legacyId": 2017768
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.4,
     "firstName": "Elisabeth",
     "lastName": "Weiss",
     "legacyId": 2017772
@@ -13596,7 +13596,7 @@
     "legacyId": 2028054
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.4,
     "firstName": "Joe",
     "lastName": "Saltzman",
     "legacyId": 2028063
@@ -13740,7 +13740,7 @@
     "legacyId": 2038994
   },
   {
-    "avgRating": 2.5,
+    "avgRating": 5,
     "firstName": "Elena",
     "lastName": "Pierpaoli",
     "legacyId": 2040068
@@ -13758,7 +13758,7 @@
     "legacyId": 2041666
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.8,
     "firstName": "Marianne ",
     "lastName": "Szymanski",
     "legacyId": 2042919
@@ -14154,7 +14154,7 @@
     "legacyId": 2074286
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.4,
     "firstName": "Jessica",
     "lastName": "Piazza",
     "legacyId": 2074302
@@ -14190,7 +14190,7 @@
     "legacyId": 2075281
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 2.6,
     "firstName": "Mike",
     "lastName": "Lee",
     "legacyId": 2075536
@@ -14244,7 +14244,7 @@
     "legacyId": 2077718
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.8,
     "firstName": "Kendra",
     "lastName": "Walther",
     "legacyId": 2077738
@@ -14502,7 +14502,7 @@
     "legacyId": 2093989
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 2.5,
     "firstName": "Ahmad",
     "lastName": "Besaratinia",
     "legacyId": 2094158
@@ -14772,7 +14772,7 @@
     "legacyId": 2110229
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Scott",
     "lastName": "MacDonald",
     "legacyId": 2110249
@@ -14796,7 +14796,7 @@
     "legacyId": 2112777
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.8,
     "firstName": "Carlos",
     "lastName": "Delgado",
     "legacyId": 2113826
@@ -14880,7 +14880,7 @@
     "legacyId": 2117863
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.6,
     "firstName": "Hagit",
     "lastName": "Arieli-Chai",
     "legacyId": 2118615
@@ -14970,7 +14970,7 @@
     "legacyId": 2123549
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3,
     "firstName": "Liz",
     "lastName": "Falletta",
     "legacyId": 2123789
@@ -14988,7 +14988,7 @@
     "legacyId": 2124772
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.1,
     "firstName": "Canan",
     "lastName": "Ipek",
     "legacyId": 2124923
@@ -15096,7 +15096,7 @@
     "legacyId": 2129489
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "Monalisa",
     "lastName": "Chatterjee",
     "legacyId": 2130057
@@ -15252,7 +15252,7 @@
     "legacyId": 2142046
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "Rook",
     "lastName": "Campbell",
     "legacyId": 2142504
@@ -15290,7 +15290,7 @@
   {
     "avgRating": 4.8,
     "firstName": "Lisa",
-    "lastName": "Cooper-Vest",
+    "lastName": "Vest",
     "legacyId": 2144186
   },
   {
@@ -15378,7 +15378,7 @@
     "legacyId": 2150856
   },
   {
-    "avgRating": 2,
+    "avgRating": 2.2,
     "firstName": "Tatyana",
     "lastName": "Ryutov",
     "legacyId": 2151320
@@ -15414,7 +15414,7 @@
     "legacyId": 2151913
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4,
     "firstName": "John",
     "lastName": "Loper",
     "legacyId": 2152242
@@ -15444,13 +15444,13 @@
     "legacyId": 2154568
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.3,
     "firstName": "Sozan",
     "lastName": "Wali",
     "legacyId": 2155131
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.8,
     "firstName": "Maureen",
     "lastName": "Macias",
     "legacyId": 2156320
@@ -15582,7 +15582,7 @@
     "legacyId": 2163737
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 2.8,
     "firstName": "Costas",
     "lastName": "Synolakis",
     "legacyId": 2163738
@@ -15870,7 +15870,7 @@
     "legacyId": 2179905
   },
   {
-    "avgRating": 2.2,
+    "avgRating": 2.3,
     "firstName": "Brandon",
     "lastName": "Franzke",
     "legacyId": 2181292
@@ -15882,7 +15882,7 @@
     "legacyId": 2182147
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.5,
     "firstName": "Jennifer",
     "lastName": "Cool",
     "legacyId": 2182159
@@ -15894,7 +15894,7 @@
     "legacyId": 2182509
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.6,
     "firstName": "Rehan",
     "lastName": "Kapadia",
     "legacyId": 2182956
@@ -15924,7 +15924,7 @@
     "legacyId": 2183918
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.8,
     "firstName": "Panayiota",
     "lastName": "Courelli",
     "legacyId": 2184122
@@ -15954,7 +15954,7 @@
     "legacyId": 2185467
   },
   {
-    "avgRating": 2.5,
+    "avgRating": 2.4,
     "firstName": "Jorge",
     "lastName": "De La Roca",
     "legacyId": 2185593
@@ -16014,7 +16014,7 @@
     "legacyId": 2188433
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Victoria",
     "lastName": "Petryshyn",
     "legacyId": 2189160
@@ -16608,7 +16608,7 @@
     "legacyId": 2227401
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Jeffrey",
     "lastName": "Dubin",
     "legacyId": 2227626
@@ -16800,7 +16800,7 @@
     "legacyId": 2242531
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Alan",
     "lastName": "Watts",
     "legacyId": 2243014
@@ -16890,7 +16890,7 @@
     "legacyId": 2245951
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.3,
     "firstName": "Rodney",
     "lastName": "Ramcharan",
     "legacyId": 2246344
@@ -17052,7 +17052,7 @@
     "legacyId": 2254714
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.1,
     "firstName": "Brett",
     "lastName": "Gordon",
     "legacyId": 2255099
@@ -17328,7 +17328,7 @@
     "legacyId": 2272065
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.4,
     "firstName": "Donald",
     "lastName": "Arnold",
     "legacyId": 2272139
@@ -17418,7 +17418,7 @@
     "legacyId": 2277201
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "Muhammad",
     "lastName": "Naveed",
     "legacyId": 2278581
@@ -17508,7 +17508,7 @@
     "legacyId": 2284051
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "Michael",
     "lastName": "Hall",
     "legacyId": 2284224
@@ -17706,7 +17706,7 @@
     "legacyId": 2294843
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.7,
     "firstName": "David",
     "lastName": "Poe",
     "legacyId": 2296037
@@ -18084,13 +18084,13 @@
     "legacyId": 2322244
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.2,
     "firstName": "Thomas",
     "lastName": "Mueller",
     "legacyId": 2322536
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.7,
     "firstName": "Todd",
     "lastName": "Brun",
     "legacyId": 2322635
@@ -18342,7 +18342,7 @@
     "legacyId": 2340515
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.8,
     "firstName": "Julie",
     "lastName": "Van Dam",
     "legacyId": 2341020
@@ -18366,7 +18366,7 @@
     "legacyId": 2343964
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 4,
     "firstName": "Calum",
     "lastName": "Rickard",
     "legacyId": 2344466
@@ -18396,7 +18396,7 @@
     "legacyId": 2346324
   },
   {
-    "avgRating": 1.8,
+    "avgRating": 1.7,
     "firstName": "Jorge",
     "lastName": "De La Roca",
     "legacyId": 2347457
@@ -18510,7 +18510,7 @@
     "legacyId": 2353889
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.9,
     "firstName": "Kathleen",
     "lastName": "Dunn-Muzingo",
     "legacyId": 2353926
@@ -18606,7 +18606,7 @@
     "legacyId": 2359249
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.6,
     "firstName": "Cara",
     "lastName": "Mullio",
     "legacyId": 2359404
@@ -18774,7 +18774,7 @@
     "legacyId": 2366748
   },
   {
-    "avgRating": 3.1,
+    "avgRating": 3,
     "firstName": "Gerald",
     "lastName": "Davison",
     "legacyId": 2366905
@@ -19038,7 +19038,7 @@
     "legacyId": 2385555
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Ketaki",
     "lastName": "Pant",
     "legacyId": 2386520
@@ -19584,7 +19584,7 @@
     "legacyId": 2420322
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 3.9,
     "firstName": "Aro",
     "lastName": "Velmet",
     "legacyId": 2420419
@@ -19644,7 +19644,7 @@
     "legacyId": 2423812
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "John",
     "lastName": "Alexander",
     "legacyId": 2424084
@@ -19692,7 +19692,7 @@
     "legacyId": 2428493
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.7,
     "firstName": "Jennifer",
     "lastName": "Lott",
     "legacyId": 2428494
@@ -20484,7 +20484,7 @@
     "legacyId": 2473488
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.1,
     "firstName": "Douglas",
     "lastName": "Becker",
     "legacyId": 2474538
@@ -21012,7 +21012,7 @@
     "legacyId": 2503068
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Francille",
     "lastName": "Wilson",
     "legacyId": 2503289
@@ -21222,7 +21222,7 @@
     "legacyId": 2518088
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.7,
     "firstName": "Michelle",
     "lastName": "Rosado",
     "legacyId": 2518270
@@ -21264,7 +21264,7 @@
     "legacyId": 2520687
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 2.2,
     "firstName": "Shalini",
     "lastName": "Gupta",
     "legacyId": 2520812
@@ -21474,7 +21474,7 @@
     "legacyId": 2531295
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.3,
     "firstName": "Jincai",
     "lastName": "Chang",
     "legacyId": 2531372
@@ -21564,13 +21564,13 @@
     "legacyId": 2536508
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.8,
     "firstName": "Neha",
     "lastName": "Bairoliya",
     "legacyId": 2536941
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.9,
     "firstName": "Corinna",
     "lastName": "Schroeder",
     "legacyId": 2537178
@@ -21720,7 +21720,7 @@
     "legacyId": 2546150
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.7,
     "firstName": "Katsuhiko",
     "lastName": "Oda",
     "legacyId": 2546689
@@ -21774,7 +21774,7 @@
     "legacyId": 2547890
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Alice",
     "lastName": "Baumgartner",
     "legacyId": 2548177
@@ -21792,7 +21792,7 @@
     "legacyId": 2548766
   },
   {
-    "avgRating": 2.4,
+    "avgRating": 2.9,
     "firstName": "Richard",
     "lastName": "Antaramian",
     "legacyId": 2548850
@@ -21906,7 +21906,7 @@
     "legacyId": 2557629
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.7,
     "firstName": "Tanvi",
     "lastName": "Patel",
     "legacyId": 2557931
@@ -21960,7 +21960,7 @@
     "legacyId": 2560591
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.7,
     "firstName": "Grace",
     "lastName": "Bahng",
     "legacyId": 2560650
@@ -22080,7 +22080,7 @@
     "legacyId": 2566539
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.2,
     "firstName": "Eva",
     "lastName": "Buechel",
     "legacyId": 2566716
@@ -22218,7 +22218,7 @@
     "legacyId": 2575157
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.8,
     "firstName": "Darius",
     "lastName": "Lakdawalla",
     "legacyId": 2575163
@@ -22284,7 +22284,7 @@
     "legacyId": 2578943
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 5,
     "firstName": "Adrian",
     "lastName": "De Leon",
     "legacyId": 2578944
@@ -22314,7 +22314,7 @@
     "legacyId": 2580902
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "Andrew",
     "lastName": "Chater",
     "legacyId": 2580937
@@ -22368,7 +22368,7 @@
     "legacyId": 2582640
   },
   {
-    "avgRating": 2.3,
+    "avgRating": 3.4,
     "firstName": "Feifei",
     "lastName": "Qian",
     "legacyId": 2582746
@@ -22416,7 +22416,7 @@
     "legacyId": 2585142
   },
   {
-    "avgRating": 3.2,
+    "avgRating": 3.5,
     "firstName": "John",
     "lastName": "Vidale",
     "legacyId": 2585558
@@ -22440,7 +22440,7 @@
     "legacyId": 2586492
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.7,
     "firstName": "Susie",
     "lastName": "Kim",
     "legacyId": 2586511
@@ -22488,7 +22488,7 @@
     "legacyId": 2590201
   },
   {
-    "avgRating": 4,
+    "avgRating": 4.1,
     "firstName": "Xiaojiang",
     "lastName": "Chen",
     "legacyId": 2590591
@@ -22638,7 +22638,7 @@
     "legacyId": 2594364
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.6,
     "firstName": "Jennifer",
     "lastName": "Moore",
     "legacyId": 2594820
@@ -22668,7 +22668,7 @@
     "legacyId": 2596428
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.9,
     "firstName": "Howard",
     "lastName": "Williamson",
     "legacyId": 2596599
@@ -23016,7 +23016,7 @@
     "legacyId": 2610497
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.7,
     "firstName": "Lorena",
     "lastName": "Martin",
     "legacyId": 2610868
@@ -23028,7 +23028,7 @@
     "legacyId": 2611862
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.2,
     "firstName": "Peggy",
     "lastName": "Stewart",
     "legacyId": 2612758
@@ -23070,7 +23070,7 @@
     "legacyId": 2615495
   },
   {
-    "avgRating": 3.4,
+    "avgRating": 3.5,
     "firstName": "Frank",
     "lastName": "Zerunyan",
     "legacyId": 2615695
@@ -23142,7 +23142,7 @@
     "legacyId": 2617629
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.7,
     "firstName": "Brett",
     "lastName": "Spatola",
     "legacyId": 2617663
@@ -23274,7 +23274,7 @@
     "legacyId": 2624203
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.7,
     "firstName": "Ryan",
     "lastName": "Park",
     "legacyId": 2624626
@@ -23376,7 +23376,7 @@
     "legacyId": 2627845
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Jaime",
     "lastName": "Meza",
     "legacyId": 2627971
@@ -23458,6 +23458,12 @@
     "firstName": "Caroline",
     "lastName": "Brandt",
     "legacyId": 2631951
+  },
+  {
+    "avgRating": 2.4,
+    "firstName": "Virginia",
+    "lastName": "Kuhn",
+    "legacyId": 2631973
   },
   {
     "avgRating": 4.2,
@@ -23568,7 +23574,7 @@
     "legacyId": 2635971
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4,
     "firstName": "Kristof",
     "lastName": "Aldenderfer",
     "legacyId": 2635980
@@ -23586,7 +23592,7 @@
     "legacyId": 2636441
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.4,
     "firstName": "Baizhu",
     "lastName": "Chen",
     "legacyId": 2636480
@@ -23628,7 +23634,7 @@
     "legacyId": 2637212
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Marlon",
     "lastName": "Twyman",
     "legacyId": 2637238
@@ -23646,7 +23652,7 @@
     "legacyId": 2637359
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.7,
     "firstName": "Gregory",
     "lastName": "Pohlner",
     "legacyId": 2637387
@@ -23712,7 +23718,7 @@
     "legacyId": 2638536
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 2.3,
     "firstName": "Joan",
     "lastName": "Flores-Villalobos",
     "legacyId": 2638661
@@ -23724,13 +23730,13 @@
     "legacyId": 2638761
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.3,
     "firstName": "Jennifer",
     "lastName": "Guinter",
     "legacyId": 2638766
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.2,
     "firstName": "Yalda",
     "lastName": "Khashe",
     "legacyId": 2638827
@@ -23790,7 +23796,7 @@
     "legacyId": 2643569
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.8,
     "firstName": "Joshua",
     "lastName": "Carlos",
     "legacyId": 2643849
@@ -23802,7 +23808,7 @@
     "legacyId": 2643850
   },
   {
-    "avgRating": 3,
+    "avgRating": 3.3,
     "firstName": "Geoffrey",
     "lastName": "von Oeyen",
     "legacyId": 2643893
@@ -23928,7 +23934,7 @@
     "legacyId": 2650371
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.8,
     "firstName": "Ben",
     "lastName": "Carrington",
     "legacyId": 2650745
@@ -23940,7 +23946,7 @@
     "legacyId": 2651852
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4,
     "firstName": "Paul",
     "lastName": "Nash",
     "legacyId": 2651859
@@ -24072,7 +24078,7 @@
     "legacyId": 2668059
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.5,
     "firstName": "Felipe",
     "lastName": "Jimenez",
     "legacyId": 2668065
@@ -24414,7 +24420,7 @@
     "legacyId": 2685682
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Sarah",
     "lastName": "Orem",
     "legacyId": 2685806
@@ -24642,7 +24648,7 @@
     "legacyId": 2698220
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Paul",
     "lastName": "Plucinsky",
     "legacyId": 2699417
@@ -24720,7 +24726,7 @@
     "legacyId": 2701846
   },
   {
-    "avgRating": 1.7,
+    "avgRating": 1.5,
     "firstName": "Joseph",
     "lastName": "Wang",
     "legacyId": 2702705
@@ -24774,7 +24780,7 @@
     "legacyId": 2704757
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 3.9,
     "firstName": "Lydie",
     "lastName": "Moudileno",
     "legacyId": 2705377
@@ -24918,7 +24924,7 @@
     "legacyId": 2713931
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4.1,
     "firstName": "Geoff",
     "lastName": "Boeing",
     "legacyId": 2714019
@@ -25050,7 +25056,7 @@
     "legacyId": 2726698
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.1,
     "firstName": "Rania",
     "lastName": "Ben Amor",
     "legacyId": 2727473
@@ -25098,7 +25104,7 @@
     "legacyId": 2729464
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 3.2,
     "firstName": "Bruce",
     "lastName": "Wilcox",
     "legacyId": 2729465
@@ -25164,7 +25170,7 @@
     "legacyId": 2732777
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.9,
     "firstName": "Peter",
     "lastName": "Winsky",
     "legacyId": 2733213
@@ -25242,7 +25248,7 @@
     "legacyId": 2735391
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.4,
     "firstName": "Bryan",
     "lastName": "Shilowich",
     "legacyId": 2735513
@@ -25272,7 +25278,7 @@
     "legacyId": 2736077
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 3.8,
     "firstName": "T.J.",
     "lastName": "McCarthy",
     "legacyId": 2736120
@@ -25356,7 +25362,7 @@
     "legacyId": 2738757
   },
   {
-    "avgRating": 2.4,
+    "avgRating": 2.6,
     "firstName": "Ciruce",
     "lastName": "Movahedi-Lankarani",
     "legacyId": 2738950
@@ -25530,7 +25536,7 @@
     "legacyId": 2748054
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.7,
     "firstName": "Wayne",
     "lastName": "Federman",
     "legacyId": 2748363
@@ -25566,13 +25572,13 @@
     "legacyId": 2750085
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.8,
     "firstName": "Sean",
     "lastName": "Kennedy",
     "legacyId": 2750092
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.7,
     "firstName": "Peter",
     "lastName": "Chung",
     "legacyId": 2750458
@@ -25680,7 +25686,7 @@
     "legacyId": 2755738
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.7,
     "firstName": "Robin",
     "lastName": "Stevens",
     "legacyId": 2756376
@@ -26034,7 +26040,7 @@
     "legacyId": 2770294
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.9,
     "firstName": "Shirin",
     "lastName": "Birjandi",
     "legacyId": 2770650
@@ -26070,13 +26076,13 @@
     "legacyId": 2773446
   },
   {
-    "avgRating": 5,
+    "avgRating": 0,
     "firstName": "Jackie",
     "lastName": "Wang",
     "legacyId": 2773925
   },
   {
-    "avgRating": 5,
+    "avgRating": 4.5,
     "firstName": "Xuezhe",
     "lastName": "Ma",
     "legacyId": 2774177
@@ -26160,7 +26166,7 @@
     "legacyId": 2780793
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 3.7,
     "firstName": "Andreas",
     "lastName": "Simon",
     "legacyId": 2780958
@@ -26232,7 +26238,7 @@
     "legacyId": 2783120
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.2,
     "firstName": "Sourena",
     "lastName": "Haj-Mohamadi",
     "legacyId": 2783195
@@ -26544,7 +26550,7 @@
     "legacyId": 2800789
   },
   {
-    "avgRating": 3,
+    "avgRating": 2.3,
     "firstName": "Brandon",
     "lastName": "Bourgeois",
     "legacyId": 2800791
@@ -26592,7 +26598,7 @@
     "legacyId": 2802338
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 3.8,
     "firstName": "Lauren",
     "lastName": "Opgenorth",
     "legacyId": 2802642
@@ -26724,7 +26730,7 @@
     "legacyId": 2811527
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4.2,
     "firstName": "Alan",
     "lastName": "Abrahamson",
     "legacyId": 2812489
@@ -26784,7 +26790,7 @@
     "legacyId": 2818131
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Pedro",
     "lastName": "Spindler-Ruiz",
     "legacyId": 2818501
@@ -26796,7 +26802,7 @@
     "legacyId": 2818896
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.1,
     "firstName": "Rita",
     "lastName": "Barakat",
     "legacyId": 2819334
@@ -26814,7 +26820,7 @@
     "legacyId": 2820215
   },
   {
-    "avgRating": 2,
+    "avgRating": 1.5,
     "firstName": "John",
     "lastName": "Orlando",
     "legacyId": 2820430
@@ -26862,7 +26868,7 @@
     "legacyId": 2822216
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.3,
     "firstName": "Ken",
     "lastName": "Bernstein",
     "legacyId": 2823795
@@ -27168,7 +27174,7 @@
     "legacyId": 2840850
   },
   {
-    "avgRating": 3.3,
+    "avgRating": 3.4,
     "firstName": "Christian",
     "lastName": "Amonson",
     "legacyId": 2841897
@@ -27186,7 +27192,7 @@
     "legacyId": 2842760
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.6,
     "firstName": "Charlie",
     "lastName": "Hannigan",
     "legacyId": 2843315
@@ -27204,7 +27210,7 @@
     "legacyId": 2844151
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Jason",
     "lastName": "Frenn",
     "legacyId": 2844260
@@ -27354,7 +27360,7 @@
     "legacyId": 2853718
   },
   {
-    "avgRating": 4.6,
+    "avgRating": 4.7,
     "firstName": "Robert",
     "lastName": "Werth",
     "legacyId": 2854122
@@ -27480,7 +27486,7 @@
     "legacyId": 2859658
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.5,
     "firstName": "Matthew",
     "lastName": "Hill",
     "legacyId": 2860021
@@ -27492,7 +27498,7 @@
     "legacyId": 2860635
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Daniel",
     "lastName": "Depew",
     "legacyId": 2860732
@@ -27606,7 +27612,7 @@
     "legacyId": 2866440
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.9,
     "firstName": "Kabirian",
     "lastName": "Alireza",
     "legacyId": 2866472
@@ -27678,7 +27684,7 @@
     "legacyId": 2868826
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3.7,
     "firstName": "Taly",
     "lastName": "Matejka ",
     "legacyId": 2868906
@@ -27696,7 +27702,7 @@
     "legacyId": 2869166
   },
   {
-    "avgRating": 0,
+    "avgRating": 1,
     "firstName": "So Yun",
     "lastName": "Ahn",
     "legacyId": 2869235
@@ -27792,7 +27798,7 @@
     "legacyId": 2872779
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 2.9,
     "firstName": "Todd",
     "lastName": "Grabarsky",
     "legacyId": 2872817
@@ -27876,7 +27882,7 @@
     "legacyId": 2879628
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Maryam",
     "lastName": "Pishgar",
     "legacyId": 2880218
@@ -27906,7 +27912,7 @@
     "legacyId": 2882058
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4,
     "firstName": "Arsalan",
     "lastName": "ul Haq",
     "legacyId": 2882121
@@ -27924,7 +27930,7 @@
     "legacyId": 2883104
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 3.6,
     "firstName": "Susanne",
     "lastName": "Hempel",
     "legacyId": 2883119
@@ -28080,7 +28086,7 @@
     "legacyId": 2892149
   },
   {
-    "avgRating": 0,
+    "avgRating": 1,
     "firstName": "Jim",
     "lastName": "Huntley",
     "legacyId": 2892172
@@ -28092,7 +28098,7 @@
     "legacyId": 2892355
   },
   {
-    "avgRating": 1,
+    "avgRating": 1.8,
     "firstName": "Jeffrey",
     "lastName": "Jenkins",
     "legacyId": 2892668
@@ -28158,13 +28164,13 @@
     "legacyId": 2895194
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.5,
     "firstName": "Shiaofong",
     "lastName": "Yin",
     "legacyId": 2895230
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 3.4,
     "firstName": "Shaibal",
     "lastName": "Dev Roy",
     "legacyId": 2895812
@@ -28212,7 +28218,7 @@
     "legacyId": 2896960
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.4,
     "firstName": "Rebecca",
     "lastName": "Fullan",
     "legacyId": 2897379
@@ -28278,7 +28284,7 @@
     "legacyId": 2901072
   },
   {
-    "avgRating": 0,
+    "avgRating": 3,
     "firstName": "Julien",
     "lastName": "Adams",
     "legacyId": 2901146
@@ -28332,7 +28338,7 @@
     "legacyId": 2902180
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.4,
     "firstName": "Steve",
     "lastName": "Sapra",
     "legacyId": 2902340
@@ -28410,7 +28416,7 @@
     "legacyId": 2906228
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 3,
     "firstName": "León",
     "lastName": "García Corona",
     "legacyId": 2906546
@@ -28434,7 +28440,7 @@
     "legacyId": 2907290
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.7,
     "firstName": "Bo hyun",
     "lastName": "Kim",
     "legacyId": 2907312
@@ -28548,7 +28554,7 @@
     "legacyId": 2914162
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Qiming",
     "lastName": "Wang",
     "legacyId": 2914676
@@ -28632,7 +28638,7 @@
     "legacyId": 2919758
   },
   {
-    "avgRating": 3,
+    "avgRating": 2.6,
     "firstName": "Teddy",
     "lastName": "Slowik",
     "legacyId": 2920406
@@ -28674,7 +28680,7 @@
     "legacyId": 2922136
   },
   {
-    "avgRating": 4.9,
+    "avgRating": 4.8,
     "firstName": "Neda",
     "lastName": "Maghsoodi",
     "legacyId": 2922347
@@ -28716,13 +28722,13 @@
     "legacyId": 2926477
   },
   {
-    "avgRating": 4,
+    "avgRating": 3.8,
     "firstName": "Admire",
     "lastName": "Mseba",
     "legacyId": 2926633
   },
   {
-    "avgRating": 1,
+    "avgRating": 3.3,
     "firstName": "Jonathan",
     "lastName": "Ogilvy",
     "legacyId": 2926660
@@ -28746,7 +28752,7 @@
     "legacyId": 2927405
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4,
     "firstName": "Audra",
     "lastName": "Quinn",
     "legacyId": 2927798
@@ -28770,7 +28776,7 @@
     "legacyId": 2928739
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "Christian",
     "lastName": "geske",
     "legacyId": 2929061
@@ -28872,7 +28878,7 @@
     "legacyId": 2938904
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.4,
     "firstName": "Ragheb",
     "lastName": "Raad",
     "legacyId": 2938991
@@ -28920,7 +28926,7 @@
     "legacyId": 2941284
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.1,
     "firstName": "Davy",
     "lastName": "McCall",
     "legacyId": 2941596
@@ -28956,7 +28962,7 @@
     "legacyId": 2942491
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 4,
     "firstName": "Matthew",
     "lastName": "Pfeffer",
     "legacyId": 2942652
@@ -29022,7 +29028,7 @@
     "legacyId": 2946552
   },
   {
-    "avgRating": 4.9,
+    "avgRating": 4.8,
     "firstName": "Dennis",
     "lastName": "Shen",
     "legacyId": 2946617
@@ -29370,7 +29376,7 @@
     "legacyId": 2957958
   },
   {
-    "avgRating": 2.1,
+    "avgRating": 2.2,
     "firstName": "Gao",
     "lastName": "Zijun",
     "legacyId": 2958844
@@ -29532,7 +29538,7 @@
     "legacyId": 2965457
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.8,
     "firstName": "Monica",
     "lastName": "Unda-Gutierrez",
     "legacyId": 2966036
@@ -29670,7 +29676,7 @@
     "legacyId": 2972121
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.8,
     "firstName": "Christian",
     "lastName": "Busch",
     "legacyId": 2972173
@@ -29850,7 +29856,7 @@
     "legacyId": 2978392
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.6,
     "firstName": "Raymond",
     "lastName": "Tsang",
     "legacyId": 2978426
@@ -30000,7 +30006,7 @@
     "legacyId": 2985172
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.7,
     "firstName": "Chamsi",
     "lastName": "Hssaine",
     "legacyId": 2985277
@@ -30048,7 +30054,7 @@
     "legacyId": 2987536
   },
   {
-    "avgRating": 5,
+    "avgRating": 4,
     "firstName": "Nicole",
     "lastName": "Jefferson",
     "legacyId": 2987538
@@ -30240,7 +30246,7 @@
     "legacyId": 2997726
   },
   {
-    "avgRating": 3.1,
+    "avgRating": 3.2,
     "firstName": "Bita",
     "lastName": "Minaravesh",
     "legacyId": 2997864
@@ -30342,7 +30348,7 @@
     "legacyId": 3003972
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.8,
     "firstName": "Wanmeng",
     "lastName": "Li",
     "legacyId": 3004091
@@ -30360,7 +30366,7 @@
     "legacyId": 3004535
   },
   {
-    "avgRating": 2.7,
+    "avgRating": 2.8,
     "firstName": "Kyoung sook ",
     "lastName": "Kim",
     "legacyId": 3004590
@@ -30378,7 +30384,7 @@
     "legacyId": 3005397
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.5,
     "firstName": "Robert",
     "lastName": "Decker",
     "legacyId": 3005406
@@ -30480,7 +30486,7 @@
     "legacyId": 3009100
   },
   {
-    "avgRating": 2.6,
+    "avgRating": 2.7,
     "firstName": "Lauren ",
     "lastName": "McElvain",
     "legacyId": 3009534
@@ -30504,7 +30510,7 @@
     "legacyId": 3010041
   },
   {
-    "avgRating": 3,
+    "avgRating": 1.7,
     "firstName": "Andrew",
     "lastName": "Smith",
     "legacyId": 3010187
@@ -30618,7 +30624,7 @@
     "legacyId": 3015064
   },
   {
-    "avgRating": 2.8,
+    "avgRating": 3.5,
     "firstName": "Dale",
     "lastName": "Legaspi",
     "legacyId": 3015338
@@ -30666,7 +30672,7 @@
     "legacyId": 3016344
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Goretti",
     "lastName": "Prieto Botana",
     "legacyId": 3016603
@@ -30684,7 +30690,7 @@
     "legacyId": 3018181
   },
   {
-    "avgRating": 0,
+    "avgRating": 2,
     "firstName": "April",
     "lastName": "Greiman",
     "legacyId": 3018228
@@ -30702,7 +30708,7 @@
     "legacyId": 3018588
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 3.9,
     "firstName": "Alison",
     "lastName": "Minami",
     "legacyId": 3019201
@@ -30786,7 +30792,7 @@
     "legacyId": 3024461
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 1.8,
     "firstName": "Melanie",
     "lastName": "Johnson",
     "legacyId": 3024590
@@ -30816,7 +30822,7 @@
     "legacyId": 3027436
   },
   {
-    "avgRating": 3.6,
+    "avgRating": 3.8,
     "firstName": "Michael",
     "lastName": "Rom",
     "legacyId": 3027887
@@ -30918,7 +30924,7 @@
     "legacyId": 3033114
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 3.9,
     "firstName": "Dmitri ",
     "lastName": "Gallow",
     "legacyId": 3033180
@@ -30978,7 +30984,7 @@
     "legacyId": 3036752
   },
   {
-    "avgRating": 4.7,
+    "avgRating": 4.8,
     "firstName": "Alvin",
     "lastName": "Jin",
     "legacyId": 3037111
@@ -31032,7 +31038,7 @@
     "legacyId": 3039581
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Hao",
     "lastName": "Yin",
     "legacyId": 3039600
@@ -31044,7 +31050,7 @@
     "legacyId": 3039623
   },
   {
-    "avgRating": 4.1,
+    "avgRating": 3.7,
     "firstName": "Merrick ",
     "lastName": "Anderson",
     "legacyId": 3040350
@@ -31092,7 +31098,7 @@
     "legacyId": 3042631
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4,
     "firstName": "Daniela",
     "lastName": "Urbina Julio",
     "legacyId": 3042844
@@ -31104,7 +31110,7 @@
     "legacyId": 3043315
   },
   {
-    "avgRating": 1.6,
+    "avgRating": 1.4,
     "firstName": "Olamiposi ",
     "lastName": "Somoye",
     "legacyId": 3043813
@@ -31128,7 +31134,7 @@
     "legacyId": 3044886
   },
   {
-    "avgRating": 2.5,
+    "avgRating": 2.3,
     "firstName": "Jayson",
     "lastName": "Lantz",
     "legacyId": 3045322
@@ -31188,7 +31194,7 @@
     "legacyId": 3047955
   },
   {
-    "avgRating": 4.4,
+    "avgRating": 4.3,
     "firstName": "Yasser",
     "lastName": "Khan",
     "legacyId": 3048481
@@ -31218,7 +31224,7 @@
     "legacyId": 3049081
   },
   {
-    "avgRating": 0,
+    "avgRating": 1,
     "firstName": "Kyu ",
     "lastName": "lee",
     "legacyId": 3049476
@@ -31230,13 +31236,13 @@
     "legacyId": 3049523
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 2.8,
     "firstName": "Molly",
     "lastName": "Courtney",
     "legacyId": 3049986
   },
   {
-    "avgRating": 2.5,
+    "avgRating": 2.7,
     "firstName": "Nathalie",
     "lastName": "Joseph",
     "legacyId": 3050638
@@ -31332,7 +31338,7 @@
     "legacyId": 3053414
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.3,
     "firstName": "Pablo",
     "lastName": "Argote Tironi",
     "legacyId": 3053440
@@ -31434,7 +31440,7 @@
     "legacyId": 3055952
   },
   {
-    "avgRating": 4,
+    "avgRating": 4.1,
     "firstName": "Andres",
     "lastName": "Sanchez",
     "legacyId": 3056101
@@ -31488,7 +31494,7 @@
     "legacyId": 3058821
   },
   {
-    "avgRating": 0,
+    "avgRating": 3,
     "firstName": "Joseph",
     "lastName": "Vandiver",
     "legacyId": 3059054
@@ -31560,7 +31566,7 @@
     "legacyId": 3062641
   },
   {
-    "avgRating": 0,
+    "avgRating": 1.5,
     "firstName": "Corinne",
     "lastName": "Packard",
     "legacyId": 3063193
@@ -31614,7 +31620,7 @@
     "legacyId": 3065073
   },
   {
-    "avgRating": 4.2,
+    "avgRating": 4.3,
     "firstName": "Agustina",
     "lastName": "Czenky",
     "legacyId": 3065166
@@ -31650,7 +31656,7 @@
     "legacyId": 3065478
   },
   {
-    "avgRating": 2.9,
+    "avgRating": 3,
     "firstName": "Zhengye",
     "lastName": "Zhou",
     "legacyId": 3065508
@@ -31710,7 +31716,7 @@
     "legacyId": 3066293
   },
   {
-    "avgRating": 4,
+    "avgRating": 4.3,
     "firstName": "Joselito",
     "lastName": "Seldera",
     "legacyId": 3066408
@@ -31758,7 +31764,7 @@
     "legacyId": 3068603
   },
   {
-    "avgRating": 4.3,
+    "avgRating": 4.2,
     "firstName": "Andrew",
     "lastName": "Shaler",
     "legacyId": 3069154
@@ -31806,7 +31812,7 @@
     "legacyId": 3071479
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Bandar",
     "lastName": "Alsaeed",
     "legacyId": 3071804
@@ -31824,13 +31830,13 @@
     "legacyId": 3072708
   },
   {
-    "avgRating": 3.1,
+    "avgRating": 2.4,
     "firstName": "Carter",
     "lastName": "Slocum",
     "legacyId": 3073216
   },
   {
-    "avgRating": 0,
+    "avgRating": 2.8,
     "firstName": "Angel",
     "lastName": "Hwang",
     "legacyId": 3073373
@@ -31872,7 +31878,7 @@
     "legacyId": 3076505
   },
   {
-    "avgRating": 5,
+    "avgRating": 3.2,
     "firstName": "Eli",
     "lastName": "Dunn",
     "legacyId": 3076577
@@ -31896,7 +31902,7 @@
     "legacyId": 3078214
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.7,
     "firstName": "Wei",
     "lastName": "Wu",
     "legacyId": 3078522
@@ -31980,13 +31986,13 @@
     "legacyId": 3086407
   },
   {
-    "avgRating": 0,
+    "avgRating": 2,
     "firstName": "Quinn",
     "lastName": "Maingi",
     "legacyId": 3087719
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 3,
     "firstName": "Bo",
     "lastName": "Shrewsbury",
     "legacyId": 3088220
@@ -32082,7 +32088,7 @@
     "legacyId": 3096208
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Zachariah ",
     "lastName": "Berry",
     "legacyId": 3097246
@@ -32220,7 +32226,7 @@
     "legacyId": 3101359
   },
   {
-    "avgRating": 3.5,
+    "avgRating": 3.4,
     "firstName": "Emily",
     "lastName": "Tilton",
     "legacyId": 3101379
@@ -32268,7 +32274,7 @@
     "legacyId": 3102394
   },
   {
-    "avgRating": 1,
+    "avgRating": 2.5,
     "firstName": "Andrew",
     "lastName": "Hires",
     "legacyId": 3102557
@@ -32310,7 +32316,7 @@
     "legacyId": 3104536
   },
   {
-    "avgRating": 3,
+    "avgRating": 4,
     "firstName": "Jonathon",
     "lastName": "Libgober",
     "legacyId": 3104574
@@ -32406,7 +32412,7 @@
     "legacyId": 3109828
   },
   {
-    "avgRating": 1,
+    "avgRating": 3.9,
     "firstName": "Rafael",
     "lastName": "Bracero",
     "legacyId": 3110064
@@ -32424,7 +32430,7 @@
     "legacyId": 3111143
   },
   {
-    "avgRating": 4.5,
+    "avgRating": 4.6,
     "firstName": "John",
     "lastName": "Bellows",
     "legacyId": 3111787
@@ -32562,7 +32568,7 @@
     "legacyId": 3123975
   },
   {
-    "avgRating": 4.8,
+    "avgRating": 4.9,
     "firstName": "ajitesh",
     "lastName": "srivastava",
     "legacyId": 3123987
@@ -32616,7 +32622,7 @@
     "legacyId": 3126707
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Vsevolod",
     "lastName": "Katritch",
     "legacyId": 3126746
@@ -32652,19 +32658,19 @@
     "legacyId": 3128255
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Yu-Chi",
     "lastName": "Kuo",
     "legacyId": 3130522
   },
   {
-    "avgRating": 1.7,
+    "avgRating": 1.6,
     "firstName": "Mark",
     "lastName": "Auslander",
     "legacyId": 3130864
   },
   {
-    "avgRating": 0,
+    "avgRating": 1,
     "firstName": "Qifa",
     "lastName": "Zhou",
     "legacyId": 3130987
@@ -32700,7 +32706,7 @@
     "legacyId": 3132755
   },
   {
-    "avgRating": 3.7,
+    "avgRating": 4.2,
     "firstName": "Marina",
     "lastName": "Mesin Zagar",
     "legacyId": 3133519
@@ -32736,7 +32742,7 @@
     "legacyId": 3136373
   },
   {
-    "avgRating": 3,
+    "avgRating": 2,
     "firstName": "Eric",
     "lastName": "Chastain",
     "legacyId": 3136666
@@ -32778,7 +32784,7 @@
     "legacyId": 3138992
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Adam",
     "lastName": "Everist",
     "legacyId": 3139151
@@ -32868,7 +32874,7 @@
     "legacyId": 3143979
   },
   {
-    "avgRating": 1,
+    "avgRating": 2.8,
     "firstName": "Gina",
     "lastName": "Hakim",
     "legacyId": 3144056
@@ -32994,7 +33000,7 @@
     "legacyId": 3150205
   },
   {
-    "avgRating": 0,
+    "avgRating": 2,
     "firstName": "Corey",
     "lastName": "Pearson",
     "legacyId": 3151464
@@ -33048,13 +33054,13 @@
     "legacyId": 3152523
   },
   {
-    "avgRating": 3.8,
+    "avgRating": 4.1,
     "firstName": "Ray",
     "lastName": "Gao",
     "legacyId": 3152561
   },
   {
-    "avgRating": 4,
+    "avgRating": 2,
     "firstName": "Kabir",
     "lastName": "Verchand",
     "legacyId": 3152562
@@ -33108,7 +33114,7 @@
     "legacyId": 3154459
   },
   {
-    "avgRating": 3.9,
+    "avgRating": 4.2,
     "firstName": "Jeffrey",
     "lastName": "Hildreth",
     "legacyId": 3154644
@@ -33120,7 +33126,7 @@
     "legacyId": 3154663
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Tara",
     "lastName": "Mastro",
     "legacyId": 3154776
@@ -33138,7 +33144,7 @@
     "legacyId": 3154919
   },
   {
-    "avgRating": 0,
+    "avgRating": 5,
     "firstName": "Elisa",
     "lastName": "Baek",
     "legacyId": 3155052
@@ -33156,7 +33162,7 @@
     "legacyId": 3156278
   },
   {
-    "avgRating": 1,
+    "avgRating": 1.5,
     "firstName": "Soomeen ",
     "lastName": "Hahm",
     "legacyId": 3156325
@@ -33216,7 +33222,7 @@
     "legacyId": 3158268
   },
   {
-    "avgRating": 0,
+    "avgRating": 4.3,
     "firstName": "Paul",
     "lastName": "Lu",
     "legacyId": 3158297
@@ -33270,7 +33276,7 @@
     "legacyId": 3160768
   },
   {
-    "avgRating": 0,
+    "avgRating": 2.7,
     "firstName": "Evi",
     "lastName": "Micha",
     "legacyId": 3160884
@@ -33280,5 +33286,407 @@
     "firstName": "Eva",
     "lastName": "Micha",
     "legacyId": 3160887
+  },
+  {
+    "avgRating": 1.5,
+    "firstName": "Jennifer ",
+    "lastName": "Hessler",
+    "legacyId": 3161940
+  },
+  {
+    "avgRating": 4.5,
+    "firstName": "Anastasiia ",
+    "lastName": "Starovoitiva ",
+    "legacyId": 3161973
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Tomas",
+    "lastName": "Gold ",
+    "legacyId": 3162246
+  },
+  {
+    "avgRating": 0,
+    "firstName": "David",
+    "lastName": "Truong",
+    "legacyId": 3162964
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Vinson",
+    "lastName": "Lee",
+    "legacyId": 3162965
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Edward",
+    "lastName": "Lieskovan",
+    "legacyId": 3162967
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Henry",
+    "lastName": "Jackson",
+    "legacyId": 3163315
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Stefan ",
+    "lastName": "Schneider ",
+    "legacyId": 3163329
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Carly",
+    "lastName": "Roberts",
+    "legacyId": 3164069
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Samara",
+    "lastName": "Bay",
+    "legacyId": 3164317
+  },
+  {
+    "avgRating": 1,
+    "firstName": "Meredith",
+    "lastName": "Braskie",
+    "legacyId": 3164373
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Geraldine",
+    "lastName": "Coppola",
+    "legacyId": 3164390
+  },
+  {
+    "avgRating": 5,
+    "firstName": "Andrea",
+    "lastName": "Dittmann",
+    "legacyId": 3164649
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Wilfredo",
+    "lastName": "Rivera",
+    "legacyId": 3164737
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Maureen",
+    "lastName": "Eger",
+    "legacyId": 3164908
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Wen",
+    "lastName": "Chen",
+    "legacyId": 3164932
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Meagan",
+    "lastName": "He",
+    "legacyId": 3165024
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Duane",
+    "lastName": "Loose",
+    "legacyId": 3165970
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Yiwei",
+    "lastName": "Shang",
+    "legacyId": 3166181
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jeongin",
+    "lastName": "Lee",
+    "legacyId": 3166427
+  },
+  {
+    "avgRating": 4,
+    "firstName": "Joanna",
+    "lastName": "Huey",
+    "legacyId": 3180384
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Broderick",
+    "lastName": "Broderick Leaks",
+    "legacyId": 3222120
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Lu",
+    "lastName": "Chen",
+    "legacyId": 3228647
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Carolyn",
+    "lastName": "Marlin",
+    "legacyId": 3568197
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Donel",
+    "lastName": "Williams",
+    "legacyId": 3570448
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Samuel",
+    "lastName": "Steinberg",
+    "legacyId": 3642292
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jimenez",
+    "lastName": "Lai",
+    "legacyId": 3642511
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Noah",
+    "lastName": "Phillips",
+    "legacyId": 3689001
+  },
+  {
+    "avgRating": 2.5,
+    "firstName": "Hrag",
+    "lastName": "Papazian",
+    "legacyId": 3689708
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jason",
+    "lastName": "Rodgers",
+    "legacyId": 3700861
+  },
+  {
+    "avgRating": 5,
+    "firstName": "Onur",
+    "lastName": "Arslan",
+    "legacyId": 3719565
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Shengbo",
+    "lastName": "Wang",
+    "legacyId": 3744625
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jason",
+    "lastName": "Goldman",
+    "legacyId": 3915766
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Mathis ",
+    "lastName": "Koschel",
+    "legacyId": 4002044
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Karmel",
+    "lastName": "Shehadeh",
+    "legacyId": 4049144
+  },
+  {
+    "avgRating": 5,
+    "firstName": "Nina",
+    "lastName": "Rouhani",
+    "legacyId": 4174768
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Dan",
+    "lastName": "Caputo",
+    "legacyId": 4220727
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Sean ",
+    "lastName": "Curran",
+    "legacyId": 5047890
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Mohamed",
+    "lastName": "Mesregah",
+    "legacyId": 5050896
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Nick",
+    "lastName": "Nero",
+    "legacyId": 5058135
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Joan",
+    "lastName": "Villalobos",
+    "legacyId": 5060507
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Larry",
+    "lastName": "Sheffield",
+    "legacyId": 5061878
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Caroline",
+    "lastName": "Vranca",
+    "legacyId": 5061879
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Alison",
+    "lastName": "Cole-Kelly",
+    "legacyId": 5061911
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jung-Ho",
+    "lastName": "Sohn",
+    "legacyId": 5061936
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Cristian",
+    "lastName": "Thompson",
+    "legacyId": 5061937
+  },
+  {
+    "avgRating": 1.7,
+    "firstName": "Mate",
+    "lastName": "Szabo",
+    "legacyId": 5064992
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Howard",
+    "lastName": "Hu",
+    "legacyId": 5065153
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Jhennylyn",
+    "lastName": "Rivera-Villano",
+    "legacyId": 5065966
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Benjamin",
+    "lastName": "Radd",
+    "legacyId": 5065977
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Kerem",
+    "lastName": "Sanga",
+    "legacyId": 5073992
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Rahil",
+    "lastName": "Shrivastava",
+    "legacyId": 5075171
+  },
+  {
+    "avgRating": 1,
+    "firstName": "Eric",
+    "lastName": "Quick",
+    "legacyId": 5075173
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Wesley",
+    "lastName": "Miller",
+    "legacyId": 5075669
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Zichen",
+    "lastName": "Zhao",
+    "legacyId": 5075739
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Krishna",
+    "lastName": "Garikipati",
+    "legacyId": 5077235
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Tien",
+    "lastName": "Ng",
+    "legacyId": 5078101
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Paul",
+    "lastName": "Wong",
+    "legacyId": 5078102
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Gayoung",
+    "lastName": "Koo",
+    "legacyId": 5080036
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Sarah ",
+    "lastName": "Vitorino",
+    "legacyId": 5080584
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Maria",
+    "lastName": "Mohammed",
+    "legacyId": 5082098
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Linda ",
+    "lastName": "Hughes-Kirchubel",
+    "legacyId": 5082472
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Matthew ",
+    "lastName": "Ellis",
+    "legacyId": 5089127
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Casey",
+    "lastName": "Schlortt",
+    "legacyId": 5093327
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Dayoung",
+    "lastName": "Bae",
+    "legacyId": 5098864
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Tim",
+    "lastName": "Clarke",
+    "legacyId": 5100616
+  },
+  {
+    "avgRating": 0,
+    "firstName": "Raymond Kyooyung",
+    "lastName": "Ra",
+    "legacyId": 5104116
   }
 ]
