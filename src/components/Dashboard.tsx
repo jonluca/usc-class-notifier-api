@@ -87,7 +87,7 @@ const StopWatchingButton = ({ data }: { data: Section }) => {
       success: "Stopped watching",
       error: "Failed to stop watching",
     });
-    await utils.user.getWatchedClasses.invalidate();
+    await Promise.all([utils.user.getWatchedClasses.invalidate(), utils.user.getUserInfo.invalidate()]);
   };
 
   return (
@@ -106,7 +106,7 @@ const iconStyle = { fontSize: 14, cursor: "pointer" };
 
 const PhoneOverride = ({ data }: { data: Section }) => {
   const [isEdit, setIsEdit] = useState(false);
-  const [phone, setPhone] = useState(data.phoneOverride || "");
+  const [phone, setPhone] = useState(data.notificationPhone || "");
   const { mutateAsync } = api.user.changePhoneNumberForSection.useMutation();
   const utils = api.useUtils();
 
@@ -127,7 +127,7 @@ const PhoneOverride = ({ data }: { data: Section }) => {
               success: "Saved",
               error: "Failed to save",
             });
-            await utils.user.getWatchedClasses.invalidate();
+            await Promise.all([utils.user.getWatchedClasses.invalidate(), utils.user.getUserInfo.invalidate()]);
             setIsEdit(false);
           }}
         />
@@ -147,11 +147,11 @@ const PhoneOverride = ({ data }: { data: Section }) => {
   }
   return (
     <span className={"flex h-full gap-2 items-center"}>
-      {data.phoneOverride ? formatPhoneNumberForDisplay(data.phoneOverride) : ""}
+      {data.notificationPhone ? formatPhoneNumberForDisplay(data.notificationPhone) : ""}
       <PencilIcon
         sx={iconStyle}
         onClick={() => {
-          setPhone(data.phoneOverride || "");
+          setPhone(data.notificationPhone || "");
           setIsEdit(true);
         }}
       />
@@ -247,7 +247,7 @@ const columns = [
   { headerName: "Semester", field: "semester", initialSort: "desc", width: 137 },
   { headerName: "Notified", field: "notified", width: 90, filter: false },
   { headerName: "Payment note", field: "paidId", width: 220, cellRenderer: PaymentNoteCell },
-  { headerName: "Phone", field: "phoneOverride", cellRenderer: PhoneOverride, width: 160 },
+  { headerName: "Phone", field: "notificationPhone", cellRenderer: PhoneOverride, width: 160 },
   { headerName: "Paid", field: "isPaid", width: 80, filter: false },
   { headerName: "Notify", field: "notified", cellRenderer: NotifyButton },
   {
@@ -263,7 +263,7 @@ const EditPhoneGlobal = () => {
   const { data: userInfo } = api.user.getUserInfo.useQuery();
 
   const [isEdit, setIsEdit] = useState(false);
-  const [phone, setPhone] = useState(userInfo?.phone || "");
+  const [phone, setPhone] = useState(userInfo?.notificationPhone || "");
   const { mutateAsync } = api.user.changePhoneNumberForAccount.useMutation();
   const utils = api.useUtils();
 
@@ -284,7 +284,7 @@ const EditPhoneGlobal = () => {
               success: "Saved",
               error: "Failed to save",
             });
-            await utils.user.getUserInfo.invalidate();
+            await Promise.all([utils.user.getUserInfo.invalidate(), utils.user.getWatchedClasses.invalidate()]);
             setIsEdit(false);
           }}
         />
@@ -309,11 +309,11 @@ const EditPhoneGlobal = () => {
   }
   return (
     <span className={"flex h-full gap-2 items-center"}>
-      {userInfo.phone ? formatPhoneNumberForDisplay(userInfo.phone) : ""}
+      {userInfo.notificationPhone ? formatPhoneNumberForDisplay(userInfo.notificationPhone) : ""}
       <PencilIcon
         sx={iconStyle}
         onClick={() => {
-          setPhone(userInfo.phone || "");
+          setPhone(userInfo.notificationPhone || "");
           setIsEdit(true);
         }}
       />
@@ -451,18 +451,25 @@ export default function Dashboard({
         </>
       )}
       {userInfo && (
-        <div className={"flex items-center gap-2"}>
-          <div className={"flex items-center gap-2"}>
-            Phone: <EditPhoneGlobal />
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              Default phone: <EditPhoneGlobal />
+            </div>
+            {userInfo.notificationPhone && (
+              <button
+                className="inline-flex py-1 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-gray-50 shadow-sm transition-colors hover:bg-gray-900/90 disabled:pointer-events-none disabled:opacity-50"
+                disabled={isPending}
+                onClick={setAccountLevelPhoneToAllSections}
+              >
+                Use for all classes
+              </button>
+            )}
           </div>
-          {userInfo.phone && (
-            <button
-              className="inline-flex py-1 items-center justify-center rounded-md bg-gray-900 px-3 text-sm font-medium text-gray-50 shadow-sm transition-colors hover:bg-gray-900/90 disabled:pointer-events-none disabled:opacity-50"
-              disabled={isPending}
-              onClick={setAccountLevelPhoneToAllSections}
-            >
-              Use for all classes
-            </button>
+          {userInfo.notificationPhone && !parsePhoneNumber(userInfo.phone || "") && (
+            <p className="text-sm text-gray-600">
+              Using a number saved on another section. You can set a different default above.
+            </p>
           )}
         </div>
       )}
@@ -493,7 +500,7 @@ export default function Dashboard({
                     {entry.ClassInfo?.courseNumber || "Class"} · Section {entry.section}
                   </h3>
                   <p className="text-sm text-gray-600">{formatSemester(entry.semester)} · Paid</p>
-                  {!parsePhoneNumber(entry.phoneOverride || "") && !parsePhoneNumber(userInfo?.phone || "") && (
+                  {!entry.notificationPhone && (
                     <p className="text-sm font-semibold text-amber-800">
                       Add your phone number above to receive paid text alerts for this section.
                     </p>
@@ -527,9 +534,7 @@ export default function Dashboard({
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {unpaidCurrentSections.map((watchedSection) => {
-              const hasPhoneNumber = Boolean(
-                parsePhoneNumber(watchedSection.phoneOverride || "") || parsePhoneNumber(userInfo?.phone || ""),
-              );
+              const hasPhoneNumber = Boolean(watchedSection.notificationPhone);
 
               return (
                 <div key={watchedSection.id} className="flex min-w-0 flex-col gap-2">

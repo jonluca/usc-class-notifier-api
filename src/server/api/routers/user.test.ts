@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { TRPCError } from "@trpc/server";
 import { PrismaClient, type ClassInfo, type Prisma, type Student, type WatchedSection } from "@app/prisma";
 import { createUserRouter } from "./user";
 import { createTRPCRouter } from "../trpc";
@@ -139,8 +140,8 @@ test("new watch signup only writes its own linked section and reuses its metadat
     },
   });
   Object.assign(client.watchedSection, {
-    findMany: async () => {
-      queries.push("paid-reference-check");
+    findMany: async (args: Prisma.WatchedSectionFindManyArgs) => {
+      queries.push(args.select?.phoneOverride ? "saved-phone-check" : "paid-reference-check");
       return [];
     },
   });
@@ -165,6 +166,7 @@ test("new watch signup only writes its own linked section and reuses its metadat
     "classInfo",
     "student",
     "existing-watch",
+    "saved-phone-check",
     "allocation-lock",
     "paid-reference-check",
     "create-watch",
@@ -196,6 +198,7 @@ test("re-adding a legacy watch repairs only that section's class relation", asyn
     },
   });
   Object.assign(client.watchedSection, {
+    findMany: async () => [],
     update: async (args: Prisma.WatchedSectionUpdateArgs) => {
       updates.push(args);
       return section;
@@ -247,4 +250,169 @@ test("a concurrent section move prevents re-add from attaching the former sectio
     user: student,
   });
   await assert.rejects(caller.addWatchedClass(signup), /alert changed while you were signing up/);
+});
+
+function createSignupFixture(
+  context: TestContext,
+  {
+    newProfile = false,
+    accountPhone = null,
+    savedPhone = "+12135550100",
+  }: {
+    newProfile?: boolean;
+    accountPhone?: string | null;
+    savedPhone?: string | null;
+  } = {},
+) {
+  const client = createTestClient(context);
+  const profile = { ...student, phone: accountPhone, validAccount: !newProfile };
+  const creates: Prisma.WatchedSectionCreateArgs[] = [];
+  const studentCreates: Prisma.StudentCreateArgs[] = [];
+  const emails: NowWatchingEmailProps[] = [];
+  Object.assign(client.classInfo, { findUnique: async () => ({ id: classInfo.id }) });
+  Object.assign(client.student, {
+    findUnique: async () => (newProfile ? null : profile),
+    create: async (args: Prisma.StudentCreateArgs) => {
+      studentCreates.push(args);
+      return profile;
+    },
+  });
+  Object.assign(client.watchedSection, {
+    findUnique: async () => null,
+    findMany: async (args: Prisma.WatchedSectionFindManyArgs) => {
+      if (args.select?.phoneOverride) {
+        assert.equal(args.where?.studentId, profile.id, "fallback lookup must remain on the supplied profile");
+        return savedPhone ? [{ phoneOverride: savedPhone, cancelledAt: null }] : [];
+      }
+      assert.ok(args.select?.paidId);
+      return [];
+    },
+    create: async (args: Prisma.WatchedSectionCreateArgs) => {
+      creates.push(args);
+      return { ...section, phoneOverride: args.data.phoneOverride ?? null };
+    },
+  });
+  Object.assign(client, {
+    $transaction: async (action: (transaction: Prisma.TransactionClient) => Promise<WatchedSection>) => action(client),
+    $executeRaw: async () => 1,
+  });
+  const router = createTRPCRouter(
+    createUserRouter(async (email) => {
+      emails.push(email);
+    }),
+  );
+  return {
+    client,
+    profile,
+    creates,
+    studentCreates,
+    emails,
+    caller: (user?: Student) => router.createCaller({ prisma: client, user }),
+  };
+}
+
+test("public signup inherits a saved phone for payment eligibility without persisting or revealing it", async (context) => {
+  const fixture = createSignupFixture(context);
+  const result = await fixture.caller().addWatchedClass(signup);
+  assert.equal(result.showVenmoInfo, true);
+  assert.equal(fixture.emails[0]?.showVenmoInfo, true);
+  assert.equal(fixture.creates[0]?.data.phoneOverride, undefined);
+  assert.equal("phoneOverride" in result && result.phoneOverride, null);
+  assert.equal("notificationPhone" in result, false);
+  assert.equal(JSON.stringify(result).includes("2135550100"), false);
+  assert.equal(JSON.stringify(result).includes(student.verificationKey), false);
+});
+
+test("anonymous signup can reuse the saved default but cannot seed a new profile fallback", async (context) => {
+  const fixture = createSignupFixture(context);
+  const result = await fixture.caller().addWatchedClass({ ...signup, phone: "(213) 555-0100" });
+  assert.equal(result.showVenmoInfo, true);
+  assert.equal(fixture.creates[0]?.data.phoneOverride, undefined);
+  assert.equal("phoneOverride" in result && result.phoneOverride, null);
+  for (const user of [undefined, { ...student, id: "another-student" }]) {
+    await assert.rejects(
+      fixture.caller(user).addWatchedClass({ ...signup, phone: "+12135550199" }),
+      (error) => error instanceof TRPCError && error.code === "FORBIDDEN",
+    );
+  }
+  assert.equal(fixture.creates.length, 1, "rejected signups must not create watches");
+  assert.equal(fixture.emails.length, 1, "rejected signups must not send email");
+});
+
+test("authenticated signup retains a supplied section override over account and sibling numbers", async (context) => {
+  const fixture = createSignupFixture(context, { accountPhone: "+12135550101" });
+  const result = await fixture.caller(fixture.profile).addWatchedClass({ ...signup, phone: "(213) 555-0199" });
+  assert.equal(fixture.creates[0]?.data.phoneOverride, "+12135550199");
+  assert.equal("phoneOverride" in result && result.phoneOverride, "+12135550199");
+  assert.equal(result.showVenmoInfo, true);
+});
+
+test("first signup can save an explicit phone while a phone-less new profile remains email-only", async (context) => {
+  const fixture = createSignupFixture(context, { newProfile: true, savedPhone: null });
+  const result = await fixture.caller().addWatchedClass({ ...signup, phone: "(213) 555-0199" });
+  assert.equal(fixture.studentCreates.length, 1);
+  assert.equal(fixture.creates[0]?.data.phoneOverride, "+12135550199");
+  assert.equal(result.showVenmoInfo, true);
+  assert.equal(result.isVerifiedAccount, false);
+
+  const phoneLess = createSignupFixture(context, { newProfile: true, savedPhone: null });
+  const noPhoneResult = await phoneLess.caller().addWatchedClass(signup);
+  assert.equal(phoneLess.creates[0]?.data.phoneOverride, undefined);
+  assert.equal(noPhoneResult.showVenmoInfo, false);
+});
+
+test("authenticated profile and section queries expose the effective phone with explicit choices taking priority", async (context) => {
+  const client = createTestClient(context);
+  const profiles = [student, { ...student, phone: "+12135550101" }];
+  const watches = [
+    { ...section, NotificationSent: [] },
+    { ...section, id: "override-watch", phoneOverride: "(213) 555-0102", NotificationSent: [] },
+  ];
+  Object.assign(client.watchedSection, {
+    findMany: async (args: Prisma.WatchedSectionFindManyArgs) => {
+      assert.equal(args.where?.studentId, student.id);
+      return args.select?.phoneOverride ? [{ phoneOverride: "+12135550100", cancelledAt: null }] : watches;
+    },
+  });
+  const router = createTRPCRouter(createUserRouter());
+  for (const profile of profiles) {
+    const caller = router.createCaller({ prisma: client, user: profile });
+    const expectedDefault = profile.phone ?? "+12135550100";
+    const info = await caller.getUserInfo();
+    assert.equal(info.notificationPhone, expectedDefault);
+    assert.equal(info.phone, profile.phone, "inferred defaults must not masquerade as stored account numbers");
+    const results = await caller.getWatchedClasses();
+    assert.equal(results[0]?.notificationPhone, expectedDefault);
+    assert.equal(results[0]?.phoneOverride, null);
+    assert.equal(results[1]?.notificationPhone, "+12135550102");
+  }
+  const anonymous = router.createCaller({ prisma: client });
+  await assert.rejects(anonymous.getUserInfo(), (error) => error instanceof TRPCError && error.code === "UNAUTHORIZED");
+  await assert.rejects(
+    anonymous.getWatchedClasses(),
+    (error) => error instanceof TRPCError && error.code === "UNAUTHORIZED",
+  );
+});
+
+test("applying the default phone uses a saved sibling and refuses to clear numbers when none is valid", async (context) => {
+  const client = createTestClient(context);
+  const updates: Prisma.WatchedSectionUpdateManyArgs[] = [];
+  let savedPhone: string | null = "+12135550100";
+  Object.assign(client.watchedSection, {
+    findMany: async () => (savedPhone ? [{ phoneOverride: savedPhone, cancelledAt: null }] : []),
+    updateMany: async (args: Prisma.WatchedSectionUpdateManyArgs) => {
+      updates.push(args);
+      return { count: 1 };
+    },
+  });
+  const caller = createTRPCRouter(createUserRouter()).createCaller({ prisma: client, user: student });
+  await caller.setAccountLevelPhoneToAllSections();
+  assert.deepEqual(updates, [
+    { where: { studentId: student.id, cancelledAt: null }, data: { phoneOverride: "+12135550100" } },
+  ]);
+  savedPhone = "invalid";
+  await assert.rejects(caller.setAccountLevelPhoneToAllSections(), /Add a valid phone number/);
+  savedPhone = null;
+  await assert.rejects(caller.setAccountLevelPhoneToAllSections(), /Add a valid phone number/);
+  assert.equal(updates.length, 1, "missing or invalid fallback must never clear existing overrides");
 });

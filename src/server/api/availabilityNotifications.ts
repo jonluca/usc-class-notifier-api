@@ -3,7 +3,8 @@ import { prisma, type PrismaClientType } from "@/server/db";
 import logger from "@/server/logger";
 import { spotsAvailableEmail } from "@/emails/processors/spotsAvailableEmail";
 import { sendMessage } from "@/server/Twilio";
-import { parsePhoneNumber } from "@/utils/phoneNumber";
+import { resolveNotificationPhone } from "@/utils/notificationPhone";
+import { getSavedNotificationPhone } from "@/server/notificationPhone";
 import { deliverAvailabilityNotification } from "./notificationDelivery";
 import type { Course, Section } from "./types";
 
@@ -105,7 +106,12 @@ export function createAvailabilityNotifier(
           continue;
         }
         const { course, section } = offering;
-        const phone = parsePhoneNumber(current.phoneOverride || "") ?? parsePhoneNumber(current.student.phone || "");
+        const explicitPhone = resolveNotificationPhone({
+          sectionPhone: current.phoneOverride,
+          accountPhone: current.student.phone,
+        });
+        const phone =
+          explicitPhone ?? (current.isPaid ? await getSavedNotificationPhone(database, current.student.id) : null);
         const count = watcherCounts.get(watch.section) || 1;
         const spots = section.totalSeats - section.registeredSeats;
 

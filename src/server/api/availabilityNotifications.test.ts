@@ -136,6 +136,113 @@ test("PostgreSQL notification delivery", { skip: !testDatabaseUrl, timeout: 30_0
   });
   context.after(() => database.$disconnect());
 
+  await context.test("a paid alert without a phone uses a valid number from the same profile", async (context) => {
+    const { student, watch, courses } = await createFixture(database, context);
+    const foreign = await createFixture(database, context);
+    await database.student.update({ where: { id: student.id }, data: { phone: null } });
+    await database.watchedSection.update({
+      where: { id: foreign.watch.id },
+      data: { phoneOverride: "+12135550199", createdAt: new Date("2026-10-28") },
+    });
+    const older = await database.watchedSection.create({
+      data: {
+        studentId: student.id,
+        section: randomUUID(),
+        semester: "20251",
+        paidId: randomUUID(),
+        phoneOverride: "(213) 555-0100",
+        createdAt: new Date("2025-01-01"),
+      },
+    });
+    const newestActive = await database.watchedSection.create({
+      data: {
+        studentId: student.id,
+        section: randomUUID(),
+        semester: "20263",
+        paidId: randomUUID(),
+        phoneOverride: "+12135550101",
+        createdAt: new Date("2026-01-01"),
+      },
+    });
+    await database.watchedSection.createMany({
+      data: [
+        {
+          studentId: student.id,
+          section: randomUUID(),
+          semester: "20263",
+          paidId: randomUUID(),
+          phoneOverride: "invalid",
+          createdAt: new Date("2026-10-27"),
+        },
+        {
+          studentId: student.id,
+          section: randomUUID(),
+          semester: "20263",
+          paidId: randomUUID(),
+          phoneOverride: "+12135550102",
+          cancelledAt: new Date(),
+          createdAt: new Date("2026-10-28"),
+        },
+      ],
+    });
+    const destinations: string[] = [];
+    const notify = createAvailabilityNotifier(
+      database,
+      async () => {},
+      async ({ to }) => {
+        destinations.push(to);
+      },
+    );
+    await notify("CSCI", watch.semester, courses);
+    assert.deepEqual(destinations, ["+12135550101"], "newest valid active own number wins");
+    await database.watchedSection.update({ where: { id: older.id }, data: { updatedAt: new Date() } });
+    const caller = createTRPCRouter(createUserRouter()).createCaller({ prisma: database, user: student });
+    await caller.continueReceivingNotificationsForSection({ id: watch.id });
+    await notify("CSCI", watch.semester, courses);
+    assert.deepEqual(
+      destinations,
+      ["+12135550101", "+12135550101"],
+      "unrelated row updates cannot change the chosen phone",
+    );
+    await database.watchedSection.update({ where: { id: newestActive.id }, data: { phoneOverride: "invalid" } });
+    await caller.continueReceivingNotificationsForSection({ id: watch.id });
+    await notify("CSCI", watch.semester, courses);
+    assert.equal(destinations.at(-1), "+12135550100", "invalid recent data falls back to an older valid number");
+    await database.watchedSection.update({ where: { id: older.id }, data: { phoneOverride: null } });
+    await caller.continueReceivingNotificationsForSection({ id: watch.id });
+    await notify("CSCI", watch.semester, courses);
+    assert.equal(destinations.at(-1), "+12135550102", "a cancelled alert remains a saved profile number");
+    const saved = await database.watchedSection.findUniqueOrThrow({ where: { id: watch.id } });
+    assert.equal(saved.phoneOverride, null, "fallbacks do not become explicit section overrides");
+    assert.equal((await database.student.findUniqueOrThrow({ where: { id: student.id } })).phone, null);
+    assert.equal(saved.smsSentCycle, saved.notificationCycle);
+  });
+
+  await context.test(
+    "other profiles cannot supply the phone when no valid number exists on this profile",
+    async (context) => {
+      const { student, watch, courses } = await createFixture(database, context);
+      const foreign = await createFixture(database, context);
+      await database.student.update({ where: { id: student.id }, data: { phone: "invalid" } });
+      await database.watchedSection.update({ where: { id: watch.id }, data: { phoneOverride: "invalid" } });
+      await database.watchedSection.update({
+        where: { id: foreign.watch.id },
+        data: { phoneOverride: "+12135550199" },
+      });
+      let emails = 0;
+      const notify = createAvailabilityNotifier(
+        database,
+        async () => {
+          emails += 1;
+        },
+        async () => assert.fail("no valid destination exists for this profile"),
+      );
+      await notify("CSCI", watch.semester, courses);
+      assert.equal(emails, 1);
+      assert.equal((await database.watchedSection.findUniqueOrThrow({ where: { id: watch.id } })).smsSentCycle, null);
+    },
+  );
+
   await context.test("cancelled, foreign, full, and cancelled-watch entries never deliver", async (context) => {
     const { watch, courses } = await createFixture(database, context);
     let sends = 0;

@@ -61,7 +61,7 @@ export function SectionSearch({
         });
         toast.success(`Now watching ${selected.courseNumber}, section ${selected.section}.`);
       }
-      await utils.user.getWatchedClasses.invalidate();
+      await Promise.all([utils.user.getWatchedClasses.invalidate(), utils.user.getUserInfo.invalidate()]);
       setSelected(null);
       setMessage(
         changingSection

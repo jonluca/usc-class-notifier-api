@@ -20,11 +20,17 @@ import {
 import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 import type { Prisma } from "@app/prisma";
 import { cancelWatchedSection } from "@/server/api/watchedSectionCancellation";
+import { getSavedNotificationPhone } from "@/server/notificationPhone";
+import { resolveNotificationPhone } from "@/utils/notificationPhone";
+import type { PrismaClientType } from "@/server/db";
 import {
   changeWatchedSection,
   legacyNotificationHistory,
   serializeWatchedSection,
 } from "@/server/api/watchedSectionChange";
+
+const getProfileNotificationPhone = async (database: PrismaClientType, user: { id: string; phone: string | null }) =>
+  resolveNotificationPhone({ accountPhone: user.phone }) ?? (await getSavedNotificationPhone(database, user.id));
 
 const optionalPhoneNumberSchema = z
   .string()
@@ -92,21 +98,27 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     if (!user) {
       throw new Error("User not found");
     }
-    const sections = await ctx.prisma.watchedSection.findMany({
-      where: {
-        studentId: user.id,
-        cancelledAt: null,
-      },
-      include: {
-        ClassInfo: true,
-        NotificationSent: legacyNotificationHistory,
-      },
-    });
-    return sections.map(serializeWatchedSection);
+    const [sections, profilePhone] = await Promise.all([
+      ctx.prisma.watchedSection.findMany({
+        where: {
+          studentId: user.id,
+          cancelledAt: null,
+        },
+        include: {
+          ClassInfo: true,
+          NotificationSent: legacyNotificationHistory,
+        },
+      }),
+      getProfileNotificationPhone(ctx.prisma, user),
+    ]);
+    return sections.map((section) => ({
+      ...serializeWatchedSection(section),
+      notificationPhone: resolveNotificationPhone({ sectionPhone: section.phoneOverride, accountPhone: profilePhone }),
+    }));
   }),
   getUserInfo: publicProcedureWithUser.query(async ({ ctx }) => {
     const user = ctx.user;
-    return user;
+    return { ...user, notificationPhone: await getProfileNotificationPhone(ctx.prisma, user) };
   }),
   addWatchedClass: publicProcedure
     .input(
@@ -162,7 +174,6 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         },
         select: { id: true, cancelledAt: true },
       });
-      const showVenmoInfo = Boolean(parsePhoneNumber(student.phone || "") || input.phone);
       const ownsStudent = ctx.user?.id === student.id;
 
       if (section) {
@@ -247,8 +258,10 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
 
         // Re-adding from an authenticated dashboard is a safe resend/recovery path.
         const shouldShowVenmoInfo =
-          Boolean(parsePhoneNumber(updatedSection.phoneOverride || "") || parsePhoneNumber(student.phone || "")) &&
-          !updatedSection.isPaid;
+          Boolean(
+            resolveNotificationPhone({ sectionPhone: updatedSection.phoneOverride }) ||
+            (await getProfileNotificationPhone(ctx.prisma, student)),
+          ) && !updatedSection.isPaid;
         await sendNowWatchingEmail({
           verificationKey: student.verificationKey,
           email: student.email,
@@ -265,6 +278,23 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           email: input.email,
         };
       }
+
+      const profilePhone = await getProfileNotificationPhone(ctx.prisma, student);
+      if (existingStudent && !ownsStudent && input.phone && input.phone !== profilePhone) {
+        // Public extension signups may reuse the existing default, but cannot
+        // plant a new phone that later becomes the fallback for this profile.
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Sign in to your dashboard to use a different phone number, or leave the phone field blank to use your saved number.",
+        });
+      }
+      // Inherited numbers stay dynamic. Never copy them into an override or
+      // return a private saved number to an unauthenticated signup caller.
+      const submittedPhone = ownsStudent || !existingStudent ? input.phone : undefined;
+      const showVenmoInfo = Boolean(
+        resolveNotificationPhone({ sectionPhone: submittedPhone, accountPhone: profilePhone }),
+      );
 
       const created = await ctx.prisma.$transaction(async (transaction) => {
         // The schema's uniqueness constraint includes semester, but Venmo receipts
@@ -294,7 +324,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           data: {
             section: input.sectionNumber,
             studentId: student.id,
-            phoneOverride: input.phone,
+            phoneOverride: submittedPhone,
             semester: input.semester,
             paidId,
             classInfoId: classInfo.id,
@@ -367,9 +397,12 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
       }
     }),
   setAccountLevelPhoneToAllSections: publicProcedureWithUser.mutation(async ({ ctx }) => {
-    const phoneNumber = ctx.user.phone ? parsePhoneNumber(ctx.user.phone) : null;
-    if (ctx.user.phone && !phoneNumber) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: PHONE_NUMBER_ERROR });
+    const phoneNumber = await getProfileNotificationPhone(ctx.prisma, ctx.user);
+    if (!phoneNumber) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Add a valid phone number before applying it to all sections.",
+      });
     }
     await ctx.prisma.watchedSection.updateMany({
       where: {
