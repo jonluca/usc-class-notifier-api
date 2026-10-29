@@ -213,7 +213,7 @@ test("re-adding a legacy watch repairs only that section's class relation", asyn
   assert.equal(emails[0]?.classInfo, classInfo);
   assert.deepEqual(updates, [
     {
-      where: { id: section.id },
+      where: { id: section.id, section: section.section, semester, studentId: student.id },
       data: {
         cancelledAt: null,
         paidId: section.paidId,
@@ -224,4 +224,27 @@ test("re-adding a legacy watch repairs only that section's class relation", asyn
       include: { ClassInfo: true },
     },
   ]);
+});
+
+test("a concurrent section move prevents re-add from attaching the former section's metadata", async (context) => {
+  const client = createTestClient(context);
+  let reads = 0;
+  Object.assign(client.classInfo, { findUnique: async () => ({ id: classInfo.id }) });
+  Object.assign(client.student, { findUnique: async () => student });
+  Object.assign(client.watchedSection, {
+    findUnique: async () => {
+      reads += 1;
+      return reads === 1 ? section : { ...section, section: "54321" };
+    },
+    update: async () => assert.fail("a moved watch must not be modified by a stale re-add"),
+  });
+  Object.assign(client, {
+    $transaction: async (action: (transaction: Prisma.TransactionClient) => Promise<WatchedSection>) => action(client),
+    $executeRaw: async () => 1,
+  });
+  const caller = createTRPCRouter(createUserRouter(async () => assert.fail("no email should be sent"))).createCaller({
+    prisma: client,
+    user: student,
+  });
+  await assert.rejects(caller.addWatchedClass(signup), /alert changed while you were signing up/);
 });

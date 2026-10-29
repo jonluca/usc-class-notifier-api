@@ -1,4 +1,5 @@
 import type { NextPage } from "next";
+import Link from "next/link";
 import React, { useState } from "react";
 import ArrowDownward from "@mui/icons-material/ArrowDownward";
 import ArrowUpward from "@mui/icons-material/ArrowUpward";
@@ -33,6 +34,28 @@ const TermsOfService: NextPage = () => {
             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Frequently Asked Questions</h1>
           </div>
           <div className="mt-8 space-y-4">
+            <FaqEntry
+              question="Can I search and add sections without the extension?"
+              answer={
+                <p className="prose">
+                  Yes. Open <Link href="/classes">Find classes</Link>, select your semester, and search by course,
+                  title, instructor, or section number. Sign in with your alert email to add a section, then manage it
+                  in your dashboard.
+                </p>
+              }
+            />
+            <FaqEntry
+              question="Can I change the section I paid for?"
+              answer={
+                <p className="prose">
+                  Yes, until an availability text has been sent for that paid alert. In your dashboard, choose “Change
+                  section” under your paid text alerts, find the replacement, and confirm. Your payment and phone number
+                  move to the new section in the same semester. Email alerts alone do not use up this option. After an
+                  availability text has been sent, the payment stays with that section; additional texts for that
+                  section are still included.
+                </p>
+              }
+            />
             <FaqEntry
               question="Why am I not getting notifications?"
               answer={
@@ -74,7 +97,9 @@ const TermsOfService: NextPage = () => {
                     No - every $1 is good for unlimited text messages for 1 section of 1 class for that semester. So if{" "}
                     {"you're"}
                     watching CSCI-103 section 123, and you get a text message, you {"don't"} need to pay again to watch
-                    CSCI-103 section 123. If you want to watch section 124, you would need to pay another $1.
+                    CSCI-103 section 123. After receiving a text for it, watching section 124 with text alerts requires
+                    another $1. Before your first availability text is sent, you can move your payment from your
+                    dashboard.
                   </p>
                   <p className={"prose"}>
                     If you registered for a class that is not full, and still has spots that just have not been opened

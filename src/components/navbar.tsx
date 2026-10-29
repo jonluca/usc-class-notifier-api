@@ -9,6 +9,12 @@ export const Navbar = () => {
       <Link href="/" className="rounded-lg px-1 py-1.5">
         USC Schedule Helper
       </Link>
+      <Link href="/classes" className="rounded-lg px-1 py-1.5 text-sm sm:text-base">
+        Find classes
+      </Link>
+      <Link href="/dashboard" className="rounded-lg px-1 py-1.5 text-sm sm:text-base">
+        Dashboard
+      </Link>
       <Link href="/faq" className="rounded-lg px-1 py-1.5">
         FAQ
       </Link>

@@ -17,6 +17,9 @@ import { buildPaymentHelpUrl, buildVenmoPaymentUrl, formatSemester } from "@/uti
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 import { formatPhoneNumberForDisplay, parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 import { watchedClassesQueryOptions } from "@/utils/queryOptions";
+import { SectionSearch } from "./SectionSearch";
+import { ChangeSectionButton } from "./ChangeSectionButton";
+import { SendLoginEmail } from "./SendLoginEmail";
 const WatchedClassesGrid = dynamic(() => import("./WatchedClassesGrid"), {
   ssr: false,
   loading: () => <LinearProgress aria-label="Loading watched classes table" />,
@@ -377,8 +380,12 @@ export default function Dashboard({
   section?: string;
   isAdmin?: boolean;
 }) {
-  const { data, isLoading } = api.user.getWatchedClasses.useQuery(undefined, watchedClassesQueryOptions);
-  const { data: userInfo } = api.user.getUserInfo.useQuery();
+  const { data: hasUser } = api.user.hasUser.useQuery();
+  const { data, isLoading } = api.user.getWatchedClasses.useQuery(undefined, {
+    ...watchedClassesQueryOptions,
+    enabled: Boolean(hasUser),
+  });
+  const { data: userInfo } = api.user.getUserInfo.useQuery(undefined, { enabled: Boolean(hasUser) });
   const [showOldSemesters, setShowOldSemesters] = useState(false);
   const { mutateAsync, isPending } = api.user.setAccountLevelPhoneToAllSections.useMutation();
   const utils = api.useUtils();
@@ -405,11 +412,23 @@ export default function Dashboard({
   );
 
   const matchingSection = data?.find((s) => s.id === section);
+  if (hasUser === false) {
+    return (
+      <div className="space-y-6 py-8">
+        <h1 className="text-3xl font-bold">Your class alerts</h1>
+        <SendLoginEmail />
+        <SectionSearch />
+      </div>
+    );
+  }
   return (
     <div className={"flex flex-col h-full py-4 gap-4"}>
       {isLoading && <LinearProgress />}
       {isAdmin && <AdminEmailSetter />}
       {userInfo && <h1>Welcome, {userInfo.email}</h1>}
+      <div className="rounded-2xl border border-gray-200 p-4 sm:p-5">
+        <SectionSearch />
+      </div>
       {section && (
         <>
           {didSucceedInWatchingSection ? (
@@ -455,6 +474,41 @@ export default function Dashboard({
           subtitle="Show classes from previous semesters"
         />
       </div>
+
+      {filteredData.some((entry) => entry.isPaid && currentSemesters.has(entry.semester)) && (
+        <section className="rounded-2xl border border-gray-200 p-4 sm:p-5" aria-labelledby="paid-alerts-heading">
+          <h2 id="paid-alerts-heading" className="text-2xl font-bold">
+            Your paid text alerts
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-gray-600">
+            Paid for the wrong section? Move your payment to another section in the same semester before your first
+            availability text is sent.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {filteredData
+              .filter((entry) => entry.isPaid && currentSemesters.has(entry.semester))
+              .map((entry) => (
+                <article key={entry.id} className="flex flex-col items-start gap-2 rounded-xl bg-gray-50 p-4">
+                  <h3 className="font-semibold">
+                    {entry.ClassInfo?.courseNumber || "Class"} · Section {entry.section}
+                  </h3>
+                  <p className="text-sm text-gray-600">{formatSemester(entry.semester)} · Paid</p>
+                  {!parsePhoneNumber(entry.phoneOverride || "") && !parsePhoneNumber(userInfo?.phone || "") && (
+                    <p className="text-sm font-semibold text-amber-800">
+                      Add your phone number above to receive paid text alerts for this section.
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-700">
+                    {entry.canChangeSection
+                      ? "No availability text sent yet. Your payment can move with you."
+                      : entry.changeSectionUnavailableReason}
+                  </p>
+                  <ChangeSectionButton section={entry} />
+                </article>
+              ))}
+          </div>
+        </section>
+      )}
 
       {unpaidCurrentSections.length > 0 && (
         <section

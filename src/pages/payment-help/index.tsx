@@ -1,4 +1,5 @@
 import type { NextPage } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import {
   buildPaymentSupportMailto,
@@ -106,6 +107,17 @@ const PaymentHelp: NextPage = () => {
           </a>
         </section>
       </div>
+
+      <section className="mt-6 rounded-2xl border border-gray-200 p-5">
+        <h2 className="text-xl font-semibold">I paid for the wrong section</h2>
+        <p className="mt-2 text-gray-700">
+          If no availability text has been sent yet, you can move your payment to another section in the same semester.
+          Open your dashboard and choose “Change section” under your paid text alerts.
+        </p>
+        <Link className="mt-3 inline-flex min-h-11 items-center font-semibold underline" href="/dashboard">
+          Open dashboard to change sections
+        </Link>
+      </section>
 
       <section className="mt-6 rounded-2xl bg-red-50 p-5 text-red-950">
         <h2 className="font-semibold">Important: recipient verification is different</h2>

@@ -20,6 +20,11 @@ import {
 import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 import type { Prisma } from "@app/prisma";
 import { cancelWatchedSection } from "@/server/api/watchedSectionCancellation";
+import {
+  changeWatchedSection,
+  legacyNotificationHistory,
+  serializeWatchedSection,
+} from "@/server/api/watchedSectionChange";
 
 const optionalPhoneNumberSchema = z
   .string()
@@ -87,22 +92,17 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     if (!user) {
       throw new Error("User not found");
     }
-    return ctx.prisma.watchedSection.findMany({
+    const sections = await ctx.prisma.watchedSection.findMany({
       where: {
         studentId: user.id,
         cancelledAt: null,
       },
       include: {
         ClassInfo: true,
-      },
-      omit: {
-        notificationClaimToken: true,
-        notificationClaimUntil: true,
-        notificationCycle: true,
-        emailSentCycle: true,
-        smsSentCycle: true,
+        NotificationSent: legacyNotificationHistory,
       },
     });
+    return sections.map(serializeWatchedSection);
   }),
   getUserInfo: publicProcedureWithUser.query(async ({ ctx }) => {
     const user = ctx.user;
@@ -190,6 +190,16 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           if (!currentSection) {
             throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
           }
+          if (
+            currentSection.section !== input.sectionNumber ||
+            currentSection.semester !== input.semester ||
+            currentSection.studentId !== student.id
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "This alert changed while you were signing up. Refresh the page and try again.",
+            });
+          }
 
           let paidId = currentSection.paidId;
           if (needsPaidReferenceRotation(currentSection.paidId, currentSection.isPaid)) {
@@ -226,6 +236,9 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           return transaction.watchedSection.update({
             where: {
               id: section.id,
+              section: input.sectionNumber,
+              semester: input.semester,
+              studentId: student.id,
             },
             data: sectionUpdate,
             include: { ClassInfo: true },
@@ -317,6 +330,19 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     .mutation(async ({ ctx, input }) => {
       await cancelWatchedSection(ctx.prisma.watchedSection, input.id, ctx.user.id, new Date());
     }),
+
+  changeWatchedClass: publicProcedureWithUser
+    .input(
+      z.object({
+        id: z.string().min(1),
+        sectionNumber: z
+          .string()
+          .trim()
+          .regex(/^\d{5}$/, "Enter a five-digit section number, including leading zeros."),
+        semester: notificationSemesterSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => changeWatchedSection(ctx.prisma, ctx.user.id, input)),
 
   continueReceivingNotificationsForSection: publicProcedureWithUser
     .input(
