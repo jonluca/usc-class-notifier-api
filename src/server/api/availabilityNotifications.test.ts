@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@app/prisma";
+import { PrismaClient, type Prisma } from "@app/prisma";
 import { createAvailabilityNotifier, getAvailableSections } from "./availabilityNotifications";
 import { createUserRouter } from "./routers/user";
 import { createTRPCRouter } from "./trpc";
@@ -278,6 +278,70 @@ test("PostgreSQL notification delivery", { skip: !testDatabaseUrl, timeout: 30_0
     assert.equal(recovered.notified, true);
     assert.equal(recovered.notificationClaimToken, null);
     assert.equal(recovered.notificationClaimUntil, null);
+  });
+
+  await context.test(
+    "a section moved after discovery cannot receive an alert for its former section",
+    async (context) => {
+      const { watch, courses } = await createFixture(database, context);
+      let sends = 0;
+      const notify = createAvailabilityNotifier(
+        database,
+        async () => {
+          sends += 1;
+        },
+        async () => {
+          sends += 1;
+        },
+      );
+      const findMany = database.watchedSection.findMany.bind(database.watchedSection);
+      Object.assign(database.watchedSection, {
+        findMany: async (args: Prisma.WatchedSectionFindManyArgs) => {
+          const watches = await findMany(args);
+          await database.watchedSection.update({
+            where: { id: watch.id },
+            data: { section: `${watch.section}-moved` },
+          });
+          return watches;
+        },
+      });
+      try {
+        await notify("CSCI", watch.semester, courses);
+      } finally {
+        Object.assign(database.watchedSection, { findMany });
+      }
+      assert.equal(sends, 0);
+      const moved = await database.watchedSection.findUniqueOrThrow({ where: { id: watch.id } });
+      assert.equal(moved.smsSentCycle, null);
+      assert.equal(moved.notificationClaimToken, null);
+    },
+  );
+
+  await context.test("rearming during an in-flight text preserves lifetime SMS evidence", async (context) => {
+    const { student, watch, courses } = await createFixture(database, context);
+    const smsEntered = Promise.withResolvers<void>();
+    const releaseSms = Promise.withResolvers<void>();
+    const notify = createAvailabilityNotifier(
+      database,
+      async () => {},
+      async () => {
+        smsEntered.resolve();
+        await releaseSms.promise;
+      },
+    );
+    const delivery = notify("CSCI", watch.semester, courses);
+    try {
+      await smsEntered.promise;
+      const caller = createTRPCRouter(createUserRouter()).createCaller({ prisma: database, user: student });
+      await caller.continueReceivingNotificationsForSection({ id: watch.id });
+    } finally {
+      releaseSms.resolve();
+      await delivery;
+    }
+    const saved = await database.watchedSection.findUniqueOrThrow({ where: { id: watch.id } });
+    assert.equal(saved.notificationCycle, 1);
+    assert.equal(saved.smsSentCycle, 0, "successful SMS remains recorded despite the cycle change");
+    assert.equal(saved.notified, false, "the user's new cycle remains armed");
   });
 
   await context.test("rearming a completed watch starts a new cycle and sends both channels", async (context) => {

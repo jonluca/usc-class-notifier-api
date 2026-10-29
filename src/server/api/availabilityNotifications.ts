@@ -58,6 +58,8 @@ export function createAvailabilityNotifier(
       const claim = await database.watchedSection.updateMany({
         where: {
           id: watch.id,
+          section: watch.section,
+          semester,
           notified: false,
           cancelledAt: null,
           student: { validAccount: true },
@@ -73,7 +75,14 @@ export function createAvailabilityNotifier(
         // Reload after the atomic claim so another worker's completed channel
         // records and any cancellation are observed before sending.
         const current = await database.watchedSection.findFirst({
-          where: { id: watch.id, notificationClaimToken, notified: false, cancelledAt: null },
+          where: {
+            id: watch.id,
+            section: watch.section,
+            semester,
+            notificationClaimToken,
+            notified: false,
+            cancelledAt: null,
+          },
           select: {
             id: true,
             section: true,
@@ -135,7 +144,9 @@ export function createAvailabilityNotifier(
                     message: `${spots} ${spots === 1 ? "spot" : "spots"} available for section ${section.sisSectionId} in class ${course.fullCourseName}. ${count} ${count === 1 ? "person is" : "people are"} watching this section.`,
                   });
                   const recorded = await database.watchedSection.updateMany({
-                    where: { id: current.id, notificationClaimToken, notificationCycle: current.notificationCycle },
+                    // A user can rearm while Twilio is accepting this text. Its
+                    // successful send must remain durable even if the cycle changed.
+                    where: { id: current.id, notificationClaimToken },
                     data: { smsSentCycle: current.notificationCycle },
                   });
                   if (!recorded.count) {
