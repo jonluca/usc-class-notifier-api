@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { useState } from "react";
 import { darkPalette } from "@/extension/darkPalette";
 import {
   darkModeStorage,
@@ -9,6 +10,7 @@ import {
 } from "@/extension/storage";
 
 function IndexPopup() {
+  const [currentYear] = useState(() => new Date().getFullYear());
   const [enabled, setEnabled] = useStorageItem(extensionEnabledStorage, true);
   const [showConflicts, setShowConflicts] = useStorageItem(showConflictsStorage, true);
   const [showUnits, setShowUnits] = useStorageItem(showUnitsStorage, true);
@@ -87,7 +89,7 @@ function IndexPopup() {
       </div>
       <p className={`mt-2 ${darkMode ? darkPalette.textMuted : "text-gray-900"}`}>
         <a className={footerLinkClass} href="https://jonlu.ca" rel="noreferrer" target="_blank">
-          &copy; {new Date().getFullYear()} JonLuca DeCaro
+          &copy; {currentYear} JonLuca DeCaro
         </a>{" "}
         -{" "}
         <a

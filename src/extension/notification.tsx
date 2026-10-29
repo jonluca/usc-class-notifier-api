@@ -71,27 +71,15 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
 
   const { mutateAsync, isPending, data, error } = trpc.user.addWatchedClass.useMutation();
   const { mutateAsync: sendLoginEmail, isPending: isPendingLogin, isSuccess } = trpc.user.sendLoginEmail.useMutation();
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [contactInfoLoaded, setContactInfoLoaded] = useState(false);
+  const [email, setEmail] = useState(() => window.localStorage.getItem(localStorageEmailKey) ?? "");
+  const [phone, setPhone] = useState(() => window.localStorage.getItem(localStoragePhoneKey) ?? "");
 
   useEffect(() => {
-    setEmail(window.localStorage.getItem(localStorageEmailKey) ?? "");
-    setPhone(window.localStorage.getItem(localStoragePhoneKey) ?? "");
-    setContactInfoLoaded(true);
-  }, []);
-  useEffect(() => {
-    if (!contactInfoLoaded) {
-      return;
-    }
     window.localStorage.setItem(localStorageEmailKey, email);
-  }, [contactInfoLoaded, email]);
+  }, [email]);
   useEffect(() => {
-    if (!contactInfoLoaded) {
-      return;
-    }
     window.localStorage.setItem(localStoragePhoneKey, phone);
-  }, [contactInfoLoaded, phone]);
+  }, [phone]);
   if ("isInvalid" in selectedClass) {
     toast.error("Invalid class");
     return null;

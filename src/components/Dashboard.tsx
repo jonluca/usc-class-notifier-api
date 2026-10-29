@@ -35,6 +35,7 @@ const defaultColDef: NonNullable<ColDef>[number] = {
 const NotifyButton = ({ data }: { data: Section }) => {
   const utils = api.useUtils();
   const { mutateAsync, isPending } = api.user.continueReceivingNotificationsForSection.useMutation();
+  const [currentYear] = useState(() => new Date().getFullYear());
 
   if (!data || !data.notified) {
     return null;
@@ -43,7 +44,6 @@ const NotifyButton = ({ data }: { data: Section }) => {
   const semester = data.semester;
   if (semester) {
     const year = semester.slice(0, 4);
-    const currentYear = new Date().getFullYear();
     // we could be smarter and do per semester but this is fine
     if (parseInt(year) < currentYear) {
       return null;
