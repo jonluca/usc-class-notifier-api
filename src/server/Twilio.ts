@@ -6,9 +6,10 @@ import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 const { Twilio } = tw;
 
 const accountSid = process.env.TWILIO_SID;
-const authToken = process.env.TWILIO_TOKEN;
+const apiKeySid = process.env.TWILIO_API_KEY_SID;
+const authToken = apiKeySid ? process.env.TWILIO_API_KEY_SECRET : process.env.TWILIO_TOKEN;
 const fromNumber = process.env.FROM_NUMBER;
-const client = new Twilio(accountSid, authToken, { timeout: 30_000 });
+const client = new Twilio(apiKeySid ?? accountSid, authToken, { accountSid, timeout: 30_000 });
 
 interface SmsMessageClient {
   create(options: { body: string; to: string; from: string }): Promise<{ to?: string | null }>;
@@ -32,7 +33,7 @@ export const sendMessageWithClient = async (
   config: SmsSenderConfig,
 ) => {
   if (!config.accountSid || !config.authToken) {
-    throw new Error("Cannot send text message: missing Twilio account SID or auth token");
+    throw new Error("Cannot send text message: missing Twilio account SID or credentials");
   }
   if (!config.fromNumber) {
     throw new Error("Cannot send text message: missing Twilio sender number");
