@@ -26,12 +26,16 @@ const READ_BATCH_SIZE = 250;
 export async function* getChangedClassInfo(
   sections: ClassInfoRefreshData[],
   findExisting: (sectionNumbers: string[]) => Promise<ClassInfoRefreshData[]>,
+  readBatchSize = READ_BATCH_SIZE,
 ) {
+  if (!Number.isSafeInteger(readBatchSize) || readBatchSize < 1) {
+    throw new RangeError("Catalog read batch size must be a positive integer");
+  }
   // A department response can repeat a section through cross-listed courses.
   // Match the former upsert loop's final value without writing intermediate versions.
   const uniqueSections = [...new Map(sections.map((section) => [section.section, section])).values()];
-  for (let offset = 0; offset < uniqueSections.length; offset += READ_BATCH_SIZE) {
-    const batch = uniqueSections.slice(offset, offset + READ_BATCH_SIZE);
+  for (let offset = 0; offset < uniqueSections.length; offset += readBatchSize) {
+    const batch = uniqueSections.slice(offset, offset + readBatchSize);
     const existing = new Map(
       (await findExisting(batch.map((section) => section.section))).map((section) => [section.section, section]),
     );

@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isAuthenticated } from "@/server/auth";
+import { isMaintenanceMode } from "@/server/maintenance";
 
 export function proxy(req: NextRequest) {
-  if (!isAuthenticated(req)) {
+  const path = req.nextUrl.pathname;
+  // Include GETs: verification, watch links and refresh endpoints can mutate data.
+  // The health endpoint performs only SELECT 1 and remains available to operators.
+  if (isMaintenanceMode() && path !== "/api/health") {
+    return new NextResponse("USC Schedule Helper is updating. Please try again shortly.", {
+      status: 503,
+      headers: { "Retry-After": "120", "Cache-Control": "no-store" },
+    });
+  }
+  if ((path === "/admin" || path.startsWith("/admin/")) && !isAuthenticated(req)) {
     return new NextResponse("Authentication required", {
       status: 401,
       headers: { "WWW-Authenticate": "Basic" },
@@ -13,7 +23,6 @@ export function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Step 3. Configure "Matching Paths" below to protect routes with HTTP Basic Auth
 export const config = {
-  matcher: "/admin/:path*",
+  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
 };

@@ -3,6 +3,8 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { prisma } from "@/server/db.ts";
 import logger from "@/server/logger.ts";
+import { getD1Executor } from "@/server/d1/executor";
+import { markD1PaymentPaid } from "./d1Payments";
 import { getValidSemesters } from "@/utils/semester.ts";
 import { classifyReceipt } from "./backfillReconciliation.ts";
 import {
@@ -26,16 +28,17 @@ export class GmailVenmoImapClient {
       receiptsByPaidId.set(receipt.paidId, matchingReceipts);
     }
     const paidIds = [...receiptsByPaidId.keys()];
-    const rows = await prisma.watchedSection.findMany({
-      where: { paidId: { in: paidIds } },
-      select: {
-        id: true,
-        createdAt: true,
-        paidId: true,
-        semester: true,
-        isPaid: true,
-      },
-    });
+    const d1 = getD1Executor(prisma);
+    const rows = [];
+    const batchSize = d1 ? 80 : 1_000;
+    for (let offset = 0; offset < paidIds.length; offset += batchSize) {
+      rows.push(
+        ...(await prisma.watchedSection.findMany({
+          where: { paidId: { in: paidIds.slice(offset, offset + batchSize) } },
+          select: { id: true, createdAt: true, paidId: true, semester: true, isPaid: true },
+        })),
+      );
+    }
     const monitoredSemesters = getValidSemesters();
     let updatedCount = 0;
     let unmatchedCount = 0;
@@ -59,22 +62,31 @@ export class GmailVenmoImapClient {
         case "already_paid":
           break;
         case "eligible": {
-          const hasEligibleReceipt = (receiptsByPaidId.get(paidId) || []).some((receipt) =>
+          const eligibleReceipt = (receiptsByPaidId.get(paidId) || []).find((receipt) =>
             isReceiptEligibleForRow(receipt, reconciliation.row),
           );
-          if (!hasEligibleReceipt) {
+          if (!eligibleReceipt) {
             predatesSectionCount += 1;
             break;
           }
-          const update = await prisma.watchedSection.updateMany({
-            where: {
-              id: reconciliation.row.id,
-              paidId,
-              semester: reconciliation.row.semester,
-              isPaid: false,
-            },
-            data: { isPaid: true },
-          });
+          const update = d1
+            ? {
+                count: await markD1PaymentPaid(d1, {
+                  rowId: reconciliation.row.id,
+                  paidId,
+                  semester: reconciliation.row.semester,
+                  receiptCutoff: new Date(eligibleReceipt.receivedAt.getTime() + 5 * 60 * 1000),
+                }),
+              }
+            : await prisma.watchedSection.updateMany({
+                where: {
+                  id: reconciliation.row.id,
+                  paidId,
+                  semester: reconciliation.row.semester,
+                  isPaid: false,
+                },
+                data: { isPaid: true },
+              });
           if (update.count === 1) {
             updatedCount += 1;
           } else {

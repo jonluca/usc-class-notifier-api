@@ -1,27 +1,13 @@
 import type { Prisma } from "@app/prisma";
 import type { PrismaClientType } from "@/server/db";
 import { assertMonitoredSemester } from "@/server/api/notificationSignup";
+import { getD1Executor } from "@/server/d1/executor";
+import { searchD1Sections } from "./d1ClassSearch";
 
-export const SECTION_SEARCH_LIMIT = 50;
+import { SECTION_SEARCH_LIMIT, sectionSearchSelect } from "./classSearchFields";
+export { SECTION_SEARCH_LIMIT, sectionSearchSelect } from "./classSearchFields";
 
-export const sectionSearchSelect = {
-  id: true,
-  department: true,
-  section: true,
-  courseNumber: true,
-  courseTitle: true,
-  prefix: true,
-  semester: true,
-  instructor: true,
-  type: true,
-  units: true,
-  day: true,
-  location: true,
-  hasDClearance: true,
-  isCancelled: true,
-} satisfies Prisma.ClassInfoSelect;
-
-export function getSectionSearchWhere(semester: string, query: string): Prisma.ClassInfoWhereInput {
+export function getSectionSearchTokens(query: string): string[] {
   // Match USC's LAW-532, LAW 532, and LAW532 spellings without converting
   // section identifiers to numbers and losing their leading zeros.
   const normalized = query
@@ -29,7 +15,11 @@ export function getSectionSearchWhere(semester: string, query: string): Prisma.C
     .replace(/^(\d{5})[a-z]$/i, "$1")
     .replace(/^([a-z]+)(\d)/i, "$1 $2")
     .replace(/[-–—]+/g, " ");
-  const tokens = normalized.split(/\s+/).filter(Boolean);
+  return normalized.split(/\s+/).filter(Boolean);
+}
+
+export function getSectionSearchWhere(semester: string, query: string): Prisma.ClassInfoWhereInput {
+  const tokens = getSectionSearchTokens(query);
 
   return {
     semester,
@@ -52,6 +42,10 @@ export function getSectionSearchWhere(semester: string, query: string): Prisma.C
 
 export async function searchSections(database: Pick<PrismaClientType, "classInfo">, semester: string, query: string) {
   assertMonitoredSemester(semester);
+  const d1 = getD1Executor(database);
+  if (d1) {
+    return searchD1Sections(d1, semester, getSectionSearchTokens(query));
+  }
   const sections = await database.classInfo.findMany({
     where: getSectionSearchWhere(semester, query),
     select: sectionSearchSelect,

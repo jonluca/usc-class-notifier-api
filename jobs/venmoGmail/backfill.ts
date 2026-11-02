@@ -5,6 +5,8 @@ import type { ListResponse } from "imapflow";
 import { simpleParser } from "mailparser";
 import type { EmailAddress } from "mailparser";
 import { prisma } from "@/server/db.ts";
+import { getD1Executor } from "@/server/d1/executor";
+import { getD1PaymentPreflight, markD1PaymentPaid } from "./d1Payments";
 import {
   BACKFILL_APPLY_CONFIRMATION,
   buildReceiptDeduplicationKey,
@@ -26,7 +28,7 @@ import type {
   WatchedSectionPaymentRow,
 } from "./backfillReconciliation.ts";
 
-const DB_QUERY_CHUNK_SIZE = 1_000;
+const DB_QUERY_CHUNK_SIZE = getD1Executor(prisma) ? 80 : 1_000;
 
 interface ScanStats {
   searchMatchedMessageCount: number;
@@ -369,6 +371,10 @@ const toSafeCount = (value: bigint, name: string): number => {
 };
 
 const loadDatabasePreflightStats = async (): Promise<DatabasePreflightStats> => {
+  const d1 = getD1Executor(prisma);
+  if (d1) {
+    return getD1PaymentPreflight(d1);
+  }
   const [raw] = await prisma.$queryRaw<DatabasePreflightRawRow[]>`
     SELECT
       COUNT(*)::bigint AS "totalRowCount",
@@ -444,38 +450,41 @@ const applyCandidates = async (candidates: BackfillApplyCandidate[]): Promise<Ap
   };
 
   for (const candidate of candidates) {
-    const updatedCount = await prisma.$transaction(
-      async (transaction) => {
-        const matchingRowCount = await transaction.watchedSection.count({
-          where: { paidId: candidate.paidId },
-        });
-        const eligibleRowCount = await transaction.watchedSection.count({
-          where: {
-            paidId: candidate.paidId,
-            id: candidate.rowId,
-            isPaid: false,
-            paidNotified: false,
-            createdAt: { not: null, lte: candidate.receiptCutoff },
-          },
-        });
-        if (matchingRowCount !== 1 || eligibleRowCount !== 1) {
-          return 0;
-        }
+    const d1 = getD1Executor(prisma);
+    const updatedCount = d1
+      ? await markD1PaymentPaid(d1, candidate, true)
+      : await prisma.$transaction(
+          async (transaction) => {
+            const matchingRowCount = await transaction.watchedSection.count({
+              where: { paidId: candidate.paidId },
+            });
+            const eligibleRowCount = await transaction.watchedSection.count({
+              where: {
+                paidId: candidate.paidId,
+                id: candidate.rowId,
+                isPaid: false,
+                paidNotified: false,
+                createdAt: { not: null, lte: candidate.receiptCutoff },
+              },
+            });
+            if (matchingRowCount !== 1 || eligibleRowCount !== 1) {
+              return 0;
+            }
 
-        const update = await transaction.watchedSection.updateMany({
-          where: {
-            paidId: candidate.paidId,
-            id: candidate.rowId,
-            isPaid: false,
-            paidNotified: false,
-            createdAt: { not: null, lte: candidate.receiptCutoff },
+            const update = await transaction.watchedSection.updateMany({
+              where: {
+                paidId: candidate.paidId,
+                id: candidate.rowId,
+                isPaid: false,
+                paidNotified: false,
+                createdAt: { not: null, lte: candidate.receiptCutoff },
+              },
+              data: { isPaid: true },
+            });
+            return update.count;
           },
-          data: { isPaid: true },
-        });
-        return update.count;
-      },
-      { isolationLevel: "Serializable" },
-    );
+          { isolationLevel: "Serializable" },
+        );
 
     if (updatedCount === 1) {
       result.updatedRowCount += 1;
@@ -508,7 +517,7 @@ const run = async () => {
     process.stdout.write(helpText);
     return;
   }
-  if (!process.env.POSTGRES_PRISMA_URL) {
+  if (!getD1Executor(prisma) && !process.env.POSTGRES_PRISMA_URL && !process.env.POSTGRES_URL_NON_POOLING) {
     throw new Error("POSTGRES_PRISMA_URL is not set");
   }
 
@@ -613,6 +622,8 @@ const sanitizedErrorMessage = (error: Error): string => {
     process.env.GMAIL_IMAP_USER,
     process.env.GMAIL_IMAP_APP_PASSWORD,
     process.env.POSTGRES_PRISMA_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
+    process.env.D1_GATEWAY_TOKEN,
   ]) {
     if (secret) {
       message = message.replaceAll(secret, "[redacted]");

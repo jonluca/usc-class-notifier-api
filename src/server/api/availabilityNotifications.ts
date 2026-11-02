@@ -5,6 +5,8 @@ import { spotsAvailableEmail } from "@/emails/processors/spotsAvailableEmail";
 import { sendMessage } from "@/server/Twilio";
 import { resolveNotificationPhone } from "@/utils/notificationPhone";
 import { getSavedNotificationPhone } from "@/server/notificationPhone";
+import { getD1Executor } from "@/server/d1/executor";
+import { recordD1EmailDelivery } from "@/server/d1/criticalWrites";
 import { deliverAvailabilityNotification } from "./notificationDelivery";
 import type { Course, Section } from "./types";
 
@@ -38,16 +40,24 @@ export function createAvailabilityNotifier(
     if (!available.size) {
       return;
     }
-    const watches = await database.watchedSection.findMany({
-      where: {
-        section: { in: [...available.keys()] },
-        semester,
-        notified: false,
-        cancelledAt: null,
-        student: { validAccount: true },
-      },
-      select: { id: true, section: true },
-    });
+    const sectionNumbers = [...available.keys()];
+    // Leave room for semester/status parameters under D1's 100-bind limit.
+    const batchSize = getD1Executor(database) ? 80 : sectionNumbers.length;
+    const watches: { id: string; section: string }[] = [];
+    for (let offset = 0; offset < sectionNumbers.length; offset += batchSize) {
+      watches.push(
+        ...(await database.watchedSection.findMany({
+          where: {
+            section: { in: sectionNumbers.slice(offset, offset + batchSize) },
+            semester,
+            notified: false,
+            cancelledAt: null,
+            student: { validAccount: true },
+          },
+          select: { id: true, section: true },
+        })),
+      );
+    }
     const watcherCounts = new Map<string, number>();
     for (const watch of watches) {
       watcherCounts.set(watch.section, (watcherCounts.get(watch.section) || 0) + 1);
@@ -129,6 +139,16 @@ export function createAvailabilityNotifier(
               student: current.student,
               sectionId: current.id,
             });
+            const d1 = getD1Executor(database);
+            if (d1) {
+              await recordD1EmailDelivery(d1, {
+                id: current.id,
+                studentId: current.student.id,
+                claimToken: notificationClaimToken,
+                notificationCycle: current.notificationCycle,
+              });
+              return;
+            }
             const recorded = await database.$transaction(async (transaction) => {
               await transaction.notificationSent.create({
                 data: { sectionId: current.id, studentId: current.student.id },

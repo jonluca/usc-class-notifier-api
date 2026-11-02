@@ -9,6 +9,8 @@ import {
   selectPaidReferenceRepairRows,
 } from "@/server/paidReference";
 import { getValidSemesters } from "@/utils/semester";
+import { getD1Executor } from "@/server/d1/executor";
+import { repairD1PaidReferences } from "@/server/d1/criticalWrites";
 
 const paidReferenceSchema = z.string().regex(/^\d{8}$/, "Payment references must be exactly eight digits");
 
@@ -68,6 +70,21 @@ export const adminRouter = {
         }
       }
 
+      const d1 = getD1Executor(ctx.prisma);
+      if (d1) {
+        const eligibleRows = matchingRows.filter((row) => eligibleRowIds.includes(row.id));
+        const results = eligibleRows.length
+          ? await d1.batch(
+              eligibleRows.map((row) => ({
+                sql: `UPDATE WatchedSection SET isPaid = 1, updatedAt = ?
+                WHERE id = ? AND paidId = ? AND semester = ?
+                  AND (SELECT COUNT(*) FROM WatchedSection WHERE paidId = ?) = 1`,
+                params: [Date.now(), row.id, row.paidId, row.semester, row.paidId],
+              })),
+            )
+          : [];
+        return { updated: results.reduce((sum, result) => sum + result.meta.changes, 0), unmatched, ambiguous };
+      }
       const result = await ctx.prisma.watchedSection.updateMany({
         where: { id: { in: eligibleRowIds }, paidId: { in: uniquePaidIds } },
         data: { isPaid: true },
@@ -97,6 +114,10 @@ export const adminRouter = {
       return matches[0] || null;
     }),
   repairLegacyUnpaidPaidIds: adminProcedure.mutation(async ({ ctx }) => {
+    const d1 = getD1Executor(ctx.prisma);
+    if (d1) {
+      return repairD1PaidReferences(d1);
+    }
     return ctx.prisma.$transaction(async (transaction) => {
       await acquirePaidReferenceAllocationLock(transaction);
 

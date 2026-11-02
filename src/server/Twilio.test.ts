@@ -81,6 +81,6 @@ test("missing Twilio configuration rejects instead of reporting success", async 
         },
       },
     ),
-    /missing Twilio account SID or auth token/,
+    /missing Twilio account SID or credentials/,
   );
 });

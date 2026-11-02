@@ -16,6 +16,7 @@ import {
   type ClassInfoRefreshData,
 } from "@/server/api/classInfoRefresh.ts";
 import { isProd } from "@/constants.ts";
+import { getD1Executor } from "@/server/d1/executor";
 
 const checkForAvailabilityForDepartment = async (department: string, semester: string) => {
   try {
@@ -162,11 +163,14 @@ export const createClassInfo = async () => {
               }
             }
 
-            for await (const sectionInfo of getChangedClassInfo(sectionInfos, (sectionNumbers) =>
-              prisma.classInfo.findMany({
-                where: { semester, section: { in: sectionNumbers } },
-                select: classInfoRefreshSelect,
-              }),
+            for await (const sectionInfo of getChangedClassInfo(
+              sectionInfos,
+              (sectionNumbers) =>
+                prisma.classInfo.findMany({
+                  where: { semester, section: { in: sectionNumbers } },
+                  select: classInfoRefreshSelect,
+                }),
+              getD1Executor(prisma) ? 80 : 250,
             )) {
               try {
                 await prisma.classInfo.upsert({

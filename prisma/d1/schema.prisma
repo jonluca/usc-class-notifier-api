@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated-d1"
+  moduleFormat = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension = "ts"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Next auth
+model Student {
+  id        String    @id @default(cuid())
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  email            String
+  verificationKey  String
+  phone            String?
+  validAccount     Boolean            @default(false)
+  uscID            String?
+  WatchedSection   WatchedSection[]
+  NotificationSent NotificationSent[]
+
+  @@unique([email])
+  @@unique([verificationKey])
+  @@index([phone])
+  @@index([email, verificationKey])
+}
+
+model WatchedSection {
+  id        String    @id @default(cuid())
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  section  String
+  semester String
+
+  lastNotified           DateTime?
+  notified               Boolean   @default(false)
+  cancelledAt            DateTime?
+  notificationCycle      Int       @default(0)
+  emailSentCycle         Int?
+  smsSentCycle           Int?
+  notificationClaimToken String?
+  notificationClaimUntil DateTime?
+
+  paidId        String
+  isPaid        Boolean @default(false)
+  paidNotified  Boolean @default(false) // If true, the user has been notified that their payment was processed
+  phoneOverride String? // If set, will override the phone number for this section
+
+  studentId        String
+  student          Student            @relation(fields: [studentId], references: [id])
+  NotificationSent NotificationSent[]
+
+  classInfoId String?
+  ClassInfo   ClassInfo? @relation(fields: [classInfoId], references: [id], onDelete: SetNull)
+
+  @@unique([semester, paidId])
+  @@unique([semester, studentId, section])
+  @@index([semester, notified, section])
+  @@index([section])
+  @@index([semester])
+  @@index([notified])
+  @@index([isPaid])
+  @@index([isPaid, paidNotified])
+  @@index([phoneOverride])
+  @@index([classInfoId])
+  @@index([createdAt])
+  @@index([studentId])
+  @@index([studentId, cancelledAt])
+  @@index([paidId])
+}
+
+model NotificationSent {
+  id        String    @id @default(cuid())
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  sectionId String
+  section   WatchedSection @relation(fields: [sectionId], references: [id])
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@index([sectionId])
+  @@index([studentId])
+}
+
+model ClassInfo {
+  id        String    @id @default(cuid())
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  department         String
+  section            String
+  courseNumber       String
+  courseTitle        String
+  semester           String
+  instructor         String?
+  type               String?
+  prefix             String?
+  units              String?
+  day                String?
+  session            String?
+  location           String?
+  isDistanceLearning Boolean          @default(false)
+  hasDClearance      Boolean          @default(false)
+  isCancelled        Boolean          @default(false)
+  Section            WatchedSection[]
+
+  @@unique([section, semester])
+  @@index([department])
+  @@index([prefix])
+  @@index([courseNumber])
+  @@index([semester])
+}
+
+// Registry intentionally has no foreign key: reservations survive watch deletion.
+model PaymentReference {
+  paidId String @id
+}
+
+// CHECK(value = 1) is installed by the SQL migration for atomic batch assertions.
+model D1Invariant {
+  id String @id
+  value Int
+}

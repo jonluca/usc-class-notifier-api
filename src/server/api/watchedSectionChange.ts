@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, WatchedSection } from "@app/prisma";
 import type { PrismaClientType } from "@/server/db";
 import { getValidSemesters } from "@/utils/semester";
+import { getD1Executor } from "@/server/d1/executor";
+import { moveD1Watch } from "@/server/d1/criticalWrites";
 import { assertMatchingClassInfo, assertMonitoredSemester } from "./notificationSignup";
 
 // Before this production migration, NotificationSent recorded email delivery
@@ -75,6 +77,57 @@ export async function changeWatchedSection(
 ) {
   assertMonitoredSemester(input.semester);
   try {
+    const d1 = getD1Executor(database);
+    if (d1) {
+      const watch = await database.watchedSection.findFirst({
+        where: { id: input.id, studentId },
+        include: { ClassInfo: true, NotificationSent: legacyNotificationHistory },
+      });
+      if (!watch) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
+      }
+      if (input.semester !== watch.semester) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A paid alert can only move within its original semester.",
+        });
+      }
+      const eligibility = getSectionChangeEligibility(watch);
+      if (!eligibility.canChangeSection) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: eligibility.changeSectionUnavailableReason! });
+      }
+      if (input.sectionNumber === watch.section) {
+        return serializeWatchedSection(watch);
+      }
+      const classInfo = await database.classInfo.findUnique({
+        where: { section_semester: { section: input.sectionNumber, semester: input.semester } },
+        select: { id: true, isCancelled: true },
+      });
+      assertMatchingClassInfo(classInfo, input.sectionNumber, input.semester);
+      // The read above supplies user-friendly errors, not authorization to move.
+      // This single UPDATE rechecks every delivery/ownership predicate atomically.
+      const moved = await moveD1Watch(d1, {
+        id: input.id,
+        studentId,
+        section: input.sectionNumber,
+        semester: input.semester,
+        classInfoId: classInfo.id,
+        previousSection: watch.section,
+        notificationCycle: watch.notificationCycle,
+        legacyCutoff: SMS_DELIVERY_TRACKING_STARTED_AT.getTime(),
+      });
+      if (!moved) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This alert or its delivery state changed. Refresh and try again.",
+        });
+      }
+      const updated = await database.watchedSection.findUniqueOrThrow({
+        where: { id: input.id },
+        include: { ClassInfo: true, NotificationSent: legacyNotificationHistory },
+      });
+      return serializeWatchedSection(updated);
+    }
     return await database.$transaction(async (transaction) => {
       // Lock the owned watch before checking delivery state. The worker's atomic
       // claim uses this same row, so a move and an SMS cannot begin concurrently.
@@ -140,7 +193,11 @@ export async function changeWatchedSection(
     });
   } catch (error) {
     // The unique constraint also protects against a simultaneous new signup.
-    if (error instanceof Error && "code" in error && error.code === "P2002") {
+    if (
+      error instanceof Error &&
+      (("code" in error && error.code === "P2002") ||
+        /UNIQUE constraint failed: (?:main\.)?WatchedSection\./i.test(error.message))
+    ) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "You are already watching this section. Refresh your dashboard.",

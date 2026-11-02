@@ -1,0 +1,2 @@
+# Private snapshots contain customer data. Never commit or upload these artifacts.
+.private/

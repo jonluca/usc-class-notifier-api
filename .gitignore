@@ -278,3 +278,10 @@ dist/
 logs
 prisma/generated
 .playwright-cli
+
+# Staged Cloudflare D1 artifacts
+/prisma/generated-d1/
+/.wrangler/
+/deploy/d1-gateway/.wrangler/
+**/.private/
+/prisma/d1/*.db

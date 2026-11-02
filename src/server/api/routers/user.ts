@@ -21,6 +21,8 @@ import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
 import type { Prisma } from "@app/prisma";
 import { cancelWatchedSection } from "@/server/api/watchedSectionCancellation";
 import { getSavedNotificationPhone } from "@/server/notificationPhone";
+import { getD1Executor } from "@/server/d1/executor";
+import { createD1Watch, readdD1Watch } from "@/server/d1/criticalWrites";
 import { resolveNotificationPhone } from "@/utils/notificationPhone";
 import type { PrismaClientType } from "@/server/db";
 import {
@@ -133,8 +135,9 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     )
     .mutation(async ({ ctx, input }) => {
       assertMonitoredSemester(input.semester);
+      const d1 = getD1Executor(ctx.prisma);
 
-      const [classInfo, existingStudent] = await Promise.all([
+      const [classInfo, foundStudent] = await Promise.all([
         ctx.prisma.classInfo.findUnique({
           where: {
             section_semester: {
@@ -152,16 +155,31 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
       ]);
       assertMatchingClassInfo(classInfo, input.sectionNumber, input.semester);
 
+      let existingStudent = foundStudent;
       let student = existingStudent;
       if (!student) {
-        // create user
-        student = await ctx.prisma.student.create({
-          data: {
-            email: input.email,
-            verificationKey: uuid(),
-            uscID: input.uscId,
-          },
-        });
+        if (d1) {
+          const now = Date.now();
+          const inserted = await d1.query<{ id: string }>(
+            `INSERT INTO Student(id, createdAt, updatedAt, email, verificationKey, uscID)
+             VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING RETURNING id`,
+            [uuid(), now, now, input.email, uuid(), input.uscId ?? null],
+          );
+          student = await ctx.prisma.student.findUniqueOrThrow({ where: { email: input.email } });
+          // A concurrent creator owns the saved profile; the public caller must
+          // not gain permission to install its own phone override on that row.
+          if (!inserted.length) {
+            existingStudent = student;
+          }
+        } else {
+          student = await ctx.prisma.student.create({
+            data: {
+              email: input.email,
+              verificationKey: uuid(),
+              uscID: input.uscId,
+            },
+          });
+        }
       }
       // now check if this student is already watching this section
       const section = await ctx.prisma.watchedSection.findUnique({
@@ -191,70 +209,85 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
             paidId: "",
           };
         }
-        const updatedSection = await ctx.prisma.$transaction(async (transaction) => {
-          // Serialize and reload before deciding whether a legacy reference
-          // needs rotation. Concurrent re-adds must return the same final code.
-          await acquirePaidReferenceAllocationLock(transaction);
-          const currentSection = await transaction.watchedSection.findUnique({
-            where: { id: section.id },
-          });
-          if (!currentSection) {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
-          }
-          if (
-            currentSection.section !== input.sectionNumber ||
-            currentSection.semester !== input.semester ||
-            currentSection.studentId !== student.id
-          ) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "This alert changed while you were signing up. Refresh the page and try again.",
+        const updatedSection = d1
+          ? await (async () => {
+              await readdD1Watch(d1, {
+                id: section.id,
+                studentId: student.id,
+                section: input.sectionNumber,
+                semester: input.semester,
+                classInfoId: classInfo.id,
+                phoneOverride: input.phone,
+              });
+              return ctx.prisma.watchedSection.findUniqueOrThrow({
+                where: { id: section.id },
+                include: { ClassInfo: true },
+              });
+            })()
+          : await ctx.prisma.$transaction(async (transaction) => {
+              // Serialize and reload before deciding whether a legacy reference
+              // needs rotation. Concurrent re-adds must return the same final code.
+              await acquirePaidReferenceAllocationLock(transaction);
+              const currentSection = await transaction.watchedSection.findUnique({
+                where: { id: section.id },
+              });
+              if (!currentSection) {
+                throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
+              }
+              if (
+                currentSection.section !== input.sectionNumber ||
+                currentSection.semester !== input.semester ||
+                currentSection.studentId !== student.id
+              ) {
+                throw new TRPCError({
+                  code: "CONFLICT",
+                  message: "This alert changed while you were signing up. Refresh the page and try again.",
+                });
+              }
+
+              let paidId = currentSection.paidId;
+              if (needsPaidReferenceRotation(currentSection.paidId, currentSection.isPaid)) {
+                // A small number of legacy rows have 1-7 digit references. Rotate
+                // only unpaid rows when their user returns.
+                const candidates = generatePaidReferenceCandidates();
+                const matchingSections = await transaction.watchedSection.findMany({
+                  where: { paidId: { in: candidates } },
+                  select: { paidId: true },
+                });
+                const availablePaidId = selectAvailablePaidReference(
+                  candidates,
+                  matchingSections.map((matchingSection) => matchingSection.paidId),
+                );
+                if (!availablePaidId) {
+                  throw new Error("Please try again later. We are currently at capacity.");
+                }
+                paidId = availablePaidId;
+              }
+
+              const sectionUpdate: Prisma.WatchedSectionUncheckedUpdateInput = {
+                cancelledAt: null,
+                paidId,
+                classInfoId: classInfo.id,
+              };
+              if (ownsStudent) {
+                sectionUpdate.notified = false;
+                sectionUpdate.notificationCycle = { increment: 1 };
+                if (input.phone) {
+                  sectionUpdate.phoneOverride = input.phone;
+                }
+              }
+
+              return transaction.watchedSection.update({
+                where: {
+                  id: section.id,
+                  section: input.sectionNumber,
+                  semester: input.semester,
+                  studentId: student.id,
+                },
+                data: sectionUpdate,
+                include: { ClassInfo: true },
+              });
             });
-          }
-
-          let paidId = currentSection.paidId;
-          if (needsPaidReferenceRotation(currentSection.paidId, currentSection.isPaid)) {
-            // A small number of legacy rows have 1-7 digit references. Rotate
-            // only unpaid rows when their user returns.
-            const candidates = generatePaidReferenceCandidates();
-            const matchingSections = await transaction.watchedSection.findMany({
-              where: { paidId: { in: candidates } },
-              select: { paidId: true },
-            });
-            const availablePaidId = selectAvailablePaidReference(
-              candidates,
-              matchingSections.map((matchingSection) => matchingSection.paidId),
-            );
-            if (!availablePaidId) {
-              throw new Error("Please try again later. We are currently at capacity.");
-            }
-            paidId = availablePaidId;
-          }
-
-          const sectionUpdate: Prisma.WatchedSectionUncheckedUpdateInput = {
-            cancelledAt: null,
-            paidId,
-            classInfoId: classInfo.id,
-          };
-          if (ownsStudent) {
-            sectionUpdate.notified = false;
-            sectionUpdate.notificationCycle = { increment: 1 };
-            if (input.phone) {
-              sectionUpdate.phoneOverride = input.phone;
-            }
-          }
-
-          return transaction.watchedSection.update({
-            where: {
-              id: section.id,
-              section: input.sectionNumber,
-              semester: input.semester,
-              studentId: student.id,
-            },
-            data: sectionUpdate,
-            include: { ClassInfo: true },
-          });
-        });
 
         // Re-adding from an authenticated dashboard is a safe resend/recovery path.
         const shouldShowVenmoInfo =
@@ -296,44 +329,55 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         resolveNotificationPhone({ sectionPhone: submittedPhone, accountPhone: profilePhone }),
       );
 
-      const created = await ctx.prisma.$transaction(async (transaction) => {
-        // The schema's uniqueness constraint includes semester, but Venmo receipts
-        // contain only paidId. Serialize allocation across every API instance so a
-        // reference can never be reused by a different semester.
-        await acquirePaidReferenceAllocationLock(transaction);
+      const created = d1
+        ? await (async () => {
+            const id = await createD1Watch(d1, {
+              studentId: student.id,
+              section: input.sectionNumber,
+              semester: input.semester,
+              classInfoId: classInfo.id,
+              phoneOverride: submittedPhone,
+            });
+            return ctx.prisma.watchedSection.findUniqueOrThrow({ where: { id }, include: { ClassInfo: true } });
+          })()
+        : await ctx.prisma.$transaction(async (transaction) => {
+            // The schema's uniqueness constraint includes semester, but Venmo receipts
+            // contain only paidId. Serialize allocation across every API instance so a
+            // reference can never be reused by a different semester.
+            await acquirePaidReferenceAllocationLock(transaction);
 
-        const candidates = generatePaidReferenceCandidates();
-        const matchingSections = await transaction.watchedSection.findMany({
-          where: {
-            paidId: {
-              in: candidates,
-            },
-          },
-          select: { paidId: true },
-        });
-        const paidId = selectAvailablePaidReference(
-          candidates,
-          matchingSections.map((matchingSection) => matchingSection.paidId),
-        );
+            const candidates = generatePaidReferenceCandidates();
+            const matchingSections = await transaction.watchedSection.findMany({
+              where: {
+                paidId: {
+                  in: candidates,
+                },
+              },
+              select: { paidId: true },
+            });
+            const paidId = selectAvailablePaidReference(
+              candidates,
+              matchingSections.map((matchingSection) => matchingSection.paidId),
+            );
 
-        if (!paidId) {
-          throw new Error("Please try again later. We are currently at capacity.");
-        }
+            if (!paidId) {
+              throw new Error("Please try again later. We are currently at capacity.");
+            }
 
-        return transaction.watchedSection.create({
-          data: {
-            section: input.sectionNumber,
-            studentId: student.id,
-            phoneOverride: submittedPhone,
-            semester: input.semester,
-            paidId,
-            classInfoId: classInfo.id,
-          },
-          include: {
-            ClassInfo: true,
-          },
-        });
-      });
+            return transaction.watchedSection.create({
+              data: {
+                section: input.sectionNumber,
+                studentId: student.id,
+                phoneOverride: submittedPhone,
+                semester: input.semester,
+                paidId,
+                classInfoId: classInfo.id,
+              },
+              include: {
+                ClassInfo: true,
+              },
+            });
+          });
       await sendNowWatchingEmail({
         verificationKey: student.verificationKey,
         email: student.email,

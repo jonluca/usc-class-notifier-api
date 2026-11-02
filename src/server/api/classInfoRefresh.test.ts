@@ -95,3 +95,22 @@ test("a failed comparison read fails the refresh instead of treating existing ro
     /Database unavailable/,
   );
 });
+
+test("D1 catalog comparisons leave room for other binds within the 100-parameter limit", async () => {
+  const sections = Array.from({ length: 201 }, (_, index) => ({ ...sectionInfo, section: String(30_000 + index) }));
+  const bySection = new Map(sections.map((section) => [section.section, section]));
+  const readSizes: number[] = [];
+  const writes = [];
+  for await (const change of getChangedClassInfo(
+    sections,
+    async (ids) => {
+      readSizes.push(ids.length);
+      return ids.map((id) => bySection.get(id)!);
+    },
+    80,
+  )) {
+    writes.push(change);
+  }
+  assert.deepEqual(readSizes, [80, 80, 41]);
+  assert.deepEqual(writes, []);
+});

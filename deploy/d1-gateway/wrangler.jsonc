@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "usc-d1-gateway",
+  "account_id": "199eb4e86b9aa7df2da0adba3df29a6f",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "usc-d1.jonlu.ca", "custom_domain": true, "zone_id": "3fb1e2e6eca873e390210f91646be18a" }],
+  "observability": { "enabled": false },
+  "limits": { "cpu_ms": 1000 },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "usc-schedule-helper",
+      "database_id": "580b240a-fe90-4227-a601-13d68c1f3119",
+      "migrations_dir": "../../prisma/d1/migrations",
+    },
+  ],
+}

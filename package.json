@@ -13,9 +13,9 @@
     "lint": "oxlint .",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test": "tsx --test 'src/**/*.test.ts' 'src/**/*.test.tsx' 'jobs/**/*.test.ts'",
+    "test": "tsx --test 'src/**/*.test.ts' 'src/**/*.test.tsx' 'jobs/**/*.test.ts' 'scripts/**/*.test.ts'",
     "dev:email": "email dev --dir src/emails --port 3001",
-    "postinstall": "wxt prepare && prisma generate",
+    "postinstall": "wxt prepare && prisma generate && pnpm run d1:generate",
     "typecheck": "tsc --noEmit",
     "monitor": "tsx jobs/monitor.ts",
     "refresh-rmp": "tsx jobs/refreshRmpData.ts && oxfmt src/data",
@@ -36,7 +36,9 @@
     "zip:firefox": "NODE_ENV=production wxt zip -b firefox --mv3",
     "zip:safari": "NODE_ENV=production wxt zip -b safari --mv3",
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3",
-    "submit:firefox": "web-ext sign --source-dir .output/firefox-mv3 --channel=listed --amo-metadata=amo-metadata.json --upload-source-code=.output/class-notifier-api-${npm_package_version}-sources.zip --artifacts-dir=.output/firefox-signed"
+    "submit:firefox": "web-ext sign --source-dir .output/firefox-mv3 --channel=listed --amo-metadata=amo-metadata.json --upload-source-code=.output/class-notifier-api-${npm_package_version}-sources.zip --artifacts-dir=.output/firefox-signed",
+    "d1:generate": "prisma generate --config prisma/d1/prisma.config.ts",
+    "d1:gateway:check": "wrangler deploy --dry-run --config deploy/d1-gateway/wrangler.jsonc"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1158.0",
@@ -45,6 +47,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "9.5.0",
     "@mui/material": "9.5.0",
+    "@prisma/adapter-d1": "7.10.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@tailwindcss/postcss": "^4.3.3",
@@ -117,8 +120,11 @@
     "@types/html-to-text": "^9.0.4",
     "@types/mailparser": "^3.9.0",
     "@types/pg": "^8.23.1",
+    "esbuild": "0.28.2",
+    "miniflare": "^4.20260730.0",
     "oxfmt": "^0.75.0",
     "oxlint": "1.90.0",
-    "web-ext": "^10.8.0"
+    "web-ext": "^10.8.0",
+    "wrangler": "^4.156.0"
   }
 }
