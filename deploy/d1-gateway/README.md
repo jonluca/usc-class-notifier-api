@@ -28,6 +28,21 @@ only sanitized type/table/column information. No SQL, values, or credentials are
 logged by the gateway. Its token grants database access and belongs only in trusted
 server environments.
 
+Cloudflare managed WAF rules run before this Worker. The `SQLi - Equation` rule
+(`6a650831344b47b8b227cea7b8ef67d7`) can reject legitimate parameterized Prisma
+queries containing `AND 1=1`, returning an HTML 403 before gateway authentication.
+For the production gateway, the exception must skip only that rule and match only:
+
+```text
+(http.host eq "usc-d1.jonlu.ca" and http.request.method eq "POST" and http.request.uri.path in {"/v1/d1/query" "/v1/d1/batch"})
+```
+
+Keep all other WAF rules and the Worker's Bearer authentication enabled; never put
+the gateway token in a firewall expression. Verify a real Prisma composite-key
+lookup through the deployed gateway, plus rejection of unauthenticated requests,
+after changing these settings. `/api/health` includes this lookup shape with an
+impossible section/semester so a successful `SELECT 1` alone cannot mask the block.
+
 The remote client uses a 35-second deadline and never retries automatically: a
 timeout can follow a committed mutation. Application operations must reconcile
 their durable state before retrying. Provider errors do not fall back to PostgreSQL.
