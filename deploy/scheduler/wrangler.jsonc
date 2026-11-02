@@ -1,0 +1,48 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "usc-scheduler",
+  "account_id": "199eb4e86b9aa7df2da0adba3df29a6f",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "usc-jobs.jonlu.ca", "custom_domain": true, "zone_id": "3fb1e2e6eca873e390210f91646be18a" }],
+  "limits": { "cpu_ms": 300000 },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": { "NODE_ENV": "production", "APP_REVISION": "pending" },
+  "alias": {
+    "@/server/db": "./db.ts",
+    "@/server/db.ts": "./db.ts",
+    "@/server/logger": "./logger.ts",
+    "@/server/logger.ts": "./logger.ts",
+    "@/server/Twilio": "./twilio.ts",
+    "@/server/Twilio.ts": "./twilio.ts",
+    "@app/prisma-d1": "../../prisma/generated-d1-worker/client.ts",
+    "@app/email-sender": "./sendEmail.ts",
+    "@aws-sdk/xml-builder": "../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js",
+    "dotenv/config": "./empty.ts",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "usc-schedule-helper",
+      "database_id": "580b240a-fe90-4227-a601-13d68c1f3119",
+      "migrations_dir": "../../prisma/d1/migrations",
+    },
+  ],
+  "queues": {
+    "producers": [{ "binding": "TASKS", "queue": "usc-scheduler" }],
+    "consumers": [
+      {
+        "queue": "usc-scheduler",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 25,
+        "max_concurrency": 4,
+        "dead_letter_queue": "usc-scheduler-failed",
+      },
+    ],
+  },
+  "triggers": { "crons": ["*/5 * * * *", "2,17,32,47 * * * *", "15 10 * * *"] },
+}

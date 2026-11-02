@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PrismaD1 } from "@prisma/adapter-d1";
-import { PrismaClient as D1PrismaClient } from "../../../prisma/generated-d1/client.ts";
+import { PrismaClient as D1PrismaClient } from "@app/prisma-d1";
 import type { PrismaClientType } from "../db.ts";
 import { registerD1Executor, type D1Executor } from "./executor.ts";
 import { createRemoteD1Binding } from "./remote.ts";

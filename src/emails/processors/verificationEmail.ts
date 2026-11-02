@@ -1,4 +1,4 @@
-import sendEmail from "../utilities/sendEmail";
+import sendEmail from "@app/email-sender";
 import VerificationEmail from "@/emails/VerificationEmail";
 
 export const verificationEmail = async ({

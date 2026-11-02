@@ -30,39 +30,85 @@ export function getAvailableSections(courses: Course[], department: string) {
   return available;
 }
 
+export interface AvailabilityPage {
+  afterWatchId?: string;
+  limit?: number;
+}
+export interface AvailabilityPageResult {
+  /** Selected candidates, including claims another worker already holds. */
+  processedWatches: number;
+  completedWatches: number;
+  failedWatches: number;
+  nextCursor?: string;
+}
+
 export function createAvailabilityNotifier(
   database: PrismaClientType = prisma,
   sendEmail = spotsAvailableEmail,
   sendSms = sendMessage,
 ) {
-  return async (department: string, semester: string, courses: Course[]) => {
+  return async (
+    department: string,
+    semester: string,
+    courses: Course[],
+    page: AvailabilityPage = {},
+  ): Promise<AvailabilityPageResult> => {
+    if (page.limit !== undefined && (!Number.isSafeInteger(page.limit) || page.limit < 1 || page.limit > 50)) {
+      throw new RangeError("Availability page limit must be between 1 and 50");
+    }
     const available = getAvailableSections(courses, department);
     if (!available.size) {
-      return;
+      return { processedWatches: 0, completedWatches: 0, failedWatches: 0 };
     }
     const sectionNumbers = [...available.keys()];
     // Leave room for semester/status parameters under D1's 100-bind limit.
-    const batchSize = getD1Executor(database) ? 80 : sectionNumbers.length;
-    const watches: { id: string; section: string }[] = [];
-    for (let offset = 0; offset < sectionNumbers.length; offset += batchSize) {
-      watches.push(
-        ...(await database.watchedSection.findMany({
-          where: {
-            section: { in: sectionNumbers.slice(offset, offset + batchSize) },
-            semester,
-            notified: false,
-            cancelledAt: null,
-            student: { validAccount: true },
-          },
-          select: { id: true, section: true },
-        })),
-      );
-    }
+    const batchSize = getD1Executor(database) || page.limit !== undefined ? 80 : sectionNumbers.length;
+    const candidates = new Map<string, { id: string; section: string }>();
     const watcherCounts = new Map<string, number>();
-    for (const watch of watches) {
-      watcherCounts.set(watch.section, (watcherCounts.get(watch.section) || 0) + 1);
+    for (let offset = 0; offset < sectionNumbers.length; offset += batchSize) {
+      const where = {
+        section: { in: sectionNumbers.slice(offset, offset + batchSize) },
+        semester,
+        notified: false,
+        cancelledAt: null,
+        student: { validAccount: true },
+      };
+      const batch = await database.watchedSection.findMany({
+        where: { ...where, id: page.afterWatchId === undefined ? undefined : { gt: page.afterWatchId } },
+        select: { id: true, section: true },
+        orderBy: { id: "asc" },
+        take: page.limit === undefined ? undefined : page.limit + 1,
+      });
+      for (const watch of batch) {
+        candidates.set(watch.id, watch);
+      }
+      if (page.limit !== undefined) {
+        // The displayed count covers the section, not just this notification page.
+        const counts = await database.watchedSection.groupBy({
+          by: ["section"],
+          where,
+          _count: { _all: true },
+        });
+        for (const count of counts) {
+          watcherCounts.set(count.section, count._count._all);
+        }
+      }
+    }
+    // Each section chunk contributes its first limit+1 IDs. Merge before slicing
+    // so a later chunk cannot hide an earlier ID behind the continuation cursor.
+    const ordered = [...candidates.values()].sort((left, right) =>
+      left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+    );
+    const watches = page.limit === undefined ? ordered : ordered.slice(0, page.limit);
+    const nextCursor = page.limit !== undefined && ordered.length > page.limit ? watches.at(-1)?.id : undefined;
+    if (page.limit === undefined) {
+      for (const watch of watches) {
+        watcherCounts.set(watch.section, (watcherCounts.get(watch.section) || 0) + 1);
+      }
     }
 
+    let completedWatches = 0;
+    let failedWatches = 0;
     for (const watch of watches) {
       const notificationClaimToken = randomUUID();
       const now = new Date();
@@ -192,7 +238,9 @@ export function createAvailabilityNotifier(
             });
           },
         });
+        completedWatches++;
       } catch (error) {
+        failedWatches++;
         logger.error(
           `Availability notification for watch ${watch.id} remains pending; failed channels will be retried`,
           error,
@@ -205,6 +253,7 @@ export function createAvailabilityNotifier(
         });
       }
     }
+    return { processedWatches: watches.length, completedWatches, failedWatches, nextCursor };
   };
 }
 

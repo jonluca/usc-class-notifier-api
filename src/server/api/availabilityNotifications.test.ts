@@ -8,6 +8,7 @@ import { createUserRouter } from "./routers/user";
 import { createTRPCRouter } from "./trpc";
 import { cancelWatchedSection } from "./watchedSectionCancellation";
 import type { Course, Section } from "./types";
+import { createD1TestClient } from "@/server/d1/testing";
 
 function offering(sectionId: string, changes: Partial<Section> = {}): Section {
   return {
@@ -512,4 +513,144 @@ test("PostgreSQL notification delivery", { skip: !testDatabaseUrl, timeout: 30_0
       assert.equal(cancelled.notificationClaimUntil, null);
     },
   );
+});
+
+test("D1 availability pages merge section chunks without skipping watches as earlier pages complete", async () => {
+  const fixture = await createD1TestClient();
+  const { database } = fixture;
+  try {
+    const semester = "20263";
+    const student = await database.student.create({
+      data: { email: "pagination@example.invalid", verificationKey: "pagination", validAccount: true },
+    });
+    const secondStudent = await database.student.create({
+      data: { email: "pagination-second@example.invalid", verificationKey: "pagination-second", validAccount: true },
+    });
+    const sections = Array.from({ length: 85 }, (_, i) => offering(String(30_000 + i)));
+    const assignments = [
+      ["a", 84],
+      ["b", 1],
+      ["c", 0],
+      ["d", 83],
+      ["e", 80],
+      ["f", 2],
+      ["g", 84],
+    ] as const;
+    for (const [id, index] of assignments) {
+      await database.watchedSection.create({
+        data: {
+          id,
+          studentId: id === "g" ? secondStudent.id : student.id,
+          section: sections[index]!.sisSectionId,
+          semester,
+          paidId: `page-${id}`,
+        },
+      });
+    }
+    const delivered: string[] = [];
+    const displayedCounts: number[] = [];
+    const notify = createAvailabilityNotifier(
+      database,
+      async (input) => {
+        delivered.push(input.sectionId);
+        displayedCounts.push(input.numberOfStudentsWatching);
+      },
+      async () => assert.fail("Unpaid watches do not send SMS"),
+    );
+    const courses = [course(sections), course([sections[84]!])];
+    let cursor: string | undefined;
+    const results = [];
+    for (let page = 0; page < 4; page++) {
+      const result = await notify("CSCI", semester, courses, { afterWatchId: cursor, limit: 2 });
+      results.push(result);
+      cursor = result.nextCursor;
+    }
+    assert.deepEqual(results, [
+      { processedWatches: 2, completedWatches: 2, failedWatches: 0, nextCursor: "b" },
+      { processedWatches: 2, completedWatches: 2, failedWatches: 0, nextCursor: "d" },
+      { processedWatches: 2, completedWatches: 2, failedWatches: 0, nextCursor: "f" },
+      { processedWatches: 1, completedWatches: 1, failedWatches: 0, nextCursor: undefined },
+    ]);
+    assert.deepEqual(delivered, ["a", "b", "c", "d", "e", "f", "g"]);
+    assert.equal(displayedCounts[0], 2, "the count includes watchers outside this page");
+    assert.equal(await database.notificationSent.count(), 7);
+    assert.equal(await database.watchedSection.count({ where: { notified: true } }), 7);
+    assert.deepEqual(await notify("CSCI", semester, courses, { limit: 2 }), {
+      processedWatches: 0,
+      completedWatches: 0,
+      failedWatches: 0,
+      nextCursor: undefined,
+    });
+    await database.watchedSection.updateMany({ data: { notified: false, emailSentCycle: null } });
+    delivered.length = 0;
+    assert.equal((await notify("CSCI", semester, courses)).processedWatches, 7, "default Node call remains unbounded");
+    assert.deepEqual(delivered, ["a", "b", "c", "d", "e", "f", "g"]);
+    await assert.rejects(notify("CSCI", semester, courses, { limit: 51 }), /page limit/);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+test("D1 availability aggregates distinguish failed delivery and busy claims from completed watches", async () => {
+  const fixture = await createD1TestClient();
+  const { database } = fixture;
+  try {
+    const student = await database.student.create({
+      data: {
+        email: "availability-counts@example.invalid",
+        verificationKey: "availability-counts",
+        validAccount: true,
+      },
+    });
+    const watch = await database.watchedSection.create({
+      data: { studentId: student.id, section: "03001", semester: "20271", paidId: "aggregate-reference" },
+    });
+    const courses = [course([offering(watch.section)])];
+    const failed = createAvailabilityNotifier(
+      database,
+      async () => {
+        throw new Error("Synthetic delivery failure");
+      },
+      async () => assert.fail("Unpaid SMS"),
+    );
+    assert.deepEqual(await failed("CSCI", watch.semester, courses, { limit: 10 }), {
+      processedWatches: 1,
+      completedWatches: 0,
+      failedWatches: 1,
+      nextCursor: undefined,
+    });
+    assert.equal((await database.watchedSection.findUniqueOrThrow({ where: { id: watch.id } })).notified, false);
+    await database.watchedSection.update({
+      where: { id: watch.id },
+      data: { notificationClaimToken: "busy", notificationClaimUntil: new Date(Date.now() + 60_000) },
+    });
+    const success = createAvailabilityNotifier(
+      database,
+      async () => {},
+      async () => assert.fail("Unpaid SMS"),
+    );
+    assert.deepEqual(await success("CSCI", watch.semester, courses, { limit: 10 }), {
+      processedWatches: 1,
+      completedWatches: 0,
+      failedWatches: 0,
+      nextCursor: undefined,
+    });
+    await database.watchedSection.update({
+      where: { id: watch.id },
+      data: { notificationClaimToken: null, notificationClaimUntil: null },
+    });
+    assert.deepEqual(await success("CSCI", watch.semester, courses, { limit: 10 }), {
+      processedWatches: 1,
+      completedWatches: 1,
+      failedWatches: 0,
+      nextCursor: undefined,
+    });
+    assert.deepEqual(await success("CSCI", watch.semester, [], { limit: 10 }), {
+      processedWatches: 0,
+      completedWatches: 0,
+      failedWatches: 0,
+    });
+  } finally {
+    await fixture.dispose();
+  }
 });

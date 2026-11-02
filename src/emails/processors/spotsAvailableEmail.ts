@@ -1,4 +1,4 @@
-import sendEmail from "../utilities/sendEmail";
+import sendEmail from "@app/email-sender";
 import type { SpotsAvailableEmailProps } from "@/emails/SpotsAvailableEmail";
 import SpotsAvailableEmail from "@/emails/SpotsAvailableEmail";
 import logger from "@/server/logger";

@@ -13,7 +13,7 @@
     "lint": "oxlint .",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test": "tsx --test 'src/**/*.test.ts' 'src/**/*.test.tsx' 'jobs/**/*.test.ts' 'scripts/**/*.test.ts'",
+    "test": "tsx --test 'src/**/*.test.ts' 'src/**/*.test.tsx' 'jobs/**/*.test.ts' 'scripts/**/*.test.ts' 'deploy/**/*.test.ts'",
     "dev:email": "email dev --dir src/emails --port 3001",
     "postinstall": "wxt prepare && prisma generate && pnpm run d1:generate",
     "typecheck": "tsc --noEmit",
@@ -38,10 +38,13 @@
     "lint:firefox": "web-ext lint --source-dir .output/firefox-mv3",
     "submit:firefox": "web-ext sign --source-dir .output/firefox-mv3 --channel=listed --amo-metadata=amo-metadata.json --upload-source-code=.output/class-notifier-api-${npm_package_version}-sources.zip --artifacts-dir=.output/firefox-signed",
     "d1:generate": "prisma generate --config prisma/d1/prisma.config.ts",
-    "d1:gateway:check": "wrangler deploy --dry-run --config deploy/d1-gateway/wrangler.jsonc"
+    "d1:gateway:check": "wrangler deploy --dry-run --config deploy/d1-gateway/wrangler.jsonc",
+    "scheduler:check": "wrangler deploy --dry-run --config deploy/scheduler/wrangler.jsonc",
+    "scheduler:deploy": "tsx deploy/scheduler/deploy.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1158.0",
+    "@aws-sdk/xml-builder": "3.972.41",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -50,6 +53,7 @@
     "@prisma/adapter-d1": "7.10.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@smithy/fetch-http-handler": "5.8.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.105.0",

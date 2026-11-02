@@ -2,7 +2,7 @@ import { prisma } from "@/server/db";
 import logger from "@/server/logger";
 import pMap from "p-map";
 import { uniq } from "lodash-es";
-import { notifyAvailableSections } from "@/server/api/availabilityNotifications.ts";
+import { notifyAvailableSections, type AvailabilityPage } from "@/server/api/availabilityNotifications.ts";
 import {
   FALL_REGISTRATION_RANGE,
   getValidSemesters,
@@ -10,26 +10,23 @@ import {
   SUMMER_REGISTRATION_RANGE,
 } from "@/utils/semester";
 import { getCurrentAvailableCourses, searchClasses } from "@/server/api/usc-api.ts";
-import {
-  classInfoRefreshSelect,
-  getChangedClassInfo,
-  type ClassInfoRefreshData,
-} from "@/server/api/classInfoRefresh.ts";
+import type { ClassInfoRefreshData } from "@/server/api/classInfoRefresh.ts";
+import { saveCatalogSections } from "@/server/api/catalogRefreshWrites.ts";
 import { isProd } from "@/constants.ts";
-import { getD1Executor } from "@/server/d1/executor";
+
+export const runAvailabilityDepartment = async (department: string, semester: string, page: AvailabilityPage = {}) => {
+  const result = await searchClasses({ searchTerm: department, semester });
+  if (!result?.courses) {
+    throw new Error("USC department availability response is missing courses");
+  }
+  return notifyAvailableSections(department, semester, result.courses, page);
+};
 
 const checkForAvailabilityForDepartment = async (department: string, semester: string) => {
   try {
-    const departmentCourses = await searchClasses({
-      searchTerm: department,
-      semester,
-    });
-
-    if (departmentCourses?.courses) {
-      await notifyAvailableSections(department, semester, departmentCourses.courses);
-    }
-  } catch (e) {
-    console.error(e);
+    await runAvailabilityDepartment(department, semester);
+  } catch (error) {
+    console.error(error);
   }
 };
 
@@ -67,7 +64,7 @@ export const runRefresh = async () => {
   }
 };
 
-const refreshSemester = async (semester: string) => {
+export const getAvailabilityDepartments = async (semester: string): Promise<string[]> => {
   const departments = await prisma.$queryRaw<{ department: string }[]>`
     SELECT DISTINCT COALESCE(class_info.prefix, class_info.department) AS department
     FROM "ClassInfo" AS class_info
@@ -81,123 +78,99 @@ const refreshSemester = async (semester: string) => {
       AND class_info.semester = ${semester}
   `;
 
-  if (!departments.length) {
-    return;
+  return departments.map((row) => row.department);
+};
+
+const refreshSemester = async (semester: string) => {
+  const departments = await getAvailabilityDepartments(semester);
+  await pMap(departments, (department) => checkForAvailabilityForDepartment(department, semester), {
+    concurrency: 5,
+    stopOnError: false,
+  });
+};
+
+export const getCatalogDepartments = async (semester: string): Promise<string[]> => {
+  const courses = await getCurrentAvailableCourses({ semester });
+  if (!courses?.courses) {
+    throw new Error("USC catalog response is missing courses");
   }
-  await pMap(
-    departments,
-    async (department) => {
-      await checkForAvailabilityForDepartment(department.department, semester);
-    },
-    {
-      concurrency: 5,
-      stopOnError: false,
-    },
-  );
+  return uniq(courses.courses.map((course) => course.prefix));
+};
+
+export const refreshCatalogDepartment = async (
+  department: string,
+  semester: string,
+  options: { capturedAt?: number } = {},
+): Promise<{ changedSections: number }> => {
+  const capturedAt = options.capturedAt ?? Date.now();
+  const searchResults = await searchClasses({ searchTerm: department, semester });
+  if (!searchResults?.courses) {
+    throw new Error("USC department catalog response is missing courses");
+  }
+  const departmentCourses = searchResults.courses.filter((c) => c.prefix === department);
+  const sectionInfos: ClassInfoRefreshData[] = [];
+  for (const course of departmentCourses) {
+    if (!course.sections) {
+      continue;
+    }
+    for (const section of course.sections) {
+      try {
+        const sectionNumber = section.sisSectionId;
+        const instructorNames = (section.instructors || [])
+          .map((inst) => [inst.firstName, inst.lastName].filter(Boolean).join(" "))
+          .join(", ");
+        const sectionInfo = {
+          department: course.prefix,
+          section: String(sectionNumber),
+          courseNumber:
+            course.scheduledCourseCode?.courseHyphen ||
+            course.publishedCourseCode?.courseHyphen ||
+            course.fullCourseName ||
+            "",
+          courseTitle: course.name,
+          prefix: course.prefix,
+          semester,
+          instructor: instructorNames,
+          type: section.rnrMode,
+          units: (section.units || []).join("-"),
+          day: (section.schedule || [])
+            .map((l) => l.dayCode)
+            .filter(Boolean)
+            .join(""),
+          location: uniq((section.schedule || []).map((l) => l.location).filter(Boolean)).join(", "),
+          hasDClearance: Boolean(section.hasDClearance),
+          isCancelled: section.isCancelled,
+        } satisfies ClassInfoRefreshData;
+        sectionInfos.push(sectionInfo);
+      } catch (e) {
+        console.error(
+          `Error processing section ${section.sisSectionId} for course ${course.fullCourseName} in department ${department} for semester ${semester}: ${e}`,
+        );
+      }
+    }
+  }
+  const changedSections = await saveCatalogSections(prisma, semester, sectionInfos, capturedAt);
+  return { changedSections };
 };
 
 export const createClassInfo = async () => {
-  const semesters = getValidSemesters();
-
-  for (const semester of semesters) {
+  for (const semester of getValidSemesters()) {
     try {
-      const courses = await getCurrentAvailableCourses({ semester });
-      if (!courses) {
-        continue;
-      }
-      const departments = uniq(courses.courses.map((course) => course.prefix));
-
+      const departments = await getCatalogDepartments(semester);
       await pMap(
         departments,
         async (department) => {
           try {
-            const searchResults = await searchClasses({
-              searchTerm: department,
-              semester,
-            });
-            // now iterate over the classes, and create class info entries for each section in the department
-            if (!searchResults || !searchResults.courses) {
-              console.error(`No search results for department ${department} in semester ${semester}`);
-              return;
-            }
-            const departmentCourses = searchResults.courses.filter((c) => c.prefix === department);
-            const sectionInfos: ClassInfoRefreshData[] = [];
-            for (const course of departmentCourses) {
-              if (!course.sections) {
-                continue;
-              }
-              for (const section of course.sections) {
-                try {
-                  const sectionNumber = section.sisSectionId;
-                  const instructorNames = (section.instructors || [])
-                    .map((inst) => [inst.firstName, inst.lastName].filter(Boolean).join(" "))
-                    .join(", ");
-                  const sectionInfo = {
-                    department: course.prefix,
-                    section: String(sectionNumber),
-                    courseNumber:
-                      course.scheduledCourseCode?.courseHyphen ||
-                      course.publishedCourseCode?.courseHyphen ||
-                      course.fullCourseName ||
-                      "",
-                    courseTitle: course.name,
-                    prefix: course.prefix,
-                    semester,
-                    instructor: instructorNames,
-                    type: section.rnrMode,
-                    units: (section.units || []).join("-"),
-                    day: (section.schedule || [])
-                      .map((l) => l.dayCode)
-                      .filter(Boolean)
-                      .join(""),
-                    location: uniq((section.schedule || []).map((l) => l.location).filter(Boolean)).join(", "),
-                    hasDClearance: Boolean(section.hasDClearance),
-                    isCancelled: section.isCancelled,
-                  } satisfies ClassInfoRefreshData;
-                  sectionInfos.push(sectionInfo);
-                } catch (e) {
-                  console.error(
-                    `Error processing section ${section.sisSectionId} for course ${course.fullCourseName} in department ${department} for semester ${semester}: ${e}`,
-                  );
-                }
-              }
-            }
-
-            for await (const sectionInfo of getChangedClassInfo(
-              sectionInfos,
-              (sectionNumbers) =>
-                prisma.classInfo.findMany({
-                  where: { semester, section: { in: sectionNumbers } },
-                  select: classInfoRefreshSelect,
-                }),
-              getD1Executor(prisma) ? 80 : 250,
-            )) {
-              try {
-                await prisma.classInfo.upsert({
-                  where: { section_semester: { section: sectionInfo.section, semester } },
-                  create: sectionInfo,
-                  update: sectionInfo,
-                  select: { id: true },
-                });
-              } catch (e) {
-                console.error(
-                  `Error saving section ${sectionInfo.section} in department ${department} for semester ${semester}: ${e}`,
-                );
-              }
-            }
-
+            await refreshCatalogDepartment(department, semester);
             console.log(`Finished ${semester} - ${department}`);
-          } catch (e: any) {
-            console.error(`Error creating class info for ${department} in ${semester}: ${e.message}`);
+          } catch (error) {
+            console.error(`Error creating class info for ${department} in ${semester}`, error);
           }
         },
-        {
-          concurrency: isProd ? 4 : 1,
-          stopOnError: false,
-        },
+        { concurrency: isProd ? 4 : 1, stopOnError: false },
       );
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   }
   logger.info("Finished creating class info");

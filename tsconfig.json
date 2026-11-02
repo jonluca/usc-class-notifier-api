@@ -21,7 +21,9 @@
       "@/*": ["./src/*"],
       "@app/prisma": ["./prisma/generated/client.ts"],
       "@app/prisma/*": ["./prisma/generated/*"],
-      "-/*": ["./assets/*"]
+      "-/*": ["./assets/*"],
+      "@app/prisma-d1": ["./prisma/generated-d1/client.ts"],
+      "@app/email-sender": ["./src/emails/utilities/sendEmail.ts"]
     }
   }
 }

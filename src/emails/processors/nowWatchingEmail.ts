@@ -1,4 +1,4 @@
-import sendEmail from "../utilities/sendEmail";
+import sendEmail from "@app/email-sender";
 import type { NowWatchingEmailProps } from "@/emails/NowWatchingEmail";
 import NowWatchingEmail from "@/emails/NowWatchingEmail";
 import { formatSemester } from "@/utils/venmoPayment";

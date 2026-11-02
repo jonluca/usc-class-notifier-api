@@ -7,6 +7,16 @@ generator client {
   engineType = "client"
 }
 
+generator workerClient {
+  provider = "prisma-client"
+  output = "../generated-d1-worker"
+  runtime = "cloudflare"
+  moduleFormat = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension = "ts"
+  engineType = "client"
+}
+
 datasource db {
   provider = "sqlite"
 }

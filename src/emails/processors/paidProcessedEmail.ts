@@ -1,4 +1,4 @@
-import sendEmail from "../utilities/sendEmail";
+import sendEmail from "@app/email-sender";
 import type { PaidProcessedEmailProps } from "@/emails/PaidProcessedEmail";
 import PaidProcessedEmail from "@/emails/PaidProcessedEmail";
 import { prisma } from "@/server/db";

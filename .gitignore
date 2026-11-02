@@ -283,5 +283,8 @@ prisma/generated
 /prisma/generated-d1/
 /.wrangler/
 /deploy/d1-gateway/.wrangler/
+/deploy/scheduler/.wrangler/
 **/.private/
 /prisma/d1/*.db
+
+/prisma/generated-d1-worker/

@@ -12,7 +12,7 @@ export default async function health(req: NextApiRequest, res: NextApiResponse) 
   const state = {
     databaseProvider: getD1Executor(prisma) ? "d1" : "postgres",
     maintenance: isMaintenanceMode(),
-    revision: process.env.APP_REVISION || process.env.VERCEL_GIT_COMMIT_SHA || null,
+    revision: process.env.VERCEL_GIT_COMMIT_SHA || process.env.APP_REVISION || null,
   };
   try {
     await prisma.$queryRaw`SELECT 1`;

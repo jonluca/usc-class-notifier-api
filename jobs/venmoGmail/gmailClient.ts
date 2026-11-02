@@ -1,18 +1,36 @@
 import "dotenv/config";
-import { ImapFlow } from "imapflow";
-import { simpleParser } from "mailparser";
-import { prisma } from "@/server/db.ts";
+import { ImapFlow, type ImapFlowOptions } from "imapflow";
+import { prisma, type PrismaClientType } from "@/server/db.ts";
 import logger from "@/server/logger.ts";
 import { getD1Executor } from "@/server/d1/executor";
 import { markD1PaymentPaid } from "./d1Payments";
 import { getValidSemesters } from "@/utils/semester.ts";
-import { classifyReceipt } from "./backfillReconciliation.ts";
 import {
   isReceiptEligibleForRow,
   reconcilePaymentReference,
-  selectSinglePaymentReference,
   type PaymentReceiptReference,
 } from "./paymentReconciliation.ts";
+
+import {
+  fetchGmailPage,
+  gmailImapOptions,
+  type GmailCursor,
+  type GmailImapSession,
+  type GmailPageOptions,
+  type GmailPageResult,
+  type GmailPageSummary,
+} from "./gmailPagination";
+
+export interface GmailClientOptions {
+  database?: PrismaClientType;
+  createImapClient?: (options: ImapFlowOptions) => GmailImapSession;
+  transport?: ImapFlowOptions["transport"];
+  now?: () => number;
+}
+export interface GmailCheckPageResult {
+  summary: GmailPageSummary & { updatedCount: number };
+  nextCursor: GmailCursor | null;
+}
 
 /**
  * ENV:
@@ -20,6 +38,10 @@ import {
  *  GMAIL_IMAP_APP_PASSWORD=xxxx xxxx xxxx xxxx   (16-char app password, spaces optional)
  */
 export class GmailVenmoImapClient {
+  private readonly database: PrismaClientType;
+  constructor(private readonly options: GmailClientOptions = {}) {
+    this.database = options.database ?? prisma;
+  }
   private submitPayments = async (receipts: PaymentReceiptReference[]) => {
     const receiptsByPaidId = new Map<string, PaymentReceiptReference[]>();
     for (const receipt of receipts) {
@@ -28,12 +50,12 @@ export class GmailVenmoImapClient {
       receiptsByPaidId.set(receipt.paidId, matchingReceipts);
     }
     const paidIds = [...receiptsByPaidId.keys()];
-    const d1 = getD1Executor(prisma);
+    const d1 = getD1Executor(this.database);
     const rows = [];
     const batchSize = d1 ? 80 : 1_000;
     for (let offset = 0; offset < paidIds.length; offset += batchSize) {
       rows.push(
-        ...(await prisma.watchedSection.findMany({
+        ...(await this.database.watchedSection.findMany({
           where: { paidId: { in: paidIds.slice(offset, offset + batchSize) } },
           select: { id: true, createdAt: true, paidId: true, semester: true, isPaid: true },
         })),
@@ -78,7 +100,7 @@ export class GmailVenmoImapClient {
                   receiptCutoff: new Date(eligibleReceipt.receivedAt.getTime() + 5 * 60 * 1000),
                 }),
               }
-            : await prisma.watchedSection.updateMany({
+            : await this.database.watchedSection.updateMany({
                 where: {
                   id: reconciliation.row.id,
                   paidId,
@@ -105,138 +127,52 @@ export class GmailVenmoImapClient {
 
     return updatedCount;
   };
-  async fetchVenmoPayments(): Promise<PaymentReceiptReference[]> {
+  /** A fetch-only page never marks a payment or sends a notification. */
+  fetchPage(options: GmailPageOptions = {}): Promise<GmailPageResult> {
     const user = process.env.GMAIL_IMAP_USER;
     const pass = process.env.GMAIL_IMAP_APP_PASSWORD;
-
-    if (!user) {
-      throw new Error("GMAIL_IMAP_USER not set");
+    if (!user || !pass?.replace(/\s+/g, "")) {
+      throw new Error("Gmail IMAP credentials are not configured");
     }
-    if (!pass) {
-      throw new Error("GMAIL_IMAP_APP_PASSWORD not set");
+    const configuration = gmailImapOptions(user, pass, this.options.transport);
+    const client = this.options.createImapClient?.(configuration) ?? new ImapFlow(configuration);
+    return fetchGmailPage(client, options, this.options.now?.() ?? Date.now());
+  }
+
+  async checkPage(options: GmailPageOptions = {}): Promise<GmailCheckPageResult> {
+    const page = await this.fetchPage(options);
+    if (page.summary.ambiguousReceipts || page.summary.unauthenticatedReceipts) {
+      logger.warn(
+        `Venmo Gmail page skipped ${page.summary.ambiguousReceipts} ambiguous and ${page.summary.unauthenticatedReceipts} unauthenticated receipts`,
+      );
     }
+    const updatedCount = page.receipts.length ? await this.submitPayments(page.receipts) : 0;
+    return { summary: { ...page.summary, updatedCount }, nextCursor: page.nextCursor };
+  }
 
-    const client = new ImapFlow({
-      host: "imap.gmail.com",
-      port: 993,
-      secure: true,
-      auth: {
-        user,
-        pass: pass.replace(/\s+/g, ""), // app password sometimes pasted with spaces
-      },
-      logger: false,
-    });
-
+  async fetchVenmoPayments(): Promise<PaymentReceiptReference[]> {
     const receipts: PaymentReceiptReference[] = [];
-    let ambiguousReceiptCount = 0;
-    let unauthenticatedReceiptCount = 0;
-
-    try {
-      await client.connect();
-
-      // Gmail supports the "All Mail" mailbox for searching across archived+inbox.
-      // If it doesn't exist (rare), fall back to INBOX.
-      const gmailAllMail = "[Gmail]/All Mail";
-      try {
-        await client.mailboxOpen(gmailAllMail, { readOnly: true });
-      } catch {
-        await client.mailboxOpen("INBOX", { readOnly: true });
-      }
-
-      // Keep enough overlap to recover after an extended deployment or provider outage.
-      // The database update is idempotent, so refetching this bounded window is safe.
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-      const uids = await client.search({
-        since,
-        from: "venmo@venmo.com",
-      });
-
-      if (!uids || uids.length === 0) {
-        logger.info("Venmo Gmail scan completed: 0 messages found");
-        return [];
-      }
-      // Fetch newest first
-      uids.sort((a, b) => b - a);
-
-      for await (const msg of client.fetch(uids, { uid: true, envelope: true, internalDate: true, source: true })) {
-        const text = msg.source?.toString();
-        if (!text) {
-          continue;
-        }
-        const parsed = await simpleParser(text, {
-          skipHtmlToText: true,
-          skipTextToHtml: true,
-        });
-        const authenticationHeaders: string[] = [];
-        for (const header of parsed.headerLines) {
-          if (header.key.toLowerCase() === "authentication-results") {
-            authenticationHeaders.push(header.line);
-          }
-        }
-        const classification = classifyReceipt({
-          receiptKey: `uid:${msg.uid}`,
-          internalDate: msg.internalDate instanceof Date ? msg.internalDate : null,
-          subject: parsed.subject ?? msg.envelope?.subject ?? "",
-          fromAddresses:
-            parsed.from?.value.flatMap((entry) => {
-              if (entry.address) {
-                return [entry.address];
-              }
-              const groupAddresses: string[] = [];
-              for (const member of entry.group || []) {
-                if (member.address) {
-                  groupAddresses.push(member.address);
-                }
-              }
-              return groupAddresses;
-            }) ?? [],
-          authenticationHeaders,
-          plaintext: parsed.text,
-          html: parsed.html === false ? undefined : parsed.html,
-        });
-        const paidId = selectSinglePaymentReference(classification.paidIds);
-        if (classification.status === "genuine_single_id" && paidId && classification.internalDate) {
-          receipts.push({ paidId, receivedAt: classification.internalDate });
-        } else if (classification.status === "genuine_multiple_ids") {
-          ambiguousReceiptCount += 1;
-        } else if (
-          classification.status === "authentication_failed" ||
-          classification.status === "authentication_unknown"
-        ) {
-          unauthenticatedReceiptCount += 1;
-        }
-      }
-    } finally {
-      // close connection cleanly
-      try {
-        await client.logout();
-      } catch {
-        // ignore
-      }
-    }
-
-    if (ambiguousReceiptCount > 0) {
-      logger.warn(`Venmo Gmail scan skipped ${ambiguousReceiptCount} receipts containing multiple payment references`);
-    }
-    if (unauthenticatedReceiptCount > 0) {
-      logger.warn(`Venmo Gmail scan skipped ${unauthenticatedReceiptCount} receipts that failed sender authentication`);
-    }
-
+    let cursor: GmailCursor | undefined;
+    do {
+      const page = await this.fetchPage({ cursor });
+      receipts.push(...page.receipts);
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
     return receipts;
   }
 
   checkEmails = async (): Promise<void> => {
-    const receipts = await this.fetchVenmoPayments();
-    if (receipts.length === 0) {
-      logger.info("Venmo Gmail scan completed: 0 payment IDs found");
-      return;
-    }
-
-    const uniquePaidIds = [...new Set(receipts.map((receipt) => receipt.paidId))];
-    const updatedCount = await this.submitPayments(receipts);
+    let cursor: GmailCursor | undefined;
+    let receiptCount = 0;
+    let updatedCount = 0;
+    do {
+      const page = await this.checkPage({ cursor });
+      receiptCount += page.summary.genuineReceipts;
+      updatedCount += page.summary.updatedCount;
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
     logger.info(
-      `Venmo Gmail scan completed: ${uniquePaidIds.length} payment IDs found, ${updatedCount} sections newly marked paid`,
+      `Venmo Gmail scan completed: ${receiptCount} authenticated receipts found, ${updatedCount} sections newly marked paid`,
     );
   };
 }
