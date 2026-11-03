@@ -5,6 +5,7 @@ import type { Options } from "@/extension/utils";
 import { getCurrentSchedule, parseSchedule } from "@/extension/schedule";
 import { ICS_EXPORT_BUTTON_CLASS, insertCalendarExportButton } from "@/extension/calendarExport";
 import { setDarkModeActive, shouldEnableDarkMode } from "@/extension/darkMode";
+import { insertFinalExamsButton, removeFinalExamsButton } from "@/extension/finalExamsButton";
 
 let initializationId = 0;
 
@@ -23,6 +24,7 @@ function restoreAttribute(element: JQuery<HTMLElement>, dataAttribute: string, a
 
 function cleanupExtension() {
   cleanupCoursePage();
+  removeFinalExamsButton();
   $(".usc-helper-conflict-button").each(function () {
     const button = $(this);
     button.off(".usc-helper-conflict");
@@ -81,6 +83,11 @@ export const initExtension = (options: Options) => {
   if (currentURL.includes("webreg")) {
     if (currentURL.includes("/Calendar")) {
       insertCalendarExportButton();
+    }
+    // The real CourseBin address is /CourseBin (confirmed in a live session 2026-11-01; the nav link
+    // reads "myCourseBin" but its href and the address bar are /CourseBin). /myCourseBin is accepted too.
+    if (/^\/(my)?coursebin\b/i.test(window.location.pathname)) {
+      insertFinalExamsButton();
     }
     if (!currentURL.includes("/myCourseBin")) {
       if (options.showConflicts) {

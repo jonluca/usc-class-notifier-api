@@ -36,6 +36,8 @@ export default defineConfig({
       homepage_url: "https://usc.jonlu.ca",
       permissions: ["storage"],
       host_permissions: ["https://classes.usc.edu/*", "https://www.usc.edu/*"],
+      // Requested from the Final Exams modal, never at install/update (see finalExamsData.ts).
+      optional_host_permissions: ["https://arr.usc.edu/*"],
       icons: {
         16: "/icon-16.png",
         32: "/icon-32.png",

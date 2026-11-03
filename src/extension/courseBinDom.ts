@@ -15,6 +15,7 @@
 // lookup, both of which already rely on this shape in production.
 
 import { parseDays, parseTimeRange, expandLocation } from "@/extension/courseBinScrape";
+import { parseSemesterTerm } from "@/utils/semester";
 
 export interface RawMeeting {
   days: string[];
@@ -35,24 +36,34 @@ export interface RawSection {
 
 // Exactly one of a section's action-state divs (schedY_regN_{id}, schedN_regN_{id},
 // schedY_regY_{id}, schedN_regY_{id}) has style="display: block" at a time; its id encodes the
-// section's real Scheduled/Registered flags. A section belongs in the export iff Registered=Y,
-// regardless of Scheduled: schedN_regY is still currently registered (a drop pending at the next
-// Checkout submission — hasn't taken effect yet), while schedY_regN was only ever scheduled in
-// the planner, never actually registered. Read directly off the id, not the human-readable text
+// section's real Scheduled/Registered flags. Read directly off the id, not the human-readable text
 // in the sibling status divs, which says the same thing but is a less stable signal to parse.
-function registrationState(sectionEl: Element): boolean | null {
-  const visibleStates: boolean[] = [];
+interface ActionState {
+  scheduled: boolean;
+  registered: boolean;
+}
+
+function actionState(sectionEl: Element): ActionState | null {
+  const visibleStates: ActionState[] = [];
   const actionbars = sectionEl.querySelectorAll<HTMLElement>(".actionbar");
   for (const el of actionbars) {
     if (el.style.display !== "block") {
       continue;
     }
-    const match = el.id.match(/^sched[YN]_reg([YN])_/);
+    const match = el.id.match(/^sched([YN])_reg([YN])_/);
     if (match) {
-      visibleStates.push(match[1] === "Y");
+      visibleStates.push({ scheduled: match[1] === "Y", registered: match[2] === "Y" });
     }
   }
   return visibleStates.length === 1 ? visibleStates[0]! : null;
+}
+
+// A section belongs in the calendar export iff Registered=Y, regardless of Scheduled:
+// schedN_regY is still currently registered (a drop pending at the next Checkout submission —
+// hasn't taken effect yet), while schedY_regN was only ever scheduled in the planner, never
+// actually registered.
+function registrationState(sectionEl: Element): boolean | null {
+  return actionState(sectionEl)?.registered ?? null;
 }
 
 // DOMParser creates a detached document, so innerText does not reliably apply rendered <br>
@@ -127,6 +138,12 @@ function scrapeSection(sectionContainerEl: Element, course: string, title: strin
   const dayLines = rowValueLines(daysRow);
   const locationLines = locationRow ? rowValueLines(locationRow) : [];
 
+  // Real WebReg markup for an unscheduled section (seen on a Spring 2027 CSCI 201 quiz): Time reads
+  // "TBA" and the Days cell is completely empty. That's an explicit "no meeting time", not drift.
+  if (dayLines.length === 0 && timeLines.length > 0 && timeLines.every((line) => /^(TBA|TBD)$/i.test(line))) {
+    return { id, sessionId: scrapeSessionId(sectionContainerEl), course, title, type, instructor, meetings: [] };
+  }
+
   if (timeLines.length === 0 || timeLines.length !== dayLines.length) {
     throw new Error(`Section ${id} has mismatched Time and Days rows.`);
   }
@@ -173,6 +190,104 @@ function parseCourseHeader(headerEl: Element | undefined): { course: string; tit
   const course = `${match[1]!.toUpperCase()} ${match[2]!.toUpperCase()}`;
   const title = headerEl.querySelector(".crsTitl")?.textContent?.trim() ?? "";
   return { course, title };
+}
+
+export type CourseBinSectionState = "registered" | "scheduled" | "bin";
+
+export interface CourseBinSection extends RawSection {
+  state: CourseBinSectionState;
+}
+
+export class CourseBinTermError extends Error {
+  constructor() {
+    super("CourseBin term is missing, unrecognized, or different from the current tab.");
+    this.name = "CourseBinTermError";
+  }
+}
+
+function sectionStateOf(state: ActionState): CourseBinSectionState {
+  if (state.registered) {
+    return "registered";
+  }
+  return state.scheduled ? "scheduled" : "bin";
+}
+
+// Every section in a parsed /CourseBin document, labelled registered / scheduled / bin. Registered
+// and scheduled sections are parsed strictly (a malformed one throws, same as the calendar export,
+// because a silently missing class would make the exam list look complete when it isn't). Sections
+// only sitting in the bin are parsed leniently: one with odd meeting data keeps empty meetings
+// rather than breaking the whole page, since v1 doesn't show them. Verify the response's term before
+// reading any sections: another WebReg tab may have changed the server's selected term.
+export function scrapeCourseBinSections(doc: Document, expectedTermId: string): CourseBinSection[] {
+  const fetchedTermId = parseSemesterTerm(doc.getElementById("activeTermTab")?.textContent);
+  if (!fetchedTermId || fetchedTermId !== expectedTermId) {
+    throw new CourseBinTermError();
+  }
+  const expectedRegistered = expectedRegisteredSectionCount(doc);
+  const sections: CourseBinSection[] = [];
+
+  for (const coursePanel of doc.querySelectorAll(".accordion-content-area")) {
+    const sectionEls = coursePanel.querySelectorAll(".section_crsbin");
+    if (sectionEls.length === 0) {
+      throw new Error("WebReg course-bin markup contains an empty course panel.");
+    }
+
+    const header = parseCourseHeader(coursePanel.previousElementSibling ?? undefined);
+    if (!header) {
+      throw new Error("WebReg course-bin markup is missing a course header.");
+    }
+
+    for (const sectionEl of sectionEls) {
+      const container = sectionEl.closest(".section");
+      if (!container) {
+        throw new Error("WebReg course-bin markup is missing a section container.");
+      }
+      const state = actionState(container);
+      if (!state) {
+        throw new Error(`WebReg course-bin markup has an unknown registration state for ${container.id}.`);
+      }
+      const label = sectionStateOf(state);
+      if (label !== "bin") {
+        sections.push({ ...scrapeSection(container, header.course, header.title), state: label });
+        continue;
+      }
+      try {
+        sections.push({ ...scrapeSection(container, header.course, header.title), state: label });
+      } catch {
+        const id = container.id.replace(/^section_/, "");
+        sections.push({
+          id,
+          sessionId: scrapeSessionId(container),
+          course: header.course,
+          title: header.title,
+          type: "",
+          instructor: "",
+          meetings: [],
+          state: label,
+        });
+      }
+    }
+  }
+
+  const registered = sections.filter((section) => section.state === "registered").length;
+  if (registered !== expectedRegistered) {
+    throw new Error(`WebReg reported ${expectedRegistered} registered sections, but ${registered} were parsed.`);
+  }
+  // WebReg's "Scheduled sections: N" counts scheduled-but-not-registered sections (confirmed on real
+  // captures: Spring 2027 showed 10 with 10 schedY_regN; Fall 2026 showed 0 with 9 schedY_regY). Checking it
+  // too means a truncated page can't silently drop scheduled sections from the exam list.
+  const expectedScheduled = expectedScheduledSectionCount(doc);
+  const scheduled = sections.filter((section) => section.state === "scheduled").length;
+  if (expectedScheduled !== null && scheduled !== expectedScheduled) {
+    throw new Error(`WebReg reported ${expectedScheduled} scheduled sections, but ${scheduled} were parsed.`);
+  }
+  return sections;
+}
+
+function expectedScheduledSectionCount(doc: Document): number | null {
+  const status = doc.querySelector(".mycbstat")?.textContent?.replace(/\s+/g, " ").trim();
+  const match = status?.match(/Scheduled sections?:\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
 }
 
 function expectedRegisteredSectionCount(doc: Document): number {

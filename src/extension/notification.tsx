@@ -255,7 +255,10 @@ const NotificationModal = () => {
       }}
       disablePortal={true}
     >
-      <>
+      {/* MUI's Modal attaches a ref to its single child for its focus trap. A Fragment child
+          gives React 19 a FragmentInstance (no hasAttribute), which crashed the trap and kept
+          this modal from opening. It must be a real element. */}
+      <div>
         <div
           className={`flex outline-hidden flex-col items-center gap-4 w-full md:w-[500px] min-h-[200px] absolute bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 px-6 py-6 rounded-t-3xl md:rounded-2xl shadow-lg max-h-screen overflow-y-auto pb-8 md:pb-4 ${
             darkMode ? `${darkPalette.bgSurface} border ${darkPalette.borderDefault}` : "bg-white"
@@ -269,7 +272,7 @@ const NotificationModal = () => {
             )
           ) : null}
         </div>
-      </>
+      </div>
     </Modal>
   );
 };

@@ -5,6 +5,8 @@ import { CssBaseline } from "@mui/material";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
 import NotificationModal from "@/extension/notification";
+import FinalExamsModal from "@/extension/finalExamsModal";
+import { useFinalExamsModalOpen } from "@/extension/finalExamsButton";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/extension/data";
 import { ToastContainer } from "react-toastify";
@@ -93,6 +95,7 @@ const ExtensionLogic = () => {
   const [darkMode, , darkModeLoaded] = useStorageItem(darkModeStorage, false);
   const href = useLocationHref();
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass);
+  const finalExamsOpen = useFinalExamsModalOpen();
 
   useEffect(() => {
     if (!enabledLoaded || !showConflictsLoaded || !showUnitsLoaded || !darkModeLoaded) {
@@ -117,10 +120,12 @@ const ExtensionLogic = () => {
     showUnitsLoaded,
   ]);
 
-  if (!selectedClass) {
-    return null;
-  }
-  return <NotificationModal />;
+  return (
+    <>
+      {selectedClass && <NotificationModal />}
+      {finalExamsOpen && enabled && <FinalExamsModal />}
+    </>
+  );
 };
 
 const ExtensionView = () => {
