@@ -5,7 +5,7 @@ import Modal from "@mui/material/Modal";
 import { storage } from "@wxt-dev/storage";
 import { useCallback, useEffect, useState } from "react";
 import { browser } from "wxt/browser";
-import { scrapeCourseBinSections } from "@/extension/courseBinDom";
+import { CourseBinTermError, scrapeCourseBinSections } from "@/extension/courseBinDom";
 import { COURSE_BIN_URL } from "@/extension/courseBinScrape";
 import { shouldEnableDarkMode } from "@/extension/darkMode";
 import { darkPalette } from "@/extension/darkPalette";
@@ -74,12 +74,15 @@ async function loadView(forceRefresh: boolean): Promise<ViewState> {
   }
   let sections;
   try {
-    sections = scrapeCourseBinSections(await fetchCourseBin());
+    sections = scrapeCourseBinSections(await fetchCourseBin(), termId);
   } catch (error) {
     console.error("[USC Schedule Helper] final exams: couldn't read CourseBin.", error);
     return {
       kind: "error",
-      message: "Couldn't read your CourseBin, so no exam list is shown (rather than a partial one).",
+      message:
+        error instanceof CourseBinTermError
+          ? "Your CourseBin term changed or couldn't be verified. Reload WebReg, select the intended term, and try again."
+          : "Couldn't read your CourseBin, so no exam list is shown (rather than a partial one).",
     };
   }
   const included = sections.filter((section) => section.state !== "bin");

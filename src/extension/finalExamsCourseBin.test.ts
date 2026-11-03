@@ -25,7 +25,7 @@ function summary(entries: ExamEntry[]): string[] {
 }
 
 test("real CourseBin: every section is scraped with its state and session", async () => {
-  const sections = scrapeCourseBinSections(await parseDetachedDocument(COURSE_BIN));
+  const sections = scrapeCourseBinSections(await parseDetachedDocument(COURSE_BIN), "20271");
   assert.equal(sections.length, 17);
   assert.equal(sections.filter((section) => section.state === "scheduled").length, 10);
   assert.equal(sections.filter((section) => section.state === "bin").length, 7);
@@ -34,9 +34,28 @@ test("real CourseBin: every section is scraped with its state and session", asyn
   assert.ok(sections.some((section) => section.course === "NAUT 301A"));
 });
 
+test("real CourseBin: a different fetched term cannot supply the current tab's exam sections", async () => {
+  const doc = await parseDetachedDocument(COURSE_BIN);
+  // Another WebReg tab can select Spring while this tab still displays Fall. The response is valid
+  // Spring markup, but using its sections with Fall's exam schedule would produce incorrect dates.
+  assert.throws(() => scrapeCourseBinSections(doc, "20263"), /CourseBin term/);
+});
+
+test("real CourseBin: a missing fetched term is rejected", async () => {
+  const doc = await parseDetachedDocument(COURSE_BIN);
+  doc.getElementById("activeTermTab")!.remove();
+  assert.throws(() => scrapeCourseBinSections(doc, "20271"), /CourseBin term/);
+});
+
+test("real CourseBin: an unrecognized fetched term is rejected", async () => {
+  const doc = await parseDetachedDocument(COURSE_BIN);
+  doc.getElementById("activeTermTab")!.textContent = "Choose a term";
+  assert.throws(() => scrapeCourseBinSections(doc, "20271"), /CourseBin term/);
+});
+
 test("real CourseBin: a TBA section with an empty Days cell has no meetings instead of aborting", async () => {
   const doc = await parseDetachedDocument(COURSE_BIN);
-  const quiz = scrapeCourseBinSections(doc).find((section) => section.id === "10005");
+  const quiz = scrapeCourseBinSections(doc, "20271").find((section) => section.id === "10005");
   assert.equal(quiz?.type, "Quiz");
   assert.deepEqual(quiz?.meetings, []);
   // The calendar export shares this parser; nothing is registered in this capture.
@@ -44,7 +63,7 @@ test("real CourseBin: a TBA section with an empty Days cell has no meetings inst
 });
 
 test("real CourseBin: registered + scheduled sections resolve against Spring 2027", async () => {
-  const sections = scrapeCourseBinSections(await parseDetachedDocument(COURSE_BIN));
+  const sections = scrapeCourseBinSections(await parseDetachedDocument(COURSE_BIN), "20271");
   const included = sections.filter((section) => section.state !== "bin");
   assert.deepEqual(summary(resolveFinalExams(included, SPRING)), [
     "CSCI 201 [10004,10005,10006] exception Tue, May 11, 4:30 PM – 6:30 PM",
@@ -73,5 +92,8 @@ test("real CourseBin: a truncated page is rejected instead of yielding a partial
   // Cut the capture partway through: WebReg still says 10 scheduled sections, fewer are parsed.
   const truncated = COURSE_BIN.slice(0, Math.floor(COURSE_BIN.length * 0.45));
   const doc = await parseDetachedDocument(truncated);
-  assert.throws(() => scrapeCourseBinSections(doc), /WebReg reported 10 scheduled sections, but \d+ were parsed/);
+  assert.throws(
+    () => scrapeCourseBinSections(doc, "20271"),
+    /WebReg reported 10 scheduled sections, but \d+ were parsed/,
+  );
 });

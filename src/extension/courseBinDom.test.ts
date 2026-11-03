@@ -23,6 +23,7 @@ async function parseDetachedDocument(html: string): Promise<Document> {
 }
 
 const COURSE_BIN_FIXTURE = `
+  <a id="activeTermTab">Spring 2027 Classes</a>
   <span class="mycbstat">Registered section: <span class="courseBinStat">1</span>, Scheduled sections: 1</span>
   <div class="course-header">
     <span class="crsID">CSCI-104</span>
@@ -173,7 +174,7 @@ function withScheduledAndBin(html: string): string {
 
 test("scrapeCourseBinSections labels registered, scheduled and bin-only sections", async () => {
   const doc = await parseDetachedDocument(withScheduledAndBin(COURSE_BIN_FIXTURE));
-  const sections = scrapeCourseBinSections(doc);
+  const sections = scrapeCourseBinSections(doc, "20271");
   assert.deepEqual(
     sections.map((section) => [section.id, section.state, section.type, section.sessionId]),
     [
@@ -194,5 +195,5 @@ test("scrapeCourseBinSections labels registered, scheduled and bin-only sections
 test("scrapeCourseBinSections is strict about scheduled sections", async () => {
   // Section 54321 is scheduled but has no Time/Days rows in the base fixture.
   const doc = await parseDetachedDocument(COURSE_BIN_FIXTURE);
-  assert.throws(() => scrapeCourseBinSections(doc), /missing its Time or Days row/);
+  assert.throws(() => scrapeCourseBinSections(doc, "20271"), /missing its Time or Days row/);
 });

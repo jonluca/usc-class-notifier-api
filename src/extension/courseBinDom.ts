@@ -15,6 +15,7 @@
 // lookup, both of which already rely on this shape in production.
 
 import { parseDays, parseTimeRange, expandLocation } from "@/extension/courseBinScrape";
+import { parseSemesterTerm } from "@/utils/semester";
 
 export interface RawMeeting {
   days: string[];
@@ -197,6 +198,13 @@ export interface CourseBinSection extends RawSection {
   state: CourseBinSectionState;
 }
 
+export class CourseBinTermError extends Error {
+  constructor() {
+    super("CourseBin term is missing, unrecognized, or different from the current tab.");
+    this.name = "CourseBinTermError";
+  }
+}
+
 function sectionStateOf(state: ActionState): CourseBinSectionState {
   if (state.registered) {
     return "registered";
@@ -208,8 +216,13 @@ function sectionStateOf(state: ActionState): CourseBinSectionState {
 // and scheduled sections are parsed strictly (a malformed one throws, same as the calendar export,
 // because a silently missing class would make the exam list look complete when it isn't). Sections
 // only sitting in the bin are parsed leniently: one with odd meeting data keeps empty meetings
-// rather than breaking the whole page, since v1 doesn't show them.
-export function scrapeCourseBinSections(doc: Document): CourseBinSection[] {
+// rather than breaking the whole page, since v1 doesn't show them. Verify the response's term before
+// reading any sections: another WebReg tab may have changed the server's selected term.
+export function scrapeCourseBinSections(doc: Document, expectedTermId: string): CourseBinSection[] {
+  const fetchedTermId = parseSemesterTerm(doc.getElementById("activeTermTab")?.textContent);
+  if (!fetchedTermId || fetchedTermId !== expectedTermId) {
+    throw new CourseBinTermError();
+  }
   const expectedRegistered = expectedRegisteredSectionCount(doc);
   const sections: CourseBinSection[] = [];
 
