@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
-import { scrapeRegisteredSections } from "@/extension/courseBinDom";
+import { scrapeCourseBinSections, scrapeRegisteredSections } from "@/extension/courseBinDom";
 
 interface ServerDomParser {
   parseFromString(html: string, type: "text/html"): Document;
@@ -145,4 +145,54 @@ test("scrapeRegisteredSections rejects a login page or incomplete registered-sec
   const wrongSummary = COURSE_BIN_FIXTURE.replace('courseBinStat">1', 'courseBinStat">2');
   const doc = await parseDetachedDocument(wrongSummary);
   assert.throws(() => scrapeRegisteredSections(doc), /reported 2 registered sections, but 1 were parsed/);
+});
+
+const SCHEDULED_ROWS = `
+      <span class="section_row"><span class="table-headers-xsmall">Session: </span><a class="sessLnk" href="#">001</a></span>
+      <span class="section_row"><span class="table-headers-xsmall">Type: </span>Lab</span>
+      <span class="section_row"><span class="table-headers-xsmall">Time: </span><span>02:00pm-04:50pm<br></span></span>
+      <span class="section_row"><span class="table-headers-xsmall">Days: </span><span>Tu<br></span></span>`;
+
+const BIN_SECTION = `
+    <div id="section_99999" class="section">
+      <div class="section_crsbin"></div>
+      <div id="schedY_regN_99999" class="actionbar" style="display: none"></div>
+      <div id="schedN_regN_99999" class="actionbar" style="display: block"></div>
+      <div id="schedY_regY_99999" class="actionbar" style="display: none"></div>
+      <div id="schedN_regY_99999" class="actionbar" style="display: none"></div>
+    </div>`;
+
+function withScheduledAndBin(html: string): string {
+  return html
+    .replace(
+      '<div id="schedN_regY_54321" class="actionbar" style="display: none"></div>',
+      `<div id="schedN_regY_54321" class="actionbar" style="display: none"></div>${SCHEDULED_ROWS}`,
+    )
+    .replace(/(<\/div>\s*<\/div>\s*)$/, `</div>${BIN_SECTION}\n  </div>\n`);
+}
+
+test("scrapeCourseBinSections labels registered, scheduled and bin-only sections", async () => {
+  const doc = await parseDetachedDocument(withScheduledAndBin(COURSE_BIN_FIXTURE));
+  const sections = scrapeCourseBinSections(doc);
+  assert.deepEqual(
+    sections.map((section) => [section.id, section.state, section.type, section.sessionId]),
+    [
+      ["12345", "registered", "Lecture", "133"],
+      ["54321", "scheduled", "Lab", "001"],
+      // A bin-only section with no parsable rows is kept with empty meetings instead of throwing.
+      ["99999", "bin", "", undefined],
+    ],
+  );
+  assert.deepEqual(sections[1]?.meetings, [{ days: ["TU"], start: "14:00", end: "16:50", location: undefined }]);
+  // The calendar export still sees only the registered section.
+  assert.deepEqual(
+    scrapeRegisteredSections(doc).map((section) => section.id),
+    ["12345"],
+  );
+});
+
+test("scrapeCourseBinSections is strict about scheduled sections", async () => {
+  // Section 54321 is scheduled but has no Time/Days rows in the base fixture.
+  const doc = await parseDetachedDocument(COURSE_BIN_FIXTURE);
+  assert.throws(() => scrapeCourseBinSections(doc), /missing its Time or Days row/);
 });
