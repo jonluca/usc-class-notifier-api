@@ -19,6 +19,7 @@ export const darkPalette = {
   textPrimary: "text-[#e8e8ec]", // --ush-text
   textMuted: "text-[#9a9aa2]", // --ush-text-muted
   textMutedImportant: "text-[#9a9aa2]!", // --ush-text-muted, !important
+  textPrimaryImportant: "text-[#e8e8ec]!", // --ush-text, !important
   linkText: "text-[#ff9a9a]", // --ush-link
   linkHoverText: "hover:text-[#ffb8b8]", // --ush-link-hover
   accentCardinal: "accent-[#8b0000]", // --ush-cardinal
