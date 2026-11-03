@@ -1,6 +1,6 @@
 # USC Schedule Helper Privacy Policy
 
-Last updated: September 4, 2026
+Last updated: November 3, 2026
 
 USC Schedule Helper is a browser extension and companion notification service operated by JonLuca DeCaro. It improves USC class-search and registration pages with ratings, schedule information, conflict indicators, and optional class-availability notifications.
 
@@ -13,6 +13,8 @@ The extension reads the USC Classes and Web Registration pages on which it runs 
 The extension stores feature preferences locally, such as whether the extension, conflict display, and units display are enabled. When a user enters an email address or optional phone number in the notification form, the browser may remember those values locally for convenience.
 
 For calendar export, the extension processes the registered schedule and generates the `.ics` file locally. It retrieves public course and session dates from `classes.usc.edu` and term dates and holidays from `www.usc.edu`. Public catalog requests contain course, term, or session identifiers, but do not include sign-in credentials or upload the full registered schedule. If the required data cannot be validated, the extension opens USC's official calendar exporter on `my.usc.edu` for the selected term.
+
+For Final Exams, the extension reads registered and scheduled courses from the user's authenticated CourseBin and calculates tentative exam times locally. If the user grants optional access to `arr.usc.edu`, it fetches the registrar's public final-exam schedule without sign-in credentials or personal schedule information. Without live access, it can use previously cached public data or the copy bundled with the extension. The extension stores the parsed public exam schedule by term, its fetch timestamp, and the most recent live-update permission grant timestamp locally. This cache does not contain the user's registered or scheduled courses.
 
 ## Information sent to the notification service
 
@@ -53,7 +55,9 @@ These providers process information under their own terms and privacy practices.
 
 ## Retention, security, and user choices
 
-Local extension preferences remain until the user changes them, clears extension data, or removes the extension. Notification account and watched-class records are kept while needed to provide the service and for reasonable security, backup, payment, and legal purposes. Data that is no longer required is deleted or de-identified where practical.
+Local extension preferences remain until the user changes them, clears extension data, or removes the extension. The public exam cache is considered fresh for 24 hours; older entries are retained and can be used if a refresh is unavailable. Cached data and permission timestamps remain until replaced, extension data is cleared, or the extension is removed. Users may revoke optional registrar access in their browser's extension settings to stop future live requests; revoking access does not delete the cache.
+
+Notification account and watched-class records are kept while needed to provide the service and for reasonable security, backup, payment, and legal purposes. Data that is no longer required is deleted or de-identified where practical.
 
 Users may stop future notifications, remove the extension, or request access, correction, or deletion of their service data by emailing [usc@jonlu.ca](mailto:usc@jonlu.ca). A request may require verification through the email address associated with the account.
 

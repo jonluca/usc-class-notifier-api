@@ -5,7 +5,7 @@ const PrivacyPolicy: NextPage = () => {
   return (
     <main style={{ margin: "4rem auto", maxWidth: "900px", padding: "0 2rem", lineHeight: 1.6 }}>
       <h1>USC Schedule Helper Privacy Policy</h1>
-      <p>Last updated: September 4, 2026</p>
+      <p>Last updated: November 3, 2026</p>
       <p>
         USC Schedule Helper is a browser extension and companion notification service operated by JonLuca DeCaro. It
         improves USC class-search and registration pages with ratings, schedule information, conflict indicators, and
@@ -30,6 +30,15 @@ const PrivacyPolicy: NextPage = () => {
         Public catalog requests contain course, term, or session identifiers, but do not include sign-in credentials or
         upload the full registered schedule. If the required data cannot be validated, the extension opens USC&apos;s
         official calendar exporter on my.usc.edu for the selected term.
+      </p>
+      <p>
+        For Final Exams, the extension reads registered and scheduled courses from the user&apos;s authenticated
+        CourseBin and calculates tentative exam times locally. If the user grants optional access to arr.usc.edu, it
+        fetches the registrar&apos;s public final-exam schedule without sign-in credentials or personal schedule
+        information. Without live access, it can use previously cached public data or the copy bundled with the
+        extension. The extension stores the parsed public exam schedule by term, its fetch timestamp, and the most
+        recent live-update permission grant timestamp locally. This cache does not contain the user&apos;s registered or
+        scheduled courses.
       </p>
 
       <h2>Information sent to the notification service</h2>
@@ -89,6 +98,12 @@ const PrivacyPolicy: NextPage = () => {
       <h2>Retention, security, and user choices</h2>
       <p>
         Local extension preferences remain until the user changes them, clears extension data, or removes the extension.
+        The public exam cache is considered fresh for 24 hours; older entries are retained and can be used if a refresh
+        is unavailable. Cached data and permission timestamps remain until replaced, extension data is cleared, or the
+        extension is removed. Users may revoke optional registrar access in their browser&apos;s extension settings to
+        stop future live requests; revoking access does not delete the cache.
+      </p>
+      <p>
         Notification account and watched-class records are kept while needed to provide the service and for reasonable
         security, backup, payment, and legal purposes. Data that is no longer required is deleted or de-identified where
         practical.

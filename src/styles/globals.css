@@ -1,6 +1,9 @@
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 
 @plugin '@tailwindcss/typography';
+
+/* WXT omits tests from review archives; keep class discovery identical in both build contexts. */
+@source not "../**/*.{test,spec}.{ts,tsx}";
 
 /*
   Raw WebReg / registrar HTML captured for tests lives in src/extension/fixtures. Tailwind must not
