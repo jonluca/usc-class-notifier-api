@@ -126,6 +126,18 @@ test("scrapeRegisteredSections accepts only explicit, internally consistent TBA 
   assert.deepEqual(asyncSections[0]?.meetings, []);
 });
 
+test("scrapeRegisteredSections treats a TBA time with an empty Days cell as no meetings", async () => {
+  // Real WebReg markup for an unscheduled section (e.g. a TBA quiz): Time reads "TBA" and the Days cell
+  // has only its label. Previously this aborted the whole export as "mismatched Time and Days rows".
+  const emptyDays = COURSE_BIN_FIXTURE.replace("10:00am-10:50am<br>02:00pm-03:50pm<br>", "TBA<br>").replace(
+    "<span>MWF<br>Th<br></span>",
+    "",
+  );
+  const sections = scrapeRegisteredSections(await parseDetachedDocument(emptyDays));
+  assert.equal(sections.length, 1);
+  assert.deepEqual(sections[0]?.meetings, []);
+});
+
 test("scrapeRegisteredSections rejects a login page or incomplete registered-section result", async () => {
   const loginPage = await parseDetachedDocument("<html><title>USC Login</title></html>");
   assert.throws(() => scrapeRegisteredSections(loginPage), /missing its registration summary/);

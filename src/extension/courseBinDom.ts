@@ -127,6 +127,12 @@ function scrapeSection(sectionContainerEl: Element, course: string, title: strin
   const dayLines = rowValueLines(daysRow);
   const locationLines = locationRow ? rowValueLines(locationRow) : [];
 
+  // Real WebReg markup for an unscheduled section (seen on a Spring 2027 CSCI 201 quiz): Time reads
+  // "TBA" and the Days cell is completely empty. That's an explicit "no meeting time", not drift.
+  if (dayLines.length === 0 && timeLines.length > 0 && timeLines.every((line) => /^(TBA|TBD)$/i.test(line))) {
+    return { id, sessionId: scrapeSessionId(sectionContainerEl), course, title, type, instructor, meetings: [] };
+  }
+
   if (timeLines.length === 0 || timeLines.length !== dayLines.length) {
     throw new Error(`Section ${id} has mismatched Time and Days rows.`);
   }
