@@ -2,7 +2,8 @@ import $ from "jquery";
 import { cleanupCoursePage, initCoursePage } from "@/extension/coursesPage";
 import { parseWebRegPage } from "@/extension/webRegPage";
 import type { Options } from "@/extension/utils";
-import { getCurrentSchedule, parseSchedule } from "@/extension/schedule";
+import { parseSchedule } from "@/extension/schedule";
+import { loadSchedule, resetScheduleLoad } from "@/extension/scheduleSource";
 import { ICS_EXPORT_BUTTON_CLASS, insertCalendarExportButton } from "@/extension/calendarExport";
 import { setDarkModeActive, shouldEnableDarkMode } from "@/extension/darkMode";
 import { insertFinalExamsButton, removeFinalExamsButton } from "@/extension/finalExamsButton";
@@ -68,6 +69,8 @@ function cleanupExtension() {
 export const initExtension = (options: Options) => {
   const currentInitialization = ++initializationId;
   cleanupExtension();
+  // Each initialization (page, navigation or settings change) gets one fresh calendar load, shared by everything on it.
+  resetScheduleLoad();
   // Applied via classList.toggle and independent of cleanupExtension() so re-running
   // initExtension (SPA navigation, a settings change) doesn't flicker the theme off and back on.
   setDarkModeActive(shouldEnableDarkMode(options));
@@ -91,9 +94,10 @@ export const initExtension = (options: Options) => {
     }
     if (!currentURL.includes("/myCourseBin")) {
       if (options.showConflicts) {
-        getCurrentSchedule().then((data) => {
-          if (currentInitialization === initializationId && data) {
-            parseSchedule(data);
+        loadSchedule().then((result) => {
+          // A different term (another tab switched it) or an unreadable calendar marks nothing.
+          if (currentInitialization === initializationId && result.status === "ready") {
+            parseSchedule(result.schedule);
           }
         });
       }

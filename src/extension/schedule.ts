@@ -1,4 +1,4 @@
-import { parseScheduleDocument, type Schedule } from "@/extension/scheduleDocument";
+import type { Schedule } from "@/extension/scheduleDocument";
 import { parseTimeRange } from "@/extension/courseBinScrape";
 import { findOverlaps, sectionRowValue, sectionRows, splitDays, weeklyMeetings } from "@/extension/weekSchedule";
 import $ from "jquery";
@@ -6,14 +6,6 @@ import { insertAllOverlap } from "./insert-class-info";
 
 export { parseScheduleDocument } from "@/extension/scheduleDocument";
 export type { Schedule, ScheduleEntry } from "@/extension/scheduleDocument";
-
-export async function getCurrentSchedule(): Promise<Schedule | null> {
-  const response = await fetch("https://webreg.usc.edu/Calendar");
-  if (!response.ok) {
-    return null;
-  }
-  return parseScheduleDocument(await response.text());
-}
 
 function addConflictOverlay(row: HTMLElement, name: string) {
   const addToCourseBin = $(row).find(".addtomycb, .add-to-course-bin")[0];
