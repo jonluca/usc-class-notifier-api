@@ -82,33 +82,8 @@ export function parseProfessor(instructors: string[], row: HTMLElement) {
     insertBlankRatingCell(row);
   }
 }
-export function splitDays(days: string | undefined) {
-  if (!days) {
-    return [];
-  }
-  //Split Thursday first because otherwise it'll get split on Tuesday
-  const split = days.replace("Th", "D").split("");
-  for (let i = 0; i < split.length; i++) {
-    switch (split[i]) {
-      case "M":
-        split[i] = "Monday";
-        break;
-      case "T":
-        split[i] = "Tuesday";
-        break;
-      case "W":
-        split[i] = "Wednesday";
-        break;
-      case "D":
-        split[i] = "Thursday";
-        break;
-      case "F":
-        split[i] = "Friday";
-        break;
-    }
-  }
-  return split;
-}
+// Moved to weekSchedule.ts (jQuery-free) so the week preview can share it; re-exported for existing imports.
+export { splitDays } from "@/extension/weekSchedule";
 export interface Options {
   enabled: boolean;
   showConflicts: boolean;
