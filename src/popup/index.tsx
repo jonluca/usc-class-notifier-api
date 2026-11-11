@@ -6,6 +6,7 @@ import {
   extensionEnabledStorage,
   showConflictsStorage,
   showUnitsStorage,
+  showWeekPreviewStorage,
   useStorageItem,
 } from "@/extension/storage";
 
@@ -15,6 +16,7 @@ function IndexPopup() {
   const [showConflicts, setShowConflicts] = useStorageItem(showConflictsStorage, true);
   const [showUnits, setShowUnits] = useStorageItem(showUnitsStorage, true);
   const [darkMode, setDarkMode] = useStorageItem(darkModeStorage, false);
+  const [showWeekPreview, setShowWeekPreview] = useStorageItem(showWeekPreviewStorage, true);
 
   const labelClass = (disabled: boolean) =>
     `ml-2 text-sm font-medium ${darkMode ? (disabled ? darkPalette.textMuted : darkPalette.textPrimary) : "text-gray-900"}`;
@@ -57,6 +59,19 @@ function IndexPopup() {
             />
             <label htmlFor="show-conflicts" className={labelClass(!enabled)}>
               Show Class Conflicts
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              id="show-week-preview"
+              className={checkboxClass}
+              type="checkbox"
+              checked={showWeekPreview}
+              onChange={() => setShowWeekPreview(!showWeekPreview)}
+              disabled={!enabled}
+            />
+            <label htmlFor="show-week-preview" className={labelClass(!enabled)}>
+              Show Week Preview
             </label>
           </div>
           <div className="flex items-center">

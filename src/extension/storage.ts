@@ -23,6 +23,17 @@ export const darkModeStorage = storage.defineItem<boolean>("local:darkMode", {
   fallback: false,
 });
 
+// Floating week calendar on course-search pages. On by default so people find it.
+export const showWeekPreviewStorage = storage.defineItem<boolean>("local:showWeekPreview", {
+  fallback: true,
+});
+
+// Whether the week calendar was left open. Starts minimized; after that, remembers the last choice.
+// Panel state only, deliberately not part of Options, so opening or minimizing it never re-runs the extension.
+export const weekPreviewOpenStorage = storage.defineItem<boolean>("local:weekPreviewOpen", {
+  fallback: false,
+});
+
 export function useStorageItem<T>(item: DefinedStorageItem<T>, initialValue: T) {
   const [value, setValue] = useState(initialValue);
   const [isLoaded, setIsLoaded] = useState(false);
