@@ -7,9 +7,7 @@ import {
   createBrowserScheduleSourceDeps,
   fetchSchedule,
   loadSchedule,
-  onScheduleLoadReset,
   resetScheduleLoad,
-  scheduleLoadGeneration,
   type ScheduleSourceDeps,
 } from "@/extension/scheduleSource";
 
@@ -39,6 +37,7 @@ async function deps(overrides: Partial<ScheduleSourceDeps> & { html?: string } =
   const parseHtml = await parseHtmlReady;
   let fetches = 0;
   const value: ScheduleSourceDeps = {
+    pageHref: () => currentHref,
     currentTermId: () => "20271",
     fetchCalendarHtml: async () => {
       fetches += 1;
@@ -111,48 +110,68 @@ test("a right-term page whose calendar data can't be read is 'unavailable'", asy
   assert.deepEqual(await fetchSchedule(d), { status: "unavailable", reason: "unreadableCalendar" });
 });
 
-test("everything on a page shares one request, and nothing is fetched until something asks", async () => {
+// loadSchedule keys its shared request by the page address and this tab's term.
+let currentHref = "";
+function at(href: string) {
+  currentHref = href;
+}
+
+test("everything on a page shares one request, in any order, and nothing is fetched until something asks", async () => {
   resetScheduleLoad();
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
   const { deps: d, fetches } = await deps();
   assert.equal(fetches(), 0);
   const [first, second] = await Promise.all([loadSchedule(d), loadSchedule(d)]);
   assert.equal(fetches(), 1);
   assert.equal(first, second);
   await loadSchedule(d);
-  assert.equal(fetches(), 1, "later callers on the same page reuse it");
+  assert.equal(fetches(), 1, "later callers on the same page (e.g. after a settings change) reuse it");
 });
 
-test("a reset (new page, settings change) makes the next caller fetch again and tells subscribers", async () => {
+test("navigating to another page, or a different term in this tab, starts a new request and cancels the old one", async () => {
   resetScheduleLoad();
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
+  let term = "20271";
+  const signals: AbortSignal[] = [];
+  const { deps: d } = await deps({
+    currentTermId: () => term,
+    fetchCalendarHtml: (signal) => {
+      signals.push(signal);
+      return new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
+    },
+  });
+  void loadSchedule(d);
+  at("https://webreg.usc.edu/Courses?DeptId=MATH");
+  void loadSchedule(d);
+  assert.equal(signals.length, 2);
+  assert.equal(signals[0]!.aborted, true, "the old page's request is cancelled");
+  term = "20263";
+  void loadSchedule(d);
+  assert.equal(signals.length, 3);
+  assert.equal(signals[1]!.aborted, true);
+  resetScheduleLoad();
+  assert.equal(signals[2]!.aborted, true, "a reset cancels too");
+});
+
+test("a reset makes the next caller fetch again", async () => {
+  resetScheduleLoad();
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
   const { deps: d, fetches } = await deps();
   await loadSchedule(d);
-  let notified = 0;
-  const unsubscribe = onScheduleLoadReset(() => (notified += 1));
-  const before = scheduleLoadGeneration();
   resetScheduleLoad();
-  assert.equal(scheduleLoadGeneration(), before + 1);
-  assert.equal(notified, 1);
   await loadSchedule(d);
   assert.equal(fetches(), 2);
-  unsubscribe();
-  resetScheduleLoad();
-  assert.equal(notified, 1, "unsubscribed listeners aren't called");
 });
 
-test("a reset cancels a request that is still running, and its load settles as unavailable", async () => {
+test("a cancelled request settles as unavailable instead of hanging or throwing", async () => {
   resetScheduleLoad();
-  let seenSignal: AbortSignal | undefined;
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
   const { deps: d } = await deps({
     fetchCalendarHtml: (signal) =>
-      new Promise((_, reject) => {
-        seenSignal = signal;
-        signal.addEventListener("abort", () => reject(new Error("aborted")));
-      }),
+      new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))),
   });
   const stale = loadSchedule(d);
-  assert.equal(seenSignal?.aborted, false);
   resetScheduleLoad();
-  assert.equal(seenSignal?.aborted, true);
   assert.deepEqual(await stale, { status: "unavailable", reason: "requestFailed" });
 });
 
@@ -184,7 +203,7 @@ test("browser fetch: a WebReg error status is a failed request, not a calendar",
   const real = createBrowserScheduleSourceDeps();
   await assert.rejects(real.fetchCalendarHtml(new AbortController().signal), /500/);
   const parseHtml = await parseHtmlReady;
-  assert.deepEqual(await fetchSchedule({ ...real, currentTermId: () => "20271", parseHtml }), {
+  assert.deepEqual(await fetchSchedule({ ...real, pageHref: () => "", currentTermId: () => "20271", parseHtml }), {
     status: "unavailable",
     reason: "requestFailed",
   });

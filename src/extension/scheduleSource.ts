@@ -21,6 +21,8 @@ export type ScheduleLoad =
   | { status: "unavailable"; reason: "unknownTabTerm" | "requestFailed" | "unreadableCalendar" };
 
 export interface ScheduleSourceDeps {
+  /** The address this tab is showing; with the term, it decides which page a shared load belongs to. */
+  pageHref(): string;
   /** The term this tab is showing, e.g. "20271"; "" when it can't be told. */
   currentTermId(): string;
   /** The /Calendar page's HTML. Rejects on network errors, timeouts, aborts and non-2xx responses. */
@@ -30,6 +32,7 @@ export interface ScheduleSourceDeps {
 
 export function createBrowserScheduleSourceDeps(timeoutMs = CALENDAR_TIMEOUT_MS): ScheduleSourceDeps {
   return {
+    pageHref: () => window.location.href,
     currentTermId: getCurrentTerm,
     async fetchCalendarHtml(signal) {
       const controller = new AbortController();
@@ -91,50 +94,32 @@ async function fetchAndCheck(deps: ScheduleSourceDeps, signal: AbortSignal): Pro
   return { status: "ready", termId: expectedTermId, schedule, meetings: weeklyMeetings(schedule) };
 }
 
-let pending: Promise<ScheduleLoad> | undefined;
-let pendingController: AbortController | undefined;
-let generation = 0;
-const resetListeners = new Set<() => void>();
+let pending: { key: string; load: Promise<ScheduleLoad>; controller: AbortController } | undefined;
+
+/** Which page a load belongs to: the address plus the term the tab shows. */
+function currentPageKey(deps: ScheduleSourceDeps) {
+  return JSON.stringify([deps.pageHref(), deps.currentTermId()]);
+}
 
 /**
- * The calendar for this page initialization. The first caller starts the request; later callers share it.
+ * The calendar for the page this tab is showing. The first caller starts the request; every later caller on the
+ * same page shares it, in any order (the Overlaps markers and the week preview start independently).
+ * A different page (navigation, or a different term) cancels the old request and starts a new one.
+ * Settings changes don't refetch: your calendar doesn't change when you toggle dark mode.
  * Nothing is fetched until someone asks, so with conflicts and the preview both off there is no request.
  */
 export function loadSchedule(deps: ScheduleSourceDeps = browserScheduleSourceDeps): Promise<ScheduleLoad> {
-  if (!pending) {
-    pendingController = new AbortController();
-    pending = fetchSchedule(deps, pendingController.signal);
+  const key = currentPageKey(deps);
+  if (pending?.key !== key) {
+    pending?.controller.abort();
+    const controller = new AbortController();
+    pending = { key, controller, load: fetchSchedule(deps, controller.signal) };
   }
-  return pending;
+  return pending.load;
 }
 
-/**
- * Drops the shared load (new page, settings change, extension off) and cancels its request if still running.
- * The next loadSchedule() fetches again.
- */
+/** Drops the shared load and cancels its request if still running. The next loadSchedule() fetches again. */
 export function resetScheduleLoad() {
-  pendingController?.abort();
-  pendingController = undefined;
+  pending?.controller.abort();
   pending = undefined;
-  generation += 1;
-  for (const listener of resetListeners) {
-    listener();
-  }
-}
-
-/** Increases on every reset; compare before and after awaiting a load to ignore a result that arrived too late. */
-export function scheduleLoadGeneration() {
-  return generation;
-}
-
-/**
- * Called after each reset, e.g. so the preview can ask for the new page's calendar. Returns an unsubscribe.
- * Resets happen at the start of every initialization, before the extension's own on/off checks, so a listener
- * must check its own settings before calling loadSchedule() (or it would fetch while the extension is off).
- */
-export function onScheduleLoadReset(listener: () => void): () => void {
-  resetListeners.add(listener);
-  return () => {
-    resetListeners.delete(listener);
-  };
 }

@@ -15,8 +15,11 @@ import {
   extensionEnabledStorage,
   showConflictsStorage,
   showUnitsStorage,
+  showWeekPreviewStorage,
   useStorageItem,
 } from "@/extension/storage";
+import { WeekPreview, isTopFrame, shouldShowWeekPreview } from "@/extension/WeekPreview";
+import { shouldEnableDarkMode } from "@/extension/darkMode";
 
 const LOCATION_CHANGE_EVENT = "usc-schedule-helper:locationchange";
 
@@ -93,6 +96,8 @@ const ExtensionLogic = () => {
   const [showConflicts, , showConflictsLoaded] = useStorageItem(showConflictsStorage, true);
   const [showUnits, , showUnitsLoaded] = useStorageItem(showUnitsStorage, true);
   const [darkMode, , darkModeLoaded] = useStorageItem(darkModeStorage, false);
+  // Read here rather than passed through initExtension, so turning it on or off never re-runs the extension.
+  const [showWeekPreview, , showWeekPreviewLoaded] = useStorageItem(showWeekPreviewStorage, true);
   const href = useLocationHref();
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass);
   const finalExamsOpen = useFinalExamsModalOpen();
@@ -124,6 +129,12 @@ const ExtensionLogic = () => {
     <>
       {selectedClass && <NotificationModal />}
       {finalExamsOpen && enabled && <FinalExamsModal />}
+      {enabledLoaded &&
+        showWeekPreviewLoaded &&
+        darkModeLoaded &&
+        shouldShowWeekPreview({ enabled, showWeekPreview, href, topFrame: isTopFrame() }) && (
+          <WeekPreview darkMode={shouldEnableDarkMode({ enabled, darkMode }, href)} href={href} />
+        )}
     </>
   );
 };

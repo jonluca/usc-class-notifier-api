@@ -33,10 +33,9 @@ async function setUp() {
   }>("linkedom");
   const { fakeBrowser } = await load<{ fakeBrowser: object }>("@webext-core/fake-browser");
   const dom = parseHTML("<!doctype html><html><head></head><body></body></html>");
-  Object.defineProperty(dom.window, "location", {
-    configurable: true,
-    value: { href: "https://webreg.usc.edu/Courses?DeptId=CSCI", pathname: "/Courses" },
-  });
+  const location = { href: "https://webreg.usc.edu/Courses?DeptId=CSCI", pathname: "/Courses" };
+  Object.defineProperty(dom.window, "location", { configurable: true, value: location });
+  Object.defineProperty(globalThis, "location", { configurable: true, value: location });
   // Browsers stringify elements as objects; LinkeDOM's markup strings confuse jQuery's array handling.
   Object.defineProperty(dom.window.HTMLElement.prototype, "toString", {
     configurable: true,
@@ -70,9 +69,12 @@ async function setUp() {
   // initExtension's own window.setTimeout/clearTimeout calls need the real timers.
   Object.assign(dom.window, { setTimeout, clearTimeout });
   const { initExtension } = await import("@/extension/extension");
+  // Each scenario is a fresh page load, which starts with no calendar loaded.
+  const { resetScheduleLoad } = await import("@/extension/scheduleSource");
   const run = async (options: { showConflicts: boolean }, calendarTerm = "Spring 2027 Classes") => {
     calendarResponse = calendarPage(calendarTerm);
     fetchCount = 0;
+    resetScheduleLoad();
     dom.document.body.innerHTML = COURSE_PAGE;
     const cleanup = initExtension({ enabled: true, showUnits: false, darkMode: false, ...options });
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -81,23 +83,45 @@ async function setUp() {
     cleanup();
     return result;
   };
-  // Two initializations back to back (e.g. WebReg navigates while the first calendar request is slow).
-  const runTwice = async (first: string, second: string) => {
+  // WebReg navigates to another department while the first page's calendar request is still slow.
+  const navigateDuringLoad = async (first: string, second: string) => {
     fetchCount = 0;
+    resetScheduleLoad();
     delays = [40, 0];
     dom.document.body.innerHTML = COURSE_PAGE;
     const options = { enabled: true, showUnits: false, darkMode: false, showConflicts: true };
+    location.href = "https://webreg.usc.edu/Courses?DeptId=CSCI";
     calendarResponse = calendarPage(first);
     initExtension(options);
+    location.href = "https://webreg.usc.edu/Courses?DeptId=MATH";
     calendarResponse = calendarPage(second);
     const cleanup = initExtension(options);
     await new Promise((resolve) => setTimeout(resolve, 80));
     const button = dom.document.querySelector("button.addtomycb")!;
     const result = { marked: button.classList.contains("warning"), fetches: fetchCount };
     cleanup();
+    location.href = "https://webreg.usc.edu/Courses?DeptId=CSCI";
     return result;
   };
-  return { run, runTwice };
+  // A settings change (e.g. dark mode) re-runs initExtension on the same page.
+  const settingsChange = async () => {
+    fetchCount = 0;
+    resetScheduleLoad();
+    delays = [];
+    location.href = "https://webreg.usc.edu/Courses?DeptId=PHYS";
+    dom.document.body.innerHTML = COURSE_PAGE;
+    calendarResponse = calendarPage("Spring 2027 Classes");
+    const options = { enabled: true, showUnits: false, showConflicts: true };
+    initExtension({ ...options, darkMode: false })();
+    const cleanup = initExtension({ ...options, darkMode: true });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const button = dom.document.querySelector("button.addtomycb")!;
+    const result = { marked: button.classList.contains("warning"), fetches: fetchCount };
+    cleanup();
+    location.href = "https://webreg.usc.edu/Courses?DeptId=CSCI";
+    return result;
+  };
+  return { run, navigateDuringLoad, settingsChange };
 }
 
 const ready = setUp();
@@ -120,8 +144,13 @@ test("Show Class Conflicts off: the calendar isn't even fetched", async () => {
   assert.deepEqual(result, { marked: false, text: "Add", fetches: 0 });
 });
 
-test("a slow calendar from an earlier initialization is never applied after a newer one", async () => {
-  const { runTwice } = await ready;
-  // The first (slow) response would mark an overlap; the newer page's calendar is for another term.
-  assert.deepEqual(await runTwice("Spring 2027 Classes", "Fall 2026 Classes"), { marked: false, fetches: 2 });
+test("a slow calendar from the previous page is never applied after navigating", async () => {
+  const { navigateDuringLoad } = await ready;
+  // The first (slow) response would mark an overlap; the new page's calendar is for another term.
+  assert.deepEqual(await navigateDuringLoad("Spring 2027 Classes", "Fall 2026 Classes"), { marked: false, fetches: 2 });
+});
+
+test("changing a setting on the same page reuses the calendar instead of fetching it again", async () => {
+  const { settingsChange } = await ready;
+  assert.deepEqual(await settingsChange(), { marked: true, fetches: 1 });
 });
