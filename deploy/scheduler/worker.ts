@@ -155,7 +155,7 @@ async function alertGmailFailure(code: string): Promise<void> {
   }
   await sendMessage({
     to: destination,
-    message: `USC payment inbox check failed (${code}). The scheduler will retry.`,
+    message: `USC payment inbox check failed after 3 attempts (${code}). Scheduled checks continue every 15 minutes.`,
   });
 }
 
@@ -214,15 +214,16 @@ export async function consumeMessage(
     message.ack();
   } catch (error) {
     const code = errorCode(error instanceof Error ? error : new Error("Unknown scheduler failure"));
+    let failureRecorded = false;
     try {
-      await store.fail(task.id, scope, claim.token, code, now());
+      failureRecorded = await store.fail(task.id, scope, claim.token, code, now());
     } catch {
       event("usc_scheduler_ledger_failed", { kind: task.kind });
     }
     event("usc_scheduler_failed", { kind: task.kind, code });
-    if (task.kind === "gmail") {
+    if (task.kind === "gmail" && claim.attempts >= 3 && failureRecorded) {
       try {
-        if (await store.claimAlert(task.id)) {
+        if (await store.claimAlert(task.id, now())) {
           await (dependencies.alert ?? alertGmailFailure)(code);
         }
       } catch {

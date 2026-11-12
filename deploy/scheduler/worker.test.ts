@@ -361,7 +361,7 @@ test("full scheduler bundle runs in workerd with authenticated disabled health a
   }
 });
 
-test("Gmail failure alerts are reserved once and an uncertain alert outcome never changes retry policy", async () => {
+test("Gmail alerts only after three failed executions and an uncertain alert outcome retains its reservation", async () => {
   const f = await fixture();
   try {
     await f.enable();
@@ -385,6 +385,7 @@ test("Gmail failure alerts are reserved once and an uncertain alert outcome neve
         message.outcome,
         attempt < 3 ? { acknowledged: 0, retries: [60] } : { acknowledged: 1, retries: [] },
       );
+      assert.equal(alerts.length, attempt < 3 ? 0 : 1);
     }
     assert.deepEqual(alerts, ["job_failed"]);
     const health = await f.store.health(NOW);
@@ -393,6 +394,81 @@ test("Gmail failure alerts are reserved once and an uncertain alert outcome neve
     assert.equal(health.activeLeases, 0);
   } finally {
     await f.dispose();
+  }
+});
+
+test("a Gmail retry that recovers sends no alert, regardless of queue delivery count", async () => {
+  const f = await fixture();
+  try {
+    await f.enable();
+    const task = await createTask({ kind: "gmail", scheduledAt: NOW });
+    let executions = 0;
+    const alerts: string[] = [];
+    const dependencies = {
+      store: f.store,
+      now: () => NOW,
+      alert: async (code: string) => {
+        alerts.push(code);
+      },
+      execute: async () => {
+        executions++;
+        if (executions === 1) {
+          throw new Error("Synthetic transient Gmail failure");
+        }
+        return { summary: { scannedMessages: 100 } };
+      },
+    };
+    const failed = delivery(task, 20);
+    await consumeMessage(failed.message, f.env, dependencies);
+    assert.deepEqual(failed.outcome, { acknowledged: 0, retries: [60] });
+    assert.deepEqual(alerts, []);
+    const recovered = delivery(task, 21);
+    await consumeMessage(recovered.message, f.env, dependencies);
+    assert.deepEqual(recovered.outcome, { acknowledged: 1, retries: [] });
+    assert.deepEqual(alerts, []);
+    const health = await f.store.health(NOW);
+    assert.equal(health.kinds[0]?.latest.status, "completed");
+    assert.equal(health.kinds[0]?.latest.attempts, 2);
+    assert.equal(health.kinds[0]?.latest.alerted, 0);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test("Gmail does not alert when the exhausted attempt cannot record its owned failure", async () => {
+  for (const transition of ["stale", "unavailable"]) {
+    const f = await fixture();
+    try {
+      await f.enable();
+      const task = await createTask({ kind: "gmail", scheduledAt: NOW });
+      const alerts: string[] = [];
+      const dependencies = {
+        store: f.store,
+        now: () => NOW,
+        alert: async (code: string) => {
+          alerts.push(code);
+        },
+        execute: async () => {
+          throw new Error("Synthetic Gmail failure");
+        },
+      };
+      for (const attempt of [1, 2]) {
+        await consumeMessage(delivery(task, attempt).message, f.env, dependencies);
+      }
+      f.store.fail = async () => {
+        if (transition === "unavailable") {
+          throw new Error("Synthetic ledger failure");
+        }
+        return false;
+      };
+      f.store.claimAlert = async () => assert.fail("An unowned failure cannot reserve an alert");
+      const exhausted = delivery(task, 3);
+      await consumeMessage(exhausted.message, f.env, dependencies);
+      assert.deepEqual(exhausted.outcome, { acknowledged: 1, retries: [] });
+      assert.deepEqual(alerts, []);
+    } finally {
+      await f.dispose();
+    }
   }
 });
 

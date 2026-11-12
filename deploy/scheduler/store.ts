@@ -4,6 +4,7 @@ import type { D1Executor } from "../../src/server/d1/executor.ts";
 
 export const SCHEDULER_LEASE_MS = 20 * 60 * 1000;
 export const SCHEDULER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+export const GMAIL_ALERT_COOLDOWN_MS = 60 * 60 * 1000;
 const epoch = z.number().int().nonnegative().safe();
 const identity = z.string().min(1).max(256);
 const claimSchema = z.object({ id: identity, kind: identity, scope: identity, scheduledAt: epoch }).strict();
@@ -138,12 +139,21 @@ export class SchedulerStore {
     return result[0]?.results.length === 1;
   }
 
-  /** Reserve one alert attempt per job, including retries and uncertain provider outcomes. */
-  async claimAlert(id: string): Promise<boolean> {
+  /** Reserve exhausted Gmail alerts atomically across jobs, including uncertain send outcomes. */
+  async claimAlert(id: string, now = Date.now()): Promise<boolean> {
     identity.parse(id);
+    epoch.parse(now);
     const result = await this.executor.query<{ id: string }>(
-      "UPDATE SchedulerRun SET alerted = 1 WHERE id = ? AND alerted = 0 AND status <> 'completed' RETURNING id",
-      [id],
+      `UPDATE SchedulerRun SET alerted = 1,
+          summaryJSON = json_set(COALESCE(summaryJSON, '{}'), '$.alertReservedAt', ?)
+        WHERE id = ? AND kind = 'gmail' AND alerted = 0 AND status = 'failed' AND attempts >= 3
+          AND NOT EXISTS (
+            SELECT 1 FROM SchedulerRun
+            WHERE kind = 'gmail' AND alerted = 1
+              AND COALESCE(json_extract(summaryJSON, '$.alertReservedAt'), finishedAt, startedAt) > ?
+          )
+        RETURNING id`,
+      [now, id, now - GMAIL_ALERT_COOLDOWN_MS],
     );
     return result.length === 1;
   }

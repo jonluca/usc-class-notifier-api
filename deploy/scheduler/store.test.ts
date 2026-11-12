@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createD1TestClient } from "../../src/server/d1/testing.ts";
-import { SchedulerStore, SCHEDULER_LEASE_MS, SCHEDULER_RETENTION_MS } from "./store.ts";
+import { SchedulerStore, SCHEDULER_LEASE_MS, SCHEDULER_RETENTION_MS, GMAIL_ALERT_COOLDOWN_MS } from "./store.ts";
 
 async function fixture() {
   const local = await createD1TestClient();
@@ -185,26 +185,86 @@ test("pruning keeps fourteen days and all active leases, while cleaning old dead
   }
 });
 
-test("alert reservation is atomic, survives job retries and ignores completed runs", async () => {
+test("alert reservation requires an exhausted failed Gmail run and survives uncertain sends", async () => {
   const f = await fixture();
   try {
     await f.enable();
-    const first = await f.store.claim(job, 1000);
-    assert.ok(first.status === "claimed");
-    const reservations = await Promise.all(Array.from({ length: 8 }, () => f.store.claimAlert(job.id)));
+    const gmail = { id: "gmail-retries", kind: "gmail", scope: "gmail", scheduledAt: 1000 };
+    for (const attempt of [1, 2, 3]) {
+      const claim = await f.store.claim(gmail, 1000);
+      assert.ok(claim.status === "claimed");
+      assert.equal(claim.attempts, attempt);
+      assert.equal(await f.store.claimAlert(gmail.id, 1000), false, "running attempts cannot alert");
+      await f.store.fail(gmail.id, gmail.scope, claim.token, "gmail_page_timeout", 1000);
+      if (attempt < 3) {
+        assert.equal(await f.store.claimAlert(gmail.id, 1000), false, "retries must finish before alerting");
+      }
+    }
+    const reservations = await Promise.all(Array.from({ length: 8 }, () => f.store.claimAlert(gmail.id, 1000)));
     assert.equal(reservations.filter(Boolean).length, 1);
-    await f.store.fail(job.id, job.scope, first.token, "gmail_page_timeout", 1001);
-    const retry = await f.store.claim(job, 1002);
-    assert.ok(retry.status === "claimed");
-    assert.equal(await f.store.claimAlert(job.id), false);
-    await f.store.complete(job.id, job.scope, retry.token, {}, 1003);
-    assert.equal((await f.store.health(1003)).kinds[0]?.latest.alerted, 1);
-    const secondJob = { ...job, id: "completed-without-alert", scope: "other" };
-    const second = await f.store.claim(secondJob, 1004);
-    assert.ok(second.status === "claimed");
-    await f.store.complete(secondJob.id, secondJob.scope, second.token, {}, 1005);
-    assert.equal(await f.store.claimAlert(secondJob.id), false);
-    assert.equal(await f.store.claimAlert("missing-run"), false);
+    assert.equal(await f.store.claimAlert(gmail.id, 1000 + GMAIL_ALERT_COOLDOWN_MS), false);
+    assert.equal((await f.store.health(1000)).kinds[0]?.latest.alerted, 1);
+
+    const recovered = { ...gmail, id: "completed-without-alert" };
+    for (const _attempt of [1, 2]) {
+      const retry = await f.store.claim(recovered, 1001);
+      assert.ok(retry.status === "claimed");
+      await f.store.fail(recovered.id, recovered.scope, retry.token, "gmail_page_timeout", 1001);
+    }
+    const recovery = await f.store.claim(recovered, 1001);
+    assert.ok(recovery.status === "claimed");
+    assert.equal(recovery.attempts, 3);
+    await f.store.complete(recovered.id, recovered.scope, recovery.token, {}, 1002);
+    assert.equal(await f.store.claimAlert(recovered.id, 1002 + GMAIL_ALERT_COOLDOWN_MS), false);
+
+    for (const attempt of [1, 2, 3]) {
+      const claim = await f.store.claim(job, 1003);
+      assert.ok(claim.status === "claimed");
+      assert.equal(claim.attempts, attempt);
+      await f.store.fail(job.id, job.scope, claim.token, "job_failed", 1003);
+    }
+    assert.equal(await f.store.claimAlert(job.id, 1003 + GMAIL_ALERT_COOLDOWN_MS), false);
+    assert.equal(await f.store.claimAlert("missing-run", 1003), false);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test("Gmail alert cooldown is atomic across tasks and uses execution time for backlogged jobs", async () => {
+  const f = await fixture();
+  try {
+    await f.enable();
+    const now = 100_000_000;
+    const exhaust = async (id: string, finishedAt: number) => {
+      const gmail = { id, kind: "gmail", scope: "gmail", scheduledAt: now - 86_400_000 };
+      for (const _attempt of [1, 2, 3]) {
+        const claim = await f.store.claim(gmail, finishedAt);
+        assert.ok(claim.status === "claimed");
+        await f.store.fail(id, gmail.scope, claim.token, "gmail_page_timeout", finishedAt);
+      }
+    };
+    await exhaust("first-page", now);
+    assert.equal(await f.store.claimAlert("first-page", now), true);
+    await exhaust("next-page", now + 15 * 60 * 1000);
+    assert.equal(await f.store.claimAlert("next-page", now + GMAIL_ALERT_COOLDOWN_MS - 1), false);
+
+    const expiresAt = now + GMAIL_ALERT_COOLDOWN_MS;
+    await exhaust("next-scan", expiresAt);
+    const reservations = await Promise.all([
+      f.store.claimAlert("next-page", expiresAt),
+      f.store.claimAlert("next-scan", expiresAt),
+    ]);
+    assert.equal(reservations.filter(Boolean).length, 1);
+    const winner = reservations[0] ? "next-page" : "next-scan";
+    const waiting = reservations[0] ? "next-scan" : "next-page";
+    const reservation = await f.executor.query<{ summaryJSON: string; finishedAt: number }>(
+      "SELECT summaryJSON, finishedAt FROM SchedulerRun WHERE id = ?",
+      [winner],
+    );
+    assert.deepEqual(JSON.parse(reservation[0]!.summaryJSON), { alertReservedAt: expiresAt });
+    assert.equal(reservation[0]!.finishedAt, winner === "next-page" ? now + 15 * 60 * 1000 : expiresAt);
+    assert.equal(await f.store.claimAlert(waiting, expiresAt + GMAIL_ALERT_COOLDOWN_MS - 1), false);
+    assert.equal(await f.store.claimAlert(waiting, expiresAt + GMAIL_ALERT_COOLDOWN_MS), true);
   } finally {
     await f.dispose();
   }
