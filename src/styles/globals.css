@@ -21,6 +21,7 @@
 @source not "../extension/weekGrid.ts";
 @source not "../extension/weekSchedule.ts";
 @source not "../extension/scheduleSource.ts";
+@source not "../extension/sectionHover.ts";
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,

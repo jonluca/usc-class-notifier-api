@@ -1,6 +1,13 @@
 import type { Schedule } from "@/extension/scheduleDocument";
 import { parseTimeRange } from "@/extension/courseBinScrape";
-import { findOverlaps, sectionRowValue, sectionRows, splitDays, weeklyMeetings } from "@/extension/weekSchedule";
+import {
+  findOverlaps,
+  sectionMeetingLines,
+  sectionRowValue,
+  sectionRows,
+  splitDays,
+  weeklyMeetings,
+} from "@/extension/weekSchedule";
 import $ from "jquery";
 import { insertAllOverlap } from "./insert-class-info";
 
@@ -56,14 +63,32 @@ export function parseSchedule(data: Schedule) {
       try {
         // Fields are read lazily, in this order, so a section stops being read as soon as its outcome is known.
         const rows = sectionRows(this);
-        const time = parseTimeRange(sectionRowValue(rows, "Time"));
-        if (!time) {
-          doAllSectionsOverlap = false;
-          return;
+        const timeValue = sectionRowValue(rows, "Time");
+        let firstOverlap;
+        if (!timeValue?.includes("\n")) {
+          // One meeting pattern: exactly the original checks.
+          const time = parseTimeRange(timeValue);
+          if (!time) {
+            doAllSectionsOverlap = false;
+            return;
+          }
+          const days = splitDays(sectionRowValue(rows, "Days"));
+          const name = sectionRowValue(rows, "Section") || "";
+          [firstOverlap] = findOverlaps({ name, days, time, type: undefined }, meetings);
+        } else {
+          // Several patterns (one per line): an overlap with any of them counts. Unpairable cells aren't guessed.
+          const patterns = (sectionMeetingLines(rows) ?? [])
+            .map((line) => ({ days: splitDays(line.days), time: parseTimeRange(line.time) }))
+            .filter((pattern) => pattern.time !== null);
+          if (patterns.length === 0) {
+            doAllSectionsOverlap = false;
+            return;
+          }
+          const name = sectionRowValue(rows, "Section") || "";
+          firstOverlap = patterns
+            .flatMap(({ days, time }) => findOverlaps({ name, days, time, type: undefined }, meetings))
+            .sort((a, b) => meetings.indexOf(a) - meetings.indexOf(b))[0];
         }
-        const days = splitDays(sectionRowValue(rows, "Days"));
-        const name = sectionRowValue(rows, "Section") || "";
-        const [firstOverlap] = findOverlaps({ name, days, time, type: undefined }, meetings);
         if (firstOverlap) {
           addConflictOverlay(this, firstOverlap.course);
           return;

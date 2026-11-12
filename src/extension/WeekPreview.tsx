@@ -5,7 +5,14 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import { CALENDAR_URL, loadSchedule, type ScheduleLoad } from "@/extension/scheduleSource";
 import { useStorageItem, weekPreviewOpenStorage } from "@/extension/storage";
 import { resolveTermIdentity } from "@/extension/uscTerms";
-import { buildWeekGrid } from "@/extension/weekGrid";
+import { type HoveredSection, useHoveredSection } from "@/extension/sectionHover";
+import {
+  type BlockKind,
+  buildWeekGrid,
+  formatTimeRange,
+  type PreviewSummary,
+  shortDayName,
+} from "@/extension/weekGrid";
 import type { WeeklyMeeting } from "@/extension/weekSchedule";
 
 /** WebReg's course-search pages (department listings with sections), e.g. /Courses?DeptId=CSCI. */
@@ -78,6 +85,9 @@ interface Theme {
   block: string;
   blockBorder: string;
   blockText: string;
+  /** Fill, border and text for the previewed section and for overlaps. */
+  preview: { fill: string; border: string; text: string };
+  overlap: { fill: string; border: string; text: string };
   link: string;
   ring: string;
   focus: string;
@@ -94,6 +104,8 @@ const LIGHT: Theme = {
   block: "#e8edf5",
   blockBorder: "#6b7fa3",
   blockText: "#1f2a44",
+  preview: { fill: "rgba(37, 99, 235, 0.12)", border: "#2563eb", text: "#1e3a8a" },
+  overlap: { fill: "#fdebe1", border: "#c2410c", text: "#7c2d12" },
   link: CARDINAL,
   ring: "#ffffff",
   focus: "#1f5fbf",
@@ -110,6 +122,8 @@ const DARK: Theme = {
   block: "#1f2a3d",
   blockBorder: "#7a96cc",
   blockText: "#dce6f7",
+  preview: { fill: "rgba(96, 150, 255, 0.18)", border: "#7aa7ff", text: "#dbe7ff" },
+  overlap: { fill: "rgba(234, 120, 60, 0.22)", border: "#f08a4b", text: "#ffd9c2" },
   link: "#ff9a9a",
   ring: "#e8e8ec",
   focus: "#8fb4ff",
@@ -164,14 +178,62 @@ function CalendarIcon({ size }: { size: number }) {
   );
 }
 
-// A visible focus ring that a page rule like `*:focus { outline: none }` can't remove.
-function FocusStyle({ color }: { color: string }) {
+/** Class on the WebReg section row being previewed; its data-preview-tone picks the outline color. */
+export const PREVIEWED_ROW_CLASS = "usc-helper-previewed-row";
+
+// A visible focus ring that a page rule like `*:focus { outline: none }` can't remove, and the outline on the
+// previewed row. The row is marked with a class rather than its style attribute, because the Overlaps markers
+// save and restore that attribute and could otherwise restore our outline after we've removed it.
+function FocusStyle({ theme }: { theme: Theme }) {
   return (
     <style>{`.usc-helper-week-preview :focus-visible, button.usc-helper-week-preview:focus-visible {
-  outline: 3px solid ${color} !important;
+  outline: 3px solid ${theme.focus} !important;
   outline-offset: 2px !important;
-}`}</style>
+}
+.${PREVIEWED_ROW_CLASS} {
+  outline: 2px solid ${theme.muted} !important;
+  outline-offset: -2px !important;
+  border-radius: 3px;
+}
+.${PREVIEWED_ROW_CLASS}[data-preview-tone="fits"] { outline-color: ${theme.preview.border} !important; }
+.${PREVIEWED_ROW_CLASS}[data-preview-tone="overlaps"] { outline-color: ${theme.overlap.border} !important; }`}</style>
   );
+}
+
+const shortDays = (days: string[]) => days.map(shortDayName).join("/");
+
+/** What the panel says about the hovered section; null when nothing is hovered. */
+export function hoverMessage(
+  hovered: HoveredSection | null,
+  summary: PreviewSummary | undefined,
+  scheduleReady: boolean,
+): { text: string; tone: "fits" | "overlaps" | "neutral" } | null {
+  if (!hovered) {
+    return null;
+  }
+  const label = [hovered.course, hovered.type, hovered.name].filter(Boolean).join(" ");
+  if (hovered.meetings.length === 0) {
+    return {
+      text: hovered.unreadable ? `${label}: couldn't read its meeting time.` : `${label}: no set meeting time.`,
+      tone: "neutral",
+    };
+  }
+  const when = hovered.meetings
+    .map((m) => `${shortDays(m.days)} ${formatTimeRange(m.time.start, m.time.end)}`)
+    .join(", ");
+  if (!scheduleReady || !summary) {
+    return { text: `${label} · ${when}. Can't check it against your calendar right now.`, tone: "neutral" };
+  }
+  if (summary.alreadyScheduled) {
+    return { text: `${label} is already on your calendar.`, tone: "neutral" };
+  }
+  if (summary.overlaps.length === 0) {
+    return { text: `${label} · ${when} · Fits your week.`, tone: "fits" };
+  }
+  const clashes = summary.overlaps
+    .map((m) => `${m.course} (${shortDayName(m.day)} ${formatTimeRange(m.start, m.end)})`)
+    .join(", ");
+  return { text: `${label} · ${when} · Overlaps ${clashes}.`, tone: "overlaps" };
 }
 
 const visuallyHidden: CSSProperties = {
@@ -204,13 +266,56 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
   };
   const schedule = useSharedSchedule(href);
   const meetings = schedule.status === "ready" ? schedule.meetings : NO_MEETINGS;
-  const grid = useMemo(() => buildWeekGrid(meetings, PX_PER_HOUR), [meetings]);
+  const hovered = useHoveredSection(document, href);
+  // Only compare against your calendar once it's loaded for this term; otherwise "fits" would be a guess.
+  const scheduleReady = schedule.status === "ready";
+  const preview = useMemo(
+    () =>
+      scheduleReady && hovered && hovered.meetings.length > 0
+        ? { course: hovered.course, name: hovered.name, meetings: hovered.meetings }
+        : undefined,
+    [scheduleReady, hovered],
+  );
+  const grid = useMemo(() => buildWeekGrid(meetings, PX_PER_HOUR, preview), [meetings, preview]);
+  const hoverStatus = hoverMessage(hovered, grid.preview, schedule.status === "ready");
   const courseCount = new Set(meetings.map((m) => `${m.course} ${m.section}`)).size;
   const message = statusMessage(schedule);
 
   // `color` is set on every element that holds text, so page rules like `span { color }` can't reach in.
   const base: CSSProperties = { fontFamily: FONT, boxSizing: "border-box", margin: 0, letterSpacing: "normal" };
   const text = (color: string, extra: CSSProperties = {}): CSSProperties => ({ ...base, color, ...extra });
+
+  // Outline the row being previewed, in the same color as its result, so the row and the calendar line up.
+  // WebReg's `.section` box has no height of its own (its Bootstrap columns float), so outline the
+  // `.section-row` box inside it that the row is actually painted in; plain markup falls back to the section.
+  const previewedRow = hovered
+    ? (hovered.element.querySelector(":scope > .section-row") ?? hovered.element)
+    : undefined;
+  const rowTone = hoverStatus?.tone ?? "neutral";
+  useEffect(() => {
+    if (!previewedRow) {
+      return;
+    }
+    previewedRow.classList.add(PREVIEWED_ROW_CLASS);
+    previewedRow.setAttribute("data-preview-tone", rowTone);
+    return () => {
+      previewedRow.classList.remove(PREVIEWED_ROW_CLASS);
+      previewedRow.removeAttribute("data-preview-tone");
+    };
+  }, [previewedRow, rowTone]);
+
+  const blockLook = (kind: BlockKind) => {
+    switch (kind) {
+      case "scheduled":
+        return { fill: theme.block, border: `1px solid ${theme.blockBorder}`, text: theme.blockText };
+      case "overlapped":
+        return { fill: theme.overlap.fill, border: `2px solid ${theme.overlap.border}`, text: theme.overlap.text };
+      case "preview":
+        return { fill: theme.preview.fill, border: `2px dashed ${theme.preview.border}`, text: theme.preview.text };
+      case "previewOverlap":
+        return { fill: theme.overlap.fill, border: `2px dashed ${theme.overlap.border}`, text: theme.overlap.text };
+    }
+  };
 
   if (!openLoaded) {
     return null;
@@ -219,7 +324,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
   if (!open) {
     return (
       <>
-        <FocusStyle color={theme.focus} />
+        <FocusStyle theme={theme} />
         <button
           type="button"
           className="usc-helper-week-preview"
@@ -237,7 +342,14 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
             height: 56,
             padding: 0,
             borderRadius: "50%",
-            border: `3px solid ${theme.ring}`,
+            // The ring hints at the hovered section while the calendar is minimized.
+            border: `3px solid ${
+              hoverStatus?.tone === "overlaps"
+                ? theme.overlap.border
+                : hoverStatus?.tone === "fits"
+                  ? theme.preview.border
+                  : theme.ring
+            }`,
             background: CARDINAL,
             color: "#ffffff",
             boxShadow: theme.shadow,
@@ -284,7 +396,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
         textAlign: "left",
       }}
     >
-      <FocusStyle color={theme.focus} />
+      <FocusStyle theme={theme} />
       <div
         style={{
           ...base,
@@ -442,18 +554,20 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
                 const laneWidth = column / block.lanes;
                 const dash = block.course.indexOf("-");
                 const twoLines = block.height >= 24 && dash > 0;
+                const look = blockLook(block.kind);
                 return (
                   <div
                     key={block.key}
                     data-course={block.course}
-                    style={text(theme.blockText, {
+                    data-kind={block.kind}
+                    style={text(look.text, {
                       position: "absolute",
                       left: `calc(${block.dayIndex * column + block.lane * laneWidth}% + 1px)`,
                       width: `calc(${laneWidth}% - 2px)`,
                       top: block.top,
                       height: Math.max(block.height - 1, 10),
-                      background: theme.block,
-                      border: `1px solid ${theme.blockBorder}`,
+                      background: look.fill,
+                      border: look.border,
                       borderRadius: 3,
                       fontSize: 10,
                       fontWeight: 700,
@@ -466,8 +580,8 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
                     {/* Subject over number ("MATH" / "407") so the number isn't cut off in a narrow column. */}
                     {twoLines ? (
                       <>
-                        <span style={text(theme.blockText, { display: "block" })}>{block.course.slice(0, dash)}</span>
-                        <span style={text(theme.blockText, { display: "block", fontWeight: 400 })}>
+                        <span style={text(look.text, { display: "block" })}>{block.course.slice(0, dash)}</span>
+                        <span style={text(look.text, { display: "block", fontWeight: 400 })}>
                           {block.course.slice(dash + 1)}
                         </span>
                       </>
@@ -481,11 +595,79 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
           </div>
         </div>
 
+        {/* What the hovered or focused section would do to your week. Always present so changes are announced. */}
+        <div
+          aria-live="polite"
+          data-testid="hover-status"
+          style={
+            hoverStatus
+              ? text(
+                  hoverStatus.tone === "overlaps"
+                    ? theme.overlap.text
+                    : hoverStatus.tone === "fits"
+                      ? theme.preview.text
+                      : theme.text,
+                  {
+                    marginTop: 10,
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    background:
+                      hoverStatus.tone === "overlaps"
+                        ? theme.overlap.fill
+                        : hoverStatus.tone === "fits"
+                          ? theme.preview.fill
+                          : theme.note,
+                    border: `1px solid ${hoverStatus.tone === "overlaps" ? theme.overlap.border : hoverStatus.tone === "fits" ? theme.preview.border : theme.border}`,
+                  },
+                )
+              : visuallyHidden
+          }
+        >
+          {hoverStatus?.text ?? ""}
+        </div>
+        {hoverStatus ? (
+          grid.preview && !grid.preview.alreadyScheduled ? (
+            <div aria-hidden="true" style={{ ...base, display: "flex", gap: 12, marginTop: 6 }}>
+              {(
+                [
+                  ["Your classes", blockLook("scheduled")],
+                  ["This section", blockLook("preview")],
+                  ["Overlap", blockLook("overlapped")],
+                ] as const
+              ).map(([label, look]) => (
+                <span
+                  key={label}
+                  style={text(theme.muted, { display: "flex", alignItems: "center", gap: 5, fontSize: 10 })}
+                >
+                  <span
+                    style={text(look.text, {
+                      display: "inline-block",
+                      width: 12,
+                      height: 9,
+                      borderRadius: 2,
+                      background: look.fill,
+                      border: look.border,
+                    })}
+                  />
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null
+        ) : (
+          <div style={text(theme.muted, { marginTop: 8, fontSize: 11 })}>
+            Point at a section to see it on your week.
+          </div>
+        )}
+
         {schedule.status === "ready" && grid.blocks.length > 0 ? (
           <ul aria-label="Your classes this week" style={visuallyHidden}>
-            {grid.blocks.map((block) => (
-              <li key={block.key}>{`${block.course}, ${grid.days[block.dayIndex]}, ${block.timeLabel}`}</li>
-            ))}
+            {grid.blocks
+              .filter((block) => block.kind === "scheduled" || block.kind === "overlapped")
+              .map((block) => (
+                <li key={block.key}>{`${block.course}, ${grid.days[block.dayIndex]}, ${block.timeLabel}`}</li>
+              ))}
           </ul>
         ) : null}
 

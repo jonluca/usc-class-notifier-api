@@ -15,6 +15,29 @@ function calendarPage(termLabel: string, entries = ENTRIES) {
   return `<html><body><a id="activeTermTab">${termLabel}</a><script>kendo.syncReady(${payload}\n})</script></body></html>`;
 }
 
+// A course-search page's sections, as WebReg marks them up.
+const sectionRow = (id: string, name: string, type: string, days: string, time: string) =>
+  `<div class="section" id="${id}"><div class="col-xs-12 section-row" id="${id}-row">${Object.entries({
+    Section: name,
+    Type: type,
+    Days: days,
+    Time: time,
+  })
+    .map(
+      ([label, value]) =>
+        `<span class="section_row"><span class="hidden-lg hidden-md table-headers-xsmall">${label}: </span>${value}</span>`,
+    )
+    .join("")}<button class="addtomycb">Add</button></div></div>`;
+const COURSE_SECTIONS = `<div class="course-header"><a class="course-title-indent">CSCI-104 L: Data Structures</a></div>
+  <div class="accordion-content-area">
+    ${sectionRow("fits", "30394 R", "Lab", "Th", "10:00am-10:50am")}
+    ${sectionRow("clash", "30379 R", "Lab", "Th", "02:00pm-03:50pm")}
+    ${sectionRow("tba", "29972 R", "Quiz", "", "TBA")}
+    ${sectionRow("twice", "29980 R", "Lecture", "M<br>Th", "08:00am-09:20am<br>02:00pm-02:50pm")}
+  </div>
+  <div class="course-header"><a class="course-title-indent">MATH-407: Probability</a></div>
+  <div class="accordion-content-area">${sectionRow("mine", "39860 R", "Lecture", "TTh", "02:00pm-03:20pm")}</div>`;
+
 interface Stored {
   weekPreviewOpen?: boolean;
 }
@@ -97,7 +120,7 @@ async function setUp() {
       fetches = 0;
     }
     calendar = calendarPage(termLabel, entries);
-    dom.document.body.innerHTML = `<a id="activeTermTab">Spring 2027 Classes</a><div id="root"></div>`;
+    dom.document.body.innerHTML = `<a id="activeTermTab">Spring 2027 Classes</a>${COURSE_SECTIONS}<div id="root"></div>`;
     const root = createRoot(dom.document.getElementById("root")!);
     const render = (props: { darkMode: boolean; href: string }) =>
       React.act(async () => root.render(React.createElement(WeekPreview, props)));
@@ -123,6 +146,34 @@ async function setUp() {
         });
       },
       text: () => dom.document.getElementById("root")!.textContent ?? "",
+      // Point at a section the way a mouse does, then wait out the hover delay.
+      hover: async (id: string) => {
+        await React.act(async () => {
+          dom.document
+            .querySelector(`#${id} span`)!
+            .dispatchEvent(new dom.window.Event("mouseover", { bubbles: true }));
+          await new Promise((resolve) => setTimeout(resolve, 220));
+        });
+      },
+      kinds: () =>
+        [...dom.document.querySelectorAll("[data-kind]")]
+          .map((b) => `${b.getAttribute("data-course")}:${b.getAttribute("data-kind")}`)
+          .sort(),
+      // Which row is outlined, and in which tone.
+      outlined: () =>
+        [...dom.document.querySelectorAll(".usc-helper-previewed-row")].map(
+          (row) =>
+            `${row.id.replace(/-row$/, "")}${row.id.endsWith("-row") ? "" : " (outer box)"}:${row.getAttribute("data-preview-tone")}`,
+        ),
+      pointAway: async () => {
+        await React.act(async () => {
+          dom.document
+            .getElementById("activeTermTab")!
+            .dispatchEvent(new dom.window.Event("mouseover", { bubbles: true }));
+          await new Promise((resolve) => setTimeout(resolve, 220));
+        });
+      },
+      hoverStatus: () => dom.document.querySelector('[data-testid="hover-status"]')?.textContent ?? "",
       blocks: () => dom.document.querySelectorAll("[data-course]").length,
       stored: () => fakeBrowser.storage.local.get(),
       unmount,
@@ -392,4 +443,155 @@ test("isTopFrame: the page itself yes; a same-origin or cross-origin frame no", 
     },
   });
   assert.equal(isTopFrame(crossOrigin), false);
+});
+
+test("hovering a section that fits shows it as a preview and says it fits", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  assert.match(page.text(), /Point at a section to see it on your week/);
+  await page.hover("fits");
+  assert.ok(page.kinds().includes("CSCI-104:preview"));
+  assert.equal(page.kinds().filter((k) => k.endsWith(":overlapped")).length, 0);
+  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30394 R · Thu 10:00–10:50 AM · Fits your week.");
+});
+
+test("hovering a section that overlaps marks both classes and names the clash", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("clash");
+  assert.ok(page.kinds().includes("CSCI-104:previewOverlap"));
+  assert.ok(page.kinds().includes("MATH-407:overlapped"));
+  assert.equal(page.kinds().filter((k) => k === "MATH-407:overlapped").length, 1, "only Thursday's MATH-407");
+  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30379 R · Thu 2:00–3:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).");
+});
+
+test("a section with no set time, or one already on your calendar, is described but not drawn", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("tba");
+  assert.equal(page.hoverStatus(), "CSCI-104 Quiz 29972 R: no set meeting time.");
+  assert.equal(page.kinds().filter((k) => k.includes("preview")).length, 0);
+  await page.hover("mine");
+  assert.equal(page.hoverStatus(), "MATH-407 Lecture 39860 R is already on your calendar.");
+  assert.equal(page.kinds().filter((k) => k.includes("preview")).length, 0);
+});
+
+test("when the calendar couldn't be checked (another term), hovering never claims a section fits", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true }, termLabel: "Fall 2026 Classes" });
+  await page.hover("fits");
+  assert.match(page.hoverStatus(), /Can't check it against your calendar right now\./);
+  assert.doesNotMatch(page.hoverStatus(), /Fits/);
+  assert.equal(page.kinds().length, 0);
+});
+
+test("minimized, the button's ring turns orange for an overlap and blue for a fit", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t);
+  const ring = () => page.q('button[aria-label="Show your week"]')!.getAttribute("style") ?? "";
+  assert.match(ring(), /border:\s*3px solid (#ffffff|rgb\(255, 255, 255\))/i);
+  await page.hover("clash");
+  assert.match(ring(), /border:\s*3px solid (#c2410c|rgb\(194, 65, 12\))/i);
+  await page.hover("fits");
+  assert.match(ring(), /border:\s*3px solid (#2563eb|rgb\(37, 99, 235\))/i);
+});
+
+test("the screen-reader list of your classes doesn't include the hovered preview", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("clash");
+  const items = [...document.querySelectorAll('ul[aria-label="Your classes this week"] li')].map(
+    (li) => li.textContent,
+  );
+  assert.equal(items.length, 4);
+  assert.ok(items.every((item) => !item?.startsWith("CSCI-104")));
+});
+
+test("a section with two meeting times shows both, and an overlap in either counts", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("twice");
+  assert.equal(
+    page.hoverStatus(),
+    "CSCI-104 Lecture 29980 R · Mon 8:00–9:20 AM, Thu 2:00–2:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).",
+  );
+  assert.ok(page.kinds().includes("CSCI-104:preview"), "Monday fits");
+  assert.ok(page.kinds().includes("CSCI-104:previewOverlap"), "Thursday overlaps");
+});
+
+test("navigating to another page drops the previous page's hovered section", async (t) => {
+  const { mount, location, React, settle } = await ready;
+  t.after(() => {
+    location.href = "https://webreg.usc.edu/Courses?DeptId=CSCI";
+  });
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("fits");
+  assert.match(page.hoverStatus(), /Fits your week/);
+  location.href = "https://webreg.usc.edu/Courses?DeptId=MATH";
+  await page.render({ darkMode: false, href: location.href });
+  await React.act(settle);
+  assert.equal(page.hoverStatus(), "");
+});
+
+test("the previewed row gets an outline in its result's color, and only one row at a time", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  assert.deepEqual(page.outlined(), []);
+  await page.hover("fits");
+  assert.deepEqual(page.outlined(), ["fits:fits"]);
+  await page.hover("clash");
+  assert.deepEqual(page.outlined(), ["clash:overlaps"]);
+  await page.hover("tba");
+  assert.deepEqual(page.outlined(), ["tba:neutral"]);
+  await page.pointAway();
+  assert.deepEqual(page.outlined(), []);
+});
+
+test("the outline also shows while the calendar is minimized", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t);
+  await page.hover("clash");
+  assert.deepEqual(page.outlined(), ["clash:overlaps"]);
+});
+
+test("the outline is removed when the panel goes away (setting off, navigation, extension off)", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("fits");
+  await page.unmount();
+  assert.deepEqual(page.outlined(), []);
+  assert.equal(document.querySelectorAll("[data-preview-tone]").length, 0);
+});
+
+test("the outline never touches the row's style attribute (the Overlaps markers save and restore it)", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  const row = document.getElementById("clash")!;
+  row.setAttribute("style", "background-color: peach");
+  await page.hover("clash");
+  assert.equal(row.getAttribute("style"), "background-color: peach");
+  // The Overlaps cleanup restores the original style while the row is outlined: the outline stays correct.
+  row.setAttribute("style", "");
+  assert.deepEqual(page.outlined(), ["clash:overlaps"]);
+  await page.pointAway();
+  assert.deepEqual(page.outlined(), []);
+  assert.equal(row.getAttribute("style"), "");
+});
+
+test("the outline's color updates when the calendar finishes loading after you hover", async (t) => {
+  const { mount, hold, releaseHeld, React, settle } = await ready;
+  t.after(() => {
+    hold(false);
+    releaseHeld();
+  });
+  hold(true);
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("fits");
+  assert.deepEqual(page.outlined(), ["fits:neutral"]);
+  hold(false);
+  await React.act(async () => {
+    releaseHeld();
+    await settle();
+  });
+  assert.deepEqual(page.outlined(), ["fits:fits"]);
 });

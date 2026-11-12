@@ -7,6 +7,8 @@ import { pathToFileURL } from "node:url";
 import type { Schedule } from "@/extension/scheduleDocument";
 
 interface SectionSpec {
+  /** Real WebReg markup: each label in a .table-headers-xsmall span, lines separated by <br>. */
+  labelled?: boolean;
   section: string;
   type: string;
   days: string;
@@ -20,18 +22,22 @@ interface CourseSpec {
   sections: SectionSpec[];
 }
 
-function sectionMarkup({ section, type, days, time, button = "add" }: SectionSpec) {
+function sectionMarkup({ section, type, days, time, button = "add", labelled = false }: SectionSpec) {
   const buttonMarkup =
     button === "none"
       ? ""
       : button === "notify"
         ? `<button class="addtomycb notify" value="Notify Me">Notify Me</button>`
         : `<button class="addtomycb" value="Add">Add</button>`;
+  const row = (label: string, value: string) =>
+    labelled
+      ? `<span class="section_row"><span class="hidden-lg hidden-md table-headers-xsmall">${label}: </span>${value}<br></span>`
+      : `<span class="section_row">${label}: ${value}</span>`;
   return `<div class="section" data-section="${section}">
-    <span class="section_row">Section: ${section}</span>
-    <span class="section_row">Type: ${type}</span>
-    <span class="section_row">Days: ${days}</span>
-    <span class="section_row">Time: ${time}</span>
+    ${row("Section", section)}
+    ${row("Type", type)}
+    ${row("Days", days)}
+    ${row("Time", time)}
     ${buttonMarkup}
   </div>`;
 }
@@ -300,11 +306,13 @@ test("a section stops being read once its outcome is known", async (t) => {
       }
       const poison = doc.createElement("span");
       poison.className = "section_row";
-      Object.defineProperty(poison, "innerText", {
-        get() {
-          throw new Error("unreadable row");
-        },
-      });
+      for (const property of ["innerText", "textContent"]) {
+        Object.defineProperty(poison, property, {
+          get() {
+            throw new Error("unreadable row");
+          },
+        });
+      }
       typeRow.parentElement!.appendChild(poison);
       typeRow.parentElement!.appendChild(typeRow);
     }
@@ -316,4 +324,57 @@ test("a section stops being read once its outcome is known", async (t) => {
   );
   assert.equal(errors.mock.callCount(), 0);
   assert.ok(button("29902R")!.classList.contains("warning"));
+});
+
+test("a section with two meeting times (one per line) is checked at both, without logging an error", async (t) => {
+  const { run, button, title } = await setUpDom(t);
+  const errors = t.mock.method(console, "error", () => {});
+  const studio = {
+    labelled: true,
+    section: "11111R",
+    type: "Lecture",
+    days: "M<br>W",
+    time: "01:00pm-05:50pm<br>02:00pm-03:50pm",
+  };
+  // Overlaps only the Wednesday pattern.
+  run([{ title: "ARCH 202", sections: [studio] }], { Data: [meeting("MATH-407 (39860R)", "W", "15:00", "16:20")] });
+  assert.equal(button("11111R")!.textContent, "Overlaps MATH-407");
+  assert.ok(title().classList.contains("overlaps"));
+  // Overlaps neither pattern.
+  run([{ title: "ARCH 202", sections: [studio] }], { Data: [meeting("MATH-407 (39860R)", "W", "16:00", "17:20")] });
+  assert.ok(!button("11111R")!.classList.contains("warning"));
+  assert.equal(errors.mock.callCount(), 0);
+});
+
+test("Time and Days cells that don't pair up line for line mark nothing and log nothing", async (t) => {
+  const { run, button, title } = await setUpDom(t);
+  const errors = t.mock.method(console, "error", () => {});
+  run(
+    [
+      {
+        title: "ARCH 202",
+        sections: [
+          {
+            labelled: true,
+            section: "11111R",
+            type: "Lecture",
+            days: "M<br>W<br>F",
+            time: "01:00pm-05:50pm<br>02:00pm-03:50pm",
+          },
+        ],
+      },
+    ],
+    { Data: [meeting("MATH-407 (39860R)", "W", "15:00", "16:20")] },
+  );
+  assert.ok(!button("11111R")!.classList.contains("warning"));
+  assert.ok(!title().classList.contains("overlaps"));
+  assert.equal(errors.mock.callCount(), 0);
+});
+
+test("one labelled line reads exactly like before (the label spans are left out)", async (t) => {
+  const { run, button } = await setUpDom(t);
+  run([{ title: "CSCI 201", sections: [{ ...LECTURE_MW_10, labelled: true }] }], {
+    Data: [meeting("WRIT-340 (66700R)", "M", "10:00", "11:50")],
+  });
+  assert.equal(button("29902R")!.textContent, "Overlaps WRIT-340");
 });

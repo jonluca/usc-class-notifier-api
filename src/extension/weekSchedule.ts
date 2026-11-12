@@ -131,12 +131,63 @@ export function sectionRows(sectionElement: Element): HTMLElement[] {
   return Array.from(sectionElement.querySelectorAll<HTMLElement>(".section_row"));
 }
 
-/** The value after "Label: " on the first row that mentions "Label:", trimmed; undefined if no row does. */
+// Text of a node with <br> as a line break, leaving out WebReg's small-screen labels ("Time: " and so on).
+function textWithBreaks(node: Node): string {
+  if (node.nodeType === 3) {
+    return node.textContent ?? "";
+  }
+  if (node.nodeType === 1) {
+    // SAFETY: nodeType 1 is the DOM's discriminator for Element nodes.
+    const element = node as Element;
+    if (element.classList.contains("table-headers-xsmall")) {
+      return "";
+    }
+    if (element.tagName.toUpperCase() === "BR") {
+      return "\n";
+    }
+  }
+  return Array.from(node.childNodes, textWithBreaks).join("");
+}
+
+/**
+ * The value of a section's "Label:" row, trimmed (lines joined with "\n"); undefined if there's no such row.
+ *
+ * WebReg puts each label in a `.table-headers-xsmall` span that Bootstrap hides at desktop widths, so this reads
+ * the markup (textContent), never the rendered text (innerText, which drops hidden text and so the labels too).
+ * Rows without that span (older markup) fall back to matching "Label:" in their text.
+ */
 export function sectionRowValue(rows: HTMLElement[], label: "Section" | "Type" | "Days" | "Time") {
+  const labelled = rows.find(
+    (row) => row.querySelector(".table-headers-xsmall")?.textContent?.trim().replace(/:\s*$/, "") === label,
+  );
+  if (labelled) {
+    return textWithBreaks(labelled)
+      .split(/\r?\n/)
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join("\n");
+  }
   return rows
-    .find((row) => row.innerText.includes(`${label}:`))
-    ?.innerText?.replace(`${label}: `, "")
+    .find((row) => (row.textContent ?? "").includes(`${label}:`))
+    ?.textContent?.replace(`${label}: `, "")
     ?.trim();
+}
+
+/**
+ * A section's meeting patterns, as raw text. WebReg prints one line per pattern in both the Time and Days cells
+ * (e.g. "01:00pm-05:50pm" / "02:00pm-03:50pm" with "M" / "W"); line i of Time goes with line i of Days, the same
+ * rule Final Exams uses. null when the cells don't pair up, so nothing is guessed. [] for no time (or TBA).
+ */
+export function sectionMeetingLines(rows: HTMLElement[]): { time: string; days: string }[] | null {
+  const timeLines = (sectionRowValue(rows, "Time") ?? "").split("\n").filter(Boolean);
+  if (timeLines.length <= 1) {
+    return timeLines.map((time) => ({ time, days: sectionRowValue(rows, "Days") ?? "" }));
+  }
+  const dayLines = (sectionRowValue(rows, "Days") ?? "").split("\n").filter(Boolean);
+  if (dayLines.length !== timeLines.length) {
+    return null;
+  }
+  return timeLines.map((time, index) => ({ time, days: dayLines[index]! }));
 }
 
 /** Reads every field of a WebReg course-page `.section` element. Throws on a malformed time. */

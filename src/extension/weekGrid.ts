@@ -1,6 +1,6 @@
 // Pure layout for the week preview calendar: which days and hours to show, and where each class block goes.
 // No React and no DOM, so every layout rule is unit-tested.
-import type { WeeklyMeeting } from "@/extension/weekSchedule";
+import { findOverlaps, type WeeklyMeeting } from "@/extension/weekSchedule";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
 const WEEKEND = ["Saturday", "Sunday"] as const;
@@ -16,12 +16,41 @@ const SHORT_DAY = {
 type DayName = keyof typeof SHORT_DAY;
 const isDayName = (day: string): day is DayName => Object.hasOwn(SHORT_DAY, day);
 
+/** "Thu" for "Thursday"; anything unrecognized is returned as is. */
+export function shortDayName(day: string) {
+  return isDayName(day) ? SHORT_DAY[day] : day;
+}
+
 /** The hours shown when nothing on the calendar falls outside them. */
 export const DEFAULT_START_HOUR = 8;
 export const DEFAULT_END_HOUR = 18;
 
+/** A section being previewed (hovered or focused) on top of your calendar. */
+export interface PreviewSection {
+  /** e.g. "CSCI-104"; "" if unknown. */
+  course: string;
+  /** e.g. "30379 R" */
+  name: string;
+  /** One entry per meeting pattern; most sections have one. */
+  meetings: { days: string[]; time: { start: string; end: string } }[];
+}
+
+/**
+ * scheduled: a class on your calendar. overlapped: one of those that the preview overlaps.
+ * preview: the previewed section where it fits. previewOverlap: the previewed section where it overlaps something.
+ */
+export type BlockKind = "scheduled" | "overlapped" | "preview" | "previewOverlap";
+
+export interface PreviewSummary {
+  /** Your classes it overlaps, in calendar order (same rule as the course page's "Overlaps X" markers). */
+  overlaps: WeeklyMeeting[];
+  /** The section is already on your calendar, so nothing new is drawn. */
+  alreadyScheduled: boolean;
+}
+
 export interface GridBlock {
   key: string;
+  kind: BlockKind;
   course: string;
   section: string;
   /** Column in `days`. */
@@ -45,7 +74,11 @@ export interface WeekGrid {
   height: number;
   hourMarks: { hour: number; label: string; top: number }[];
   blocks: GridBlock[];
+  /** Present when a preview section was given. */
+  preview?: PreviewSummary;
 }
+
+type Placed = WeeklyMeeting & { kind: BlockKind };
 
 function minutes(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -79,9 +112,13 @@ function hourLabel(hour: number) {
 }
 
 /** Assigns overlapping meetings on one day to side-by-side lanes (greedy, in start-time order). */
-function assignLanes(dayMeetings: WeeklyMeeting[]) {
-  const sorted = [...dayMeetings].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
-  const placed: { meeting: WeeklyMeeting; lane: number; group: number }[] = [];
+function assignLanes(dayMeetings: Placed[]) {
+  // Your own classes before a preview that starts at the same time, so the preview sits to their right.
+  const previewLast = (m: Placed) => (m.kind === "preview" || m.kind === "previewOverlap" ? 1 : 0);
+  const sorted = [...dayMeetings].sort(
+    (a, b) => a.start.localeCompare(b.start) || previewLast(a) - previewLast(b) || a.end.localeCompare(b.end),
+  );
+  const placed: { meeting: Placed; lane: number; group: number }[] = [];
   let laneEnds: string[] = [];
   let group = -1;
   let groupEnd = "";
@@ -108,13 +145,51 @@ function assignLanes(dayMeetings: WeeklyMeeting[]) {
   return placed.map(({ meeting, lane, group: g }) => ({ meeting, lane, lanes: lanesPerGroup.get(g)! }));
 }
 
-export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34): WeekGrid {
+export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34, preview?: PreviewSection): WeekGrid {
   const usable = meetings.filter((m) => isDayName(m.day) && m.start < m.end);
-  const days: DayName[] = [...WEEKDAYS, ...WEEKEND.filter((day) => usable.some((m) => m.day === day))];
+  let summary: PreviewSummary | undefined;
+  let placedMeetings: Placed[] = usable.map((m) => ({ ...m, kind: "scheduled" }));
+  if (preview) {
+    const alreadyScheduled = usable.some((m) => m.section !== "" && preview.name.startsWith(m.section));
+    // Overlaps per pattern, then all of them in calendar order without repeats.
+    const perPattern = preview.meetings.map((pattern) =>
+      alreadyScheduled
+        ? []
+        : findOverlaps({ name: preview.name, type: undefined, days: pattern.days, time: pattern.time }, usable),
+    );
+    const overlaps = usable.filter((m) => perPattern.some((list) => list.includes(m)));
+    summary = { overlaps, alreadyScheduled };
+    if (!alreadyScheduled) {
+      preview.meetings.forEach((pattern, index) => {
+        if (pattern.time.start >= pattern.time.end) {
+          return;
+        }
+        for (const day of pattern.days.filter(isDayName)) {
+          const hitsThatDay = perPattern[index]!.some((m) => m.day === day);
+          placedMeetings.push({
+            course: preview.course || "Section",
+            section: preview.name,
+            day,
+            start: pattern.time.start,
+            end: pattern.time.end,
+            kind: hitsThatDay ? "previewOverlap" : "preview",
+          });
+        }
+      });
+    }
+  }
+  // findOverlaps returns the original meeting objects; the first usable.length entries line up with them.
+  if (summary) {
+    const overlapped = new Set(summary.overlaps);
+    placedMeetings = placedMeetings.map((m, index) =>
+      index < usable.length && overlapped.has(usable[index]!) ? { ...m, kind: "overlapped" } : m,
+    );
+  }
+  const days: DayName[] = [...WEEKDAYS, ...WEEKEND.filter((day) => placedMeetings.some((m) => m.day === day))];
 
   let startHour = DEFAULT_START_HOUR;
   let endHour = DEFAULT_END_HOUR;
-  for (const m of usable) {
+  for (const m of placedMeetings) {
     startHour = Math.min(startHour, Math.floor(minutes(m.start) / 60));
     endHour = Math.max(endHour, Math.ceil(minutes(m.end) / 60));
   }
@@ -123,9 +198,10 @@ export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34): WeekGr
 
   const blocks: GridBlock[] = [];
   days.forEach((day, dayIndex) => {
-    for (const { meeting, lane, lanes } of assignLanes(usable.filter((m) => m.day === day))) {
+    for (const { meeting, lane, lanes } of assignLanes(placedMeetings.filter((m) => m.day === day))) {
       blocks.push({
-        key: JSON.stringify([meeting.course, meeting.section, day, meeting.start, meeting.end]),
+        key: JSON.stringify([meeting.kind, meeting.course, meeting.section, day, meeting.start, meeting.end]),
+        kind: meeting.kind,
         course: meeting.course,
         section: meeting.section,
         dayIndex,
@@ -142,7 +218,7 @@ export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34): WeekGr
   for (let hour = startHour; hour <= endHour; hour += 1) {
     hourMarks.push({ hour, label: hourLabel(hour), top: Math.round((hour - startHour) * pxPerHour) });
   }
-  return {
+  const grid: WeekGrid = {
     days,
     shortDays: days.map((day) => SHORT_DAY[day]),
     startHour,
@@ -151,4 +227,8 @@ export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34): WeekGr
     hourMarks,
     blocks,
   };
+  if (summary) {
+    grid.preview = summary;
+  }
+  return grid;
 }
