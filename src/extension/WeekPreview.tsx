@@ -1,5 +1,5 @@
-// Floating "Your week" calendar on WebReg course-search pages: a round button in the bottom-left corner that
-// opens a small week view of your myCalendar classes. Styles are inline (and colors set on every text element)
+// "My Week" drawer on WebReg course-search pages: a tab on the bottom edge that opens a small week view of
+// your myCalendar classes, and previews the section you point at. Styles are inline (and colors set on every text element)
 // so WebReg's own CSS, including the extension's dark-mode stylesheet, doesn't restyle it.
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { CALENDAR_URL, loadSchedule, type ScheduleLoad } from "@/extension/scheduleSource";
@@ -68,7 +68,50 @@ export function useSharedSchedule(href: string): LoadState {
   return result?.href === href ? result.load : { status: "loading" };
 }
 
+/** Full-size drawer: 330px wide, 23px per hour. Smaller windows get a smaller drawer (see `fitDrawer`). */
+const DRAWER_WIDTH = 330;
+const MIN_DRAWER_WIDTH = 250;
 const PX_PER_HOUR = 23;
+const MIN_PX_PER_HOUR = 12;
+/** Space the drawer takes besides the hour grid: tab, toolbar, day header, legend and padding. */
+const DRAWER_CHROME = 140;
+const EDGE = 20;
+/** Hour labels need about this much room so "10:00 AM" doesn't run into the next one. */
+const HOUR_LABEL_SPACE = 26;
+
+export interface DrawerFit {
+  width: number;
+  pxPerHour: number;
+  /** Label every Nth hour. */
+  labelEvery: number;
+}
+
+/**
+ * Sizes the drawer for the window: never wider than the window allows, and short enough to leave at least half the
+ * window for the rows you're pointing at. Below the minimum hour height the drawer scrolls instead.
+ */
+export function fitDrawer(viewport: { width: number; height: number }, hours: number): DrawerFit {
+  const width = Math.max(MIN_DRAWER_WIDTH, Math.min(DRAWER_WIDTH, viewport.width - 2 * EDGE));
+  const room = Math.floor((viewport.height / 2 - DRAWER_CHROME) / Math.max(hours, 1));
+  const pxPerHour = Math.max(MIN_PX_PER_HOUR, Math.min(PX_PER_HOUR, room));
+  return { width, pxPerHour, labelEvery: Math.ceil(HOUR_LABEL_SPACE / pxPerHour) };
+}
+
+function currentViewport() {
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+/** The window's size, updated when it's resized or zoomed. */
+function useViewport() {
+  const [viewport, setViewport] = useState(currentViewport);
+  useEffect(() => {
+    const update = () => setViewport(currentViewport());
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return viewport;
+}
+
 const NO_MEETINGS: WeeklyMeeting[] = [];
 const FONT = '"Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
 // Above WebReg's page and sticky nav, below MUI modals (1300) such as Notify Me and Final Exams.
@@ -300,7 +343,14 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
         : undefined,
     [scheduleReady, hovered],
   );
-  const grid = useMemo(() => buildWeekGrid(meetings, PX_PER_HOUR, preview), [meetings, preview]);
+  const viewport = useViewport();
+  // The hours shown depend only on the classes, so measure them at 1px per hour, then fit the drawer to the window.
+  const hours = useMemo(() => {
+    const span = buildWeekGrid(meetings, 1, preview);
+    return span.endHour - span.startHour;
+  }, [meetings, preview]);
+  const fit = fitDrawer(viewport, hours);
+  const grid = useMemo(() => buildWeekGrid(meetings, fit.pxPerHour, preview), [meetings, fit.pxPerHour, preview]);
   const hoverStatus = hoverMessage(hovered, grid.preview, schedule.status === "ready");
   const courseCount = new Set(meetings.map((m) => `${m.course} ${m.section}`)).size;
   const message = statusMessage(schedule);
@@ -426,7 +476,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
         left: 20,
         bottom: 0,
         zIndex: Z_INDEX,
-        width: 330,
+        width: fit.width,
         color: theme.text,
         fontSize: 12,
         lineHeight: 1.4,
@@ -530,7 +580,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
             <div style={{ ...base, display: "flex" }}>
               <div style={{ ...base, position: "relative", width: GUTTER, height: grid.height }}>
                 {grid.hourMarks
-                  .filter((mark) => (mark.hour - grid.startHour) % 2 === 0 && mark.hour < grid.endHour)
+                  .filter((mark) => (mark.hour - grid.startHour) % fit.labelEvery === 0 && mark.hour < grid.endHour)
                   .map((mark) => (
                     <span
                       key={mark.hour}

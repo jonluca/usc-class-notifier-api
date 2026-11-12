@@ -61,6 +61,10 @@ async function setUp() {
   }>("@webext-core/fake-browser");
   const dom = parseHTML("<!doctype html><html><body></body></html>");
   const location = { href: "https://webreg.usc.edu/Courses?DeptId=CSCI", pathname: "/Courses" };
+  // A laptop-sized window unless a test resizes it.
+  const resizeTo = (width: number, height: number) =>
+    Object.assign(dom.window, { innerWidth: width, innerHeight: height });
+  resizeTo(1300, 860);
   Object.defineProperty(dom.window, "location", { configurable: true, value: location });
   Object.defineProperty(globalThis, "location", { configurable: true, value: location });
   // LinkeDOM doesn't track focus, so record which element was last focused.
@@ -141,6 +145,7 @@ async function setUp() {
     };
     // Unmount even when an assertion fails, so a leftover panel can't affect the next test.
     t.after(unmount);
+    t.after(() => resizeTo(1300, 860));
     const q = (selector: string) => dom.document.querySelector<HTMLElement>(selector);
     return {
       q,
@@ -152,6 +157,13 @@ async function setUp() {
         });
       },
       text: () => dom.document.getElementById("root")!.textContent ?? "",
+      resize: async (width: number, height: number) => {
+        await React.act(async () => {
+          resizeTo(width, height);
+          dom.window.dispatchEvent(new dom.window.Event("resize"));
+          await settle();
+        });
+      },
       // Point at a section the way a mouse does, then wait out the hover delay.
       hover: async (id: string) => {
         await React.act(async () => {
@@ -747,4 +759,36 @@ test("the tab is named by what it says, and says whether the week is open", asyn
   assert.equal(tab.getAttribute("aria-expanded"), "false");
   await page.act(() => dispatch(tab, "click"));
   assert.equal(page.q("button[aria-expanded]")!.getAttribute("aria-expanded"), "true");
+});
+
+test("fitDrawer keeps the drawer inside the window and at most about half its height", async () => {
+  const { fitDrawer } = await import("@/extension/WeekPreview");
+  // A normal laptop window gets the full-size drawer.
+  assert.deepEqual(fitDrawer({ width: 1300, height: 860 }, 10), { width: 330, pxPerHour: 23, labelEvery: 2 });
+  // A short window shrinks the hours so the drawer stays near half the window.
+  assert.deepEqual(fitDrawer({ width: 1300, height: 600 }, 10), { width: 330, pxPerHour: 16, labelEvery: 2 });
+  // Very short: stop at a readable minimum (the drawer scrolls) and label fewer hours so they don't collide.
+  assert.deepEqual(fitDrawer({ width: 1300, height: 400 }, 10), { width: 330, pxPerHour: 12, labelEvery: 3 });
+  // A long day (8 AM to 10 PM) gets less room per hour.
+  assert.equal(fitDrawer({ width: 1300, height: 860 }, 14).pxPerHour, 20);
+  // Narrow windows: 20px from each edge, but never narrower than 250px.
+  assert.equal(fitDrawer({ width: 320, height: 860 }, 10).width, 280);
+  assert.equal(fitDrawer({ width: 200, height: 860 }, 10).width, 250);
+});
+
+test("the open drawer resizes with the window", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  const section = () => page.q('section[aria-label="Your week"]')!.getAttribute("style") ?? "";
+  const blockHeight = () => {
+    const match = /height:\s*(\d+)px/.exec(page.q("[data-course]")!.getAttribute("style") ?? "");
+    return Number(match?.[1]);
+  };
+  assert.match(section(), /width:\s*330px/);
+  const fullHeight = blockHeight();
+  await page.resize(300, 420);
+  assert.match(section(), /width:\s*260px/);
+  assert.ok(blockHeight() < fullHeight, `${blockHeight()} < ${fullHeight}`);
+  await page.resize(1300, 860);
+  assert.equal(blockHeight(), fullHeight);
 });
