@@ -173,6 +173,8 @@ async function setUp() {
           await new Promise((resolve) => setTimeout(resolve, 220));
         });
       },
+      note: () => dom.document.querySelector('[data-testid="hover-note"]')?.textContent ?? null,
+      hasLegend: () => dom.document.querySelector('[data-testid="legend"]') !== null,
       hoverStatus: () => dom.document.querySelector('[data-testid="hover-status"]')?.textContent ?? "",
       blocks: () => dom.document.querySelectorAll("[data-course]").length,
       stored: () => fakeBrowser.storage.local.get(),
@@ -448,7 +450,7 @@ test("isTopFrame: the page itself yes; a same-origin or cross-origin frame no", 
 test("hovering a section that fits shows it as a preview and says it fits", async (t) => {
   const { mount } = await ready;
   const page = await mount(t, { stored: { weekPreviewOpen: true } });
-  assert.match(page.text(), /Point at a section to see it on your week/);
+  assert.ok(page.hasLegend(), "the legend is there before you point at anything");
   await page.hover("fits");
   assert.ok(page.kinds().includes("CSCI-104:preview"));
   assert.equal(page.kinds().filter((k) => k.endsWith(":overlapped")).length, 0);
@@ -594,4 +596,43 @@ test("the outline's color updates when the calendar finishes loading after you h
     await settle();
   });
   assert.deepEqual(page.outlined(), ["fits:fits"]);
+});
+
+test("a fit or an overlap is shown on the calendar and the row only, with no text bar", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("fits");
+  assert.equal(page.note(), null);
+  await page.hover("clash");
+  assert.equal(page.note(), null);
+  assert.ok(page.hasLegend());
+});
+
+test("screen readers still hear the full result for a fit or an overlap", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("clash");
+  const live = document.querySelector('[data-testid="hover-status"]')!;
+  assert.equal(live.getAttribute("aria-live"), "polite");
+  assert.match(live.textContent ?? "", /Overlaps MATH-407 \(Thu 2:00–3:20 PM\)/);
+  assert.match(live.getAttribute("style") ?? "", /clip/, "visually hidden");
+});
+
+test("when nothing can be drawn, the bar explains why (and isn't announced twice)", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("tba");
+  assert.equal(page.note(), "CSCI-104 Quiz 29972 R: no set meeting time.");
+  assert.equal(document.querySelector('[data-testid="hover-note"]')!.getAttribute("aria-hidden"), "true");
+  await page.hover("mine");
+  assert.equal(page.note(), "MATH-407 Lecture 39860 R is already on your calendar.");
+  await page.hover("fits");
+  assert.equal(page.note(), null, "gone again once something is drawn");
+});
+
+test("the bar also explains when the calendar can't be checked", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true }, termLabel: "Fall 2026 Classes" });
+  await page.hover("fits");
+  assert.match(page.note() ?? "", /Can't check it against your calendar right now\./);
 });

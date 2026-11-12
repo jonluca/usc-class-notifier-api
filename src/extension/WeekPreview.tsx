@@ -207,7 +207,7 @@ export function hoverMessage(
   hovered: HoveredSection | null,
   summary: PreviewSummary | undefined,
   scheduleReady: boolean,
-): { text: string; tone: "fits" | "overlaps" | "neutral" } | null {
+): { text: string; tone: "fits" | "overlaps" | "neutral"; drawn: boolean } | null {
   if (!hovered) {
     return null;
   }
@@ -216,24 +216,29 @@ export function hoverMessage(
     return {
       text: hovered.unreadable ? `${label}: couldn't read its meeting time.` : `${label}: no set meeting time.`,
       tone: "neutral",
+      drawn: false,
     };
   }
   const when = hovered.meetings
     .map((m) => `${shortDays(m.days)} ${formatTimeRange(m.time.start, m.time.end)}`)
     .join(", ");
   if (!scheduleReady || !summary) {
-    return { text: `${label} · ${when}. Can't check it against your calendar right now.`, tone: "neutral" };
+    return {
+      text: `${label} · ${when}. Can't check it against your calendar right now.`,
+      tone: "neutral",
+      drawn: false,
+    };
   }
   if (summary.alreadyScheduled) {
-    return { text: `${label} is already on your calendar.`, tone: "neutral" };
+    return { text: `${label} is already on your calendar.`, tone: "neutral", drawn: false };
   }
   if (summary.overlaps.length === 0) {
-    return { text: `${label} · ${when} · Fits your week.`, tone: "fits" };
+    return { text: `${label} · ${when} · Fits your week.`, tone: "fits", drawn: true };
   }
   const clashes = summary.overlaps
     .map((m) => `${m.course} (${shortDayName(m.day)} ${formatTimeRange(m.start, m.end)})`)
     .join(", ");
-  return { text: `${label} · ${when} · Overlaps ${clashes}.`, tone: "overlaps" };
+  return { text: `${label} · ${when} · Overlaps ${clashes}.`, tone: "overlaps", drawn: true };
 }
 
 const visuallyHidden: CSSProperties = {
@@ -595,71 +600,57 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
           </div>
         </div>
 
-        {/* What the hovered or focused section would do to your week. Always present so changes are announced. */}
-        <div
-          aria-live="polite"
-          data-testid="hover-status"
-          style={
-            hoverStatus
-              ? text(
-                  hoverStatus.tone === "overlaps"
-                    ? theme.overlap.text
-                    : hoverStatus.tone === "fits"
-                      ? theme.preview.text
-                      : theme.text,
-                  {
-                    marginTop: 10,
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    background:
-                      hoverStatus.tone === "overlaps"
-                        ? theme.overlap.fill
-                        : hoverStatus.tone === "fits"
-                          ? theme.preview.fill
-                          : theme.note,
-                    border: `1px solid ${hoverStatus.tone === "overlaps" ? theme.overlap.border : hoverStatus.tone === "fits" ? theme.preview.border : theme.border}`,
-                  },
-                )
-              : visuallyHidden
-          }
-        >
+        {/*
+          The full result for screen readers, always present so each change is announced. Sighted users see the
+          answer on the calendar and the row (outline, Overlaps button), so it isn't shown as text for them.
+        */}
+        <div aria-live="polite" data-testid="hover-status" style={visuallyHidden}>
           {hoverStatus?.text ?? ""}
         </div>
-        {hoverStatus ? (
-          grid.preview && !grid.preview.alreadyScheduled ? (
-            <div aria-hidden="true" style={{ ...base, display: "flex", gap: 12, marginTop: 6 }}>
-              {(
-                [
-                  ["Your classes", blockLook("scheduled")],
-                  ["This section", blockLook("preview")],
-                  ["Overlap", blockLook("overlapped")],
-                ] as const
-              ).map(([label, look]) => (
-                <span
-                  key={label}
-                  style={text(theme.muted, { display: "flex", alignItems: "center", gap: 5, fontSize: 10 })}
-                >
-                  <span
-                    style={text(look.text, {
-                      display: "inline-block",
-                      width: 12,
-                      height: 9,
-                      borderRadius: 2,
-                      background: look.fill,
-                      border: look.border,
-                    })}
-                  />
-                  {label}
-                </span>
-              ))}
-            </div>
-          ) : null
-        ) : (
-          <div style={text(theme.muted, { marginTop: 8, fontSize: 11 })}>
-            Point at a section to see it on your week.
+        {/* Shown only when nothing can be drawn, so an empty preview doesn't look like the extension broke. */}
+        {hoverStatus && !hoverStatus.drawn ? (
+          <div
+            aria-hidden="true"
+            data-testid="hover-note"
+            style={text(theme.text, {
+              marginTop: 10,
+              padding: "8px 10px",
+              borderRadius: 6,
+              fontSize: 12,
+              background: theme.note,
+              border: `1px solid ${theme.border}`,
+            })}
+          >
+            {hoverStatus.text}
           </div>
-        )}
+        ) : null}
+        {/* The legend is always there: it explains the colors and hints that pointing at a section does something. */}
+        <div aria-hidden="true" data-testid="legend" style={{ ...base, display: "flex", gap: 12, marginTop: 8 }}>
+          {(
+            [
+              ["Your classes", blockLook("scheduled")],
+              ["This section", blockLook("preview")],
+              ["Overlap", blockLook("overlapped")],
+            ] as const
+          ).map(([label, look]) => (
+            <span
+              key={label}
+              style={text(theme.muted, { display: "flex", alignItems: "center", gap: 5, fontSize: 10 })}
+            >
+              <span
+                style={text(look.text, {
+                  display: "inline-block",
+                  width: 12,
+                  height: 9,
+                  borderRadius: 2,
+                  background: look.fill,
+                  border: look.border,
+                })}
+              />
+              {label}
+            </span>
+          ))}
+        </div>
 
         {schedule.status === "ready" && grid.blocks.length > 0 ? (
           <ul aria-label="Your classes this week" style={visuallyHidden}>
