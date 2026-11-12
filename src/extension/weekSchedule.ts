@@ -82,7 +82,7 @@ export interface WeeklyMeeting {
 
 /**
  * Turns WebReg's calendar entries (one per class occurrence) into weekly meetings.
- * Exact repeats (same course, section, weekday and times) collapse to one, keeping first-appearance order.
+ * Exact repeats (same course, section, weekday and times) are kept once, in first-appearance order.
  * A repeat can never be the first overlap when its first copy wasn't, so which class is reported is unchanged.
  */
 export function weeklyMeetings(data: Schedule | null | undefined): WeeklyMeeting[] {
