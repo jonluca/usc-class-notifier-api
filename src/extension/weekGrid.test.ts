@@ -192,3 +192,18 @@ test("a section with two meeting patterns is drawn at both, and each is checked 
     "MATH-407 Wed overlapped 0/2",
   ]);
 });
+
+test("your classes keep their myCalendar status for coloring; the preview has none", () => {
+  const grid = buildWeekGrid(
+    [{ ...m("CSCI-201", "Tuesday", "12:30", "13:50", "29901"), status: "registered" }],
+    30,
+    thursdayLab,
+  );
+  assert.deepEqual(
+    grid.blocks.map((b) => [b.course, b.kind, b.status]),
+    [
+      ["CSCI-201", "scheduled", "registered"],
+      ["CSCI-104", "preview", undefined],
+    ],
+  );
+});

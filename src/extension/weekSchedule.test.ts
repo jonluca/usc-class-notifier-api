@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { findOverlaps, readSectionRow, weeklyMeetings, type SectionRowInfo } from "@/extension/weekSchedule";
+import type { ScheduleEntry } from "@/extension/scheduleDocument";
 import { parseDetachedDocument } from "@/extension/testing/detachedDocument";
 
 const entry = (Title: string, Start: string | Date, End: string | Date) => ({ Title, Start, End });
@@ -188,4 +189,37 @@ test("weeklyMeetings never merges different classes whose fields contain separat
 test("readSectionRow throws on a malformed time rather than guessing", async () => {
   const element = await sectionElement({ Section: "1R", Days: "M", Time: "bad time" });
   assert.throws(() => readSectionRow(element));
+});
+
+test("weeklyMeetings keeps myCalendar's status (any case), and marks unknown ones as other", () => {
+  const at = (Status?: string) => {
+    const entry: ScheduleEntry = {
+      Title: "CSCI-104 (29905R)",
+      Start: "2026-08-24T15:00:00Z",
+      End: "2026-08-24T16:20:00Z",
+    };
+    if (Status !== undefined) {
+      entry.Status = Status;
+    }
+    return entry;
+  };
+  const statusOf = (Status?: string) => weeklyMeetings({ Data: [at(Status)] })[0]?.status;
+  assert.equal(statusOf("Registered"), "registered");
+  assert.equal(statusOf("scheduled"), "scheduled");
+  assert.equal(statusOf(" Conflicted "), "conflicted");
+  assert.equal(statusOf("Blocked"), "other");
+  assert.equal(statusOf(undefined), undefined);
+});
+
+test("a class listed twice keeps its most important status, in either order", () => {
+  const entry = (Status: string): ScheduleEntry => ({
+    Title: "CSCI-104 (29905R)",
+    Start: "2026-08-24T15:00:00Z",
+    End: "2026-08-24T16:20:00Z",
+    Status,
+  });
+  const statusesOf = (...order: string[]) => weeklyMeetings({ Data: order.map(entry) }).map((m) => m.status);
+  assert.deepEqual(statusesOf("Scheduled", "Registered"), ["registered"]);
+  assert.deepEqual(statusesOf("Registered", "Scheduled"), ["registered"]);
+  assert.deepEqual(statusesOf("Blocked", "Conflicted"), ["conflicted"]);
 });

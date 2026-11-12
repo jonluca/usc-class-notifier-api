@@ -10,7 +10,13 @@ const ENTRIES = [
   { Title: "CSCI-270 (30040R)", Start: "2027-02-01T16:00:00-08:00", End: "2027-02-01T17:20:00-08:00" },
   { Title: "CSCI-270 (30040R)", Start: "2027-02-03T16:00:00-08:00", End: "2027-02-03T17:20:00-08:00" },
 ];
-function calendarPage(termLabel: string, entries = ENTRIES) {
+interface CalendarEntry {
+  Title: string;
+  Start: string;
+  End: string;
+  Status?: string;
+}
+function calendarPage(termLabel: string, entries: CalendarEntry[] = ENTRIES) {
   const payload = JSON.stringify({ data: { Data: entries } });
   return `<html><body><a id="activeTermTab">${termLabel}</a><script>kendo.syncReady(${payload}\n})</script></body></html>`;
 }
@@ -110,7 +116,7 @@ async function setUp() {
       darkMode = false,
       entries = ENTRIES,
       freshPage = true,
-    }: { stored?: Stored; termLabel?: string; darkMode?: boolean; entries?: typeof ENTRIES; freshPage?: boolean } = {},
+    }: { stored?: Stored; termLabel?: string; darkMode?: boolean; entries?: CalendarEntry[]; freshPage?: boolean } = {},
   ) => {
     fakeBrowser.reset();
     await fakeBrowser.storage.local.set(stored);
@@ -210,22 +216,22 @@ async function setUp() {
 
 const ready = setUp();
 
-test("first visit: just a round calendar button with no badge, minimized", async (t) => {
+test("first visit: just the My Week tab, with no badge or count, minimized", async (t) => {
   const { mount } = await ready;
   const page = await mount(t);
-  const button = page.q('button[aria-label="Show your week"]')!;
+  const button = page.q('button[aria-expanded="false"]')!;
   assert.ok(button);
-  assert.equal(button.textContent, "", "no number or text on the button");
+  assert.equal(button.textContent, "My Week▴");
   assert.equal(page.q("section"), null);
 });
 
 test("clicking the button opens the calendar, remembers it, and moves focus to Minimize", async (t) => {
   const { mount, dispatch, focusedIs } = await ready;
   const page = await mount(t);
-  await page.act(() => dispatch(page.q('button[aria-label="Show your week"]')!, "click"));
+  await page.act(() => dispatch(page.q('button[aria-expanded="false"]')!, "click"));
   assert.ok(page.q('section[aria-label="Your week"]'));
   assert.deepEqual(await page.stored(), { weekPreviewOpen: true });
-  assert.ok(focusedIs(page.q('button[aria-label="Minimize your week"]')));
+  assert.ok(focusedIs(page.q('button[aria-expanded="true"]')));
 });
 
 test("open, it shows this term's classes as blocks on the right days", async (t) => {
@@ -246,7 +252,8 @@ test("there is exactly one link, Open myCalendar; the grid is a mouse shortcut h
   const links = [...document.querySelectorAll("section a")];
   assert.equal(links.length, 1);
   assert.equal(links[0]!.getAttribute("href"), "https://webreg.usc.edu/Calendar");
-  assert.equal(links[0]!.textContent, "Open myCalendar");
+  assert.equal(links[0]!.textContent, "Open myCalendar ›");
+  assert.equal(links[0]!.querySelector("span")?.getAttribute("aria-hidden"), "true", "the arrow isn't read out");
   const grid = page.q('[title="Open myCalendar"]')!;
   assert.equal(grid.getAttribute("aria-hidden"), "true");
   assert.equal(grid.getAttribute("tabindex"), null, "it can't take focus");
@@ -265,14 +272,14 @@ test("Escape minimizes (and isn't passed on to the page); other keys don't", asy
   assert.equal(page.q("section"), null);
   assert.equal(pageSawKey, false, "Escape stops at the panel");
   assert.deepEqual(await page.stored(), { weekPreviewOpen: false });
-  assert.ok(focusedIs(page.q('button[aria-label="Show your week"]')));
+  assert.ok(focusedIs(page.q('button[aria-expanded="false"]')));
 });
 
 test("the Minimize button goes back to the round button", async (t) => {
   const { mount, dispatch } = await ready;
   const page = await mount(t, { stored: { weekPreviewOpen: true } });
-  await page.act(() => dispatch(page.q('button[aria-label="Minimize your week"]')!, "click"));
-  assert.ok(page.q('button[aria-label="Show your week"]'));
+  await page.act(() => dispatch(page.q('button[aria-expanded="true"]')!, "click"));
+  assert.ok(page.q('button[aria-expanded="false"]'));
 });
 
 test("another tab switched terms: no classes, and it explains what to do (not 'reload')", async (t) => {
@@ -385,15 +392,17 @@ test("right after navigating, the previous page's classes aren't shown as if the
   assert.match(page.text(), /Loading your calendar/);
 });
 
-test("dark mode: dark surface, and a light ring so the minimized button stands out on a dark page", async (t) => {
+test("dark mode: dark drawer and tab, with the frame in a light red that's readable on dark", async (t) => {
   const { mount, dispatch } = await ready;
   const page = await mount(t, { darkMode: true });
+  const tabStyle = page.q('button[aria-expanded="false"]')!.getAttribute("style") ?? "";
+  assert.match(tabStyle, /background:\s*(#161616|rgb\(22, 22, 22\))/i);
+  assert.match(tabStyle, /border:\s*1px solid (#ff9a9a|rgb\(255, 154, 154\))/i);
+  await page.act(() => dispatch(page.q('button[aria-expanded="false"]')!, "click"));
   assert.match(
-    page.q('button[aria-label="Show your week"]')!.getAttribute("style") ?? "",
-    /border:\s*3px solid (#e8e8ec|rgb\(232, 232, 236\))/i,
+    page.q('[data-testid="drawer-body"]')!.getAttribute("style") ?? "",
+    /background:\s*(#161616|rgb\(22, 22, 22\))/i,
   );
-  await page.act(() => dispatch(page.q('button[aria-label="Show your week"]')!, "click"));
-  assert.match(page.q("section")!.getAttribute("style") ?? "", /background:\s*(#161616|rgb\(22, 22, 22\))/i);
 });
 
 test("every text element sets its own color, so page rules like `span { color }` can't restyle it", async (t) => {
@@ -487,16 +496,22 @@ test("when the calendar couldn't be checked (another term), hovering never claim
   assert.equal(page.kinds().length, 0);
 });
 
-test("minimized, the button's ring turns orange for an overlap and blue for a fit", async (t) => {
-  const { mount } = await ready;
-  const page = await mount(t);
-  const ring = () => page.q('button[aria-label="Show your week"]')!.getAttribute("style") ?? "";
-  assert.match(ring(), /border:\s*3px solid (#ffffff|rgb\(255, 255, 255\))/i);
-  await page.hover("clash");
-  assert.match(ring(), /border:\s*3px solid (#c2410c|rgb\(194, 65, 12\))/i);
-  await page.hover("fits");
-  assert.match(ring(), /border:\s*3px solid (#2563eb|rgb\(37, 99, 235\))/i);
-});
+for (const open of [false, true]) {
+  test(`${open ? "open" : "minimized"}, the tab never changes when you point at a section`, async (t) => {
+    const { mount } = await ready;
+    const page = await mount(t, { stored: { weekPreviewOpen: open } });
+    const tab = () => {
+      const button = page.q(`button[aria-expanded="${open}"]`)!;
+      return `${button.getAttribute("style")}|${button.textContent}`;
+    };
+    const atRest = tab();
+    await page.hover("clash");
+    assert.equal(tab(), atRest);
+    assert.deepEqual(page.outlined(), ["clash:overlaps"]);
+    await page.hover("fits");
+    assert.equal(tab(), atRest);
+  });
+}
 
 test("the screen-reader list of your classes doesn't include the hovered preview", async (t) => {
   const { mount } = await ready;
@@ -635,4 +650,101 @@ test("the bar also explains when the calendar can't be checked", async (t) => {
   const page = await mount(t, { stored: { weekPreviewOpen: true }, termLabel: "Fall 2026 Classes" });
   await page.hover("fits");
   assert.match(page.note() ?? "", /Can't check it against your calendar right now\./);
+});
+
+test("your classes are colored by their myCalendar status, with no borders", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, {
+    stored: { weekPreviewOpen: true },
+    entries: [
+      {
+        Title: "MATH-407 (39860R)",
+        Start: "2027-02-02T14:00:00-08:00",
+        End: "2027-02-02T15:20:00-08:00",
+        Status: "Registered",
+      },
+      {
+        Title: "CSCI-270 (30040R)",
+        Start: "2027-02-01T16:00:00-08:00",
+        End: "2027-02-01T17:20:00-08:00",
+        Status: "Scheduled",
+      },
+      {
+        Title: "EE-109 (31200R)",
+        Start: "2027-02-03T09:00:00-08:00",
+        End: "2027-02-03T09:50:00-08:00",
+        Status: "Conflicted",
+      },
+    ],
+  });
+  const block = (course: string) => document.querySelector<HTMLElement>(`[data-course="${course}"]`)!;
+  assert.equal(block("MATH-407").getAttribute("data-status"), "registered");
+  assert.match(block("MATH-407").getAttribute("style") ?? "", /background:\s*rgba\(60, 167, 15, 0\.22\)/);
+  assert.match(block("CSCI-270").getAttribute("style") ?? "", /background:\s*rgba\(255, 204, 0, 0\.30?\)/);
+  assert.match(block("EE-109").getAttribute("style") ?? "", /background:\s*rgba\(255, 0, 0, 0\.14\)/);
+  for (const course of ["MATH-407", "CSCI-270", "EE-109"]) {
+    assert.doesNotMatch(
+      block(course).getAttribute("style") ?? "",
+      /border(-top|-right|-bottom|-left)?:/,
+      `${course} has no border`,
+    );
+  }
+  assert.equal(
+    document.querySelector('[data-testid="legend"]')!.textContent,
+    "RegisteredScheduledConflictThis sectionOverlap",
+  );
+  assert.match(page.text(), /MATH-407, Tuesday, 2:00–3:20 PM, registered/);
+});
+
+test("the legend only lists the statuses you actually have", async (t) => {
+  const { mount } = await ready;
+  const legend = () => document.querySelector('[data-testid="legend"]')!.textContent;
+  await t.test("no statuses at all read as scheduled", async (t) => {
+    await mount(t, { stored: { weekPreviewOpen: true } });
+    assert.equal(legend(), "ScheduledThis sectionOverlap");
+  });
+  await t.test("only registered classes", async (t) => {
+    await mount(t, {
+      stored: { weekPreviewOpen: true },
+      entries: [
+        {
+          Title: "MATH-407 (39860R)",
+          Start: "2027-02-02T14:00:00-08:00",
+          End: "2027-02-02T15:20:00-08:00",
+          Status: "Registered",
+        },
+      ],
+    });
+    assert.equal(legend(), "RegisteredThis sectionOverlap");
+  });
+  await t.test("an empty week", async (t) => {
+    await mount(t, { stored: { weekPreviewOpen: true }, entries: [] });
+    assert.equal(legend(), "This sectionOverlap");
+  });
+  await t.test("a status myCalendar added later (Blocked) shows as Other", async (t) => {
+    const page = await mount(t, {
+      stored: { weekPreviewOpen: true },
+      entries: [
+        {
+          Title: "MATH-407 (39860R)",
+          Start: "2027-02-02T14:00:00-08:00",
+          End: "2027-02-02T15:20:00-08:00",
+          Status: "Blocked",
+        },
+      ],
+    });
+    assert.equal(legend(), "OtherThis sectionOverlap");
+    assert.match(page.text(), /MATH-407, Tuesday, 2:00–3:20 PM, other/);
+  });
+});
+
+test("the tab is named by what it says, and says whether the week is open", async (t) => {
+  const { mount, dispatch } = await ready;
+  const page = await mount(t);
+  const tab = page.q("button[aria-expanded]")!;
+  assert.equal(tab.getAttribute("aria-label"), null);
+  assert.equal(tab.textContent?.replace(/[▴▾]/g, ""), "My Week");
+  assert.equal(tab.getAttribute("aria-expanded"), "false");
+  await page.act(() => dispatch(tab, "click"));
+  assert.equal(page.q("button[aria-expanded]")!.getAttribute("aria-expanded"), "true");
 });

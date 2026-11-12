@@ -28,11 +28,33 @@ for (const status of ["Registered", "Scheduled", "Conflicted", "Blocked"]) {
           Title: "CSCI 104",
           Start: "2026-08-24T10:00:00",
           End: "2026-08-24T11:50:00",
+          Status: status,
         },
       ],
     });
   });
 }
+
+test("a null or odd Status only loses the color; the rest of the calendar still parses", () => {
+  const payload = {
+    data: {
+      Data: [
+        { Title: "CSCI 104", Start: "2026-08-24T10:00:00", End: "2026-08-24T11:50:00", Status: null },
+        { Title: "MATH 407", Start: "2026-08-25T10:00:00", End: "2026-08-25T11:50:00", Status: 3 },
+        { Title: "EE 109", Start: "2026-08-26T10:00:00", End: "2026-08-26T11:50:00" },
+      ],
+    },
+  };
+  const parsed = parseScheduleDocument(`<script>kendo.syncReady(${JSON.stringify(payload)}${String.fromCharCode(10)}`);
+  assert.deepEqual(
+    parsed?.Data.map((entry) => [entry.Title, entry.Status]),
+    [
+      ["CSCI 104", undefined],
+      ["MATH 407", undefined],
+      ["EE 109", undefined],
+    ],
+  );
+});
 
 test("rejects calendar entries without the fields conflict detection consumes", () => {
   const payload = {

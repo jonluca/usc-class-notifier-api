@@ -78,6 +78,21 @@ export interface WeeklyMeeting {
   /** "HH:mm", 24-hour. Fixed width, so strings compare in time order. */
   start: string;
   end: string;
+  /** myCalendar's status, which sets its color there (and in the week preview). */
+  status?: MeetingStatus;
+}
+
+export type MeetingStatus = "registered" | "scheduled" | "conflicted" | "other";
+
+/** Most important first: a duplicate entry keeps the earliest of these. */
+const STATUS_RANK: (MeetingStatus | undefined)[] = ["registered", "conflicted", "scheduled", "other", undefined];
+
+function meetingStatus(status: string | undefined): MeetingStatus | undefined {
+  if (status === undefined) {
+    return undefined;
+  }
+  const lower = status.trim().toLowerCase();
+  return lower === "registered" || lower === "scheduled" || lower === "conflicted" ? lower : "other";
 }
 
 /**
@@ -90,7 +105,7 @@ export function weeklyMeetings(data: Schedule | null | undefined): WeeklyMeeting
     return [];
   }
   const meetings: WeeklyMeeting[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, WeeklyMeeting>();
   for (const entry of data.Data) {
     const day = formatScheduleDayInLosAngeles(entry.Start);
     const start = formatScheduleTimeInLosAngeles(entry.Start);
@@ -102,13 +117,22 @@ export function weeklyMeetings(data: Schedule | null | undefined): WeeklyMeeting
     if (!course || !sectionName) {
       continue;
     }
-    const meeting = { course, section: sectionName.slice(1, -2), day, start, end };
+    const status = meetingStatus(entry.Status);
+    const meeting: WeeklyMeeting = { course, section: sectionName.slice(1, -2), day, start, end };
+    if (status) {
+      meeting.status = status;
+    }
     // JSON keeps the fields apart even when a title contains the separator a join would use.
     const key = JSON.stringify([meeting.course, meeting.section, day, start, end]);
-    if (seen.has(key)) {
+    const earlier = seen.get(key);
+    if (earlier) {
+      // The same class listed twice keeps the status that matters most, whichever order myCalendar used.
+      if (STATUS_RANK.indexOf(meeting.status) < STATUS_RANK.indexOf(earlier.status)) {
+        earlier.status = meeting.status;
+      }
       continue;
     }
-    seen.add(key);
+    seen.set(key, meeting);
     meetings.push(meeting);
   }
   return meetings;

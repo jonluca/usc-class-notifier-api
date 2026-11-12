@@ -13,7 +13,7 @@ import {
   type PreviewSummary,
   shortDayName,
 } from "@/extension/weekGrid";
-import type { WeeklyMeeting } from "@/extension/weekSchedule";
+import type { MeetingStatus, WeeklyMeeting } from "@/extension/weekSchedule";
 
 /** WebReg's course-search pages (department listings with sections), e.g. /Courses?DeptId=CSCI. */
 export function isCourseSearchPage(href: string): boolean {
@@ -68,66 +68,85 @@ export function useSharedSchedule(href: string): LoadState {
   return result?.href === href ? result.load : { status: "loading" };
 }
 
-const PX_PER_HOUR = 30;
+const PX_PER_HOUR = 23;
 const NO_MEETINGS: WeeklyMeeting[] = [];
-const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
-const CARDINAL = "#990000";
+const FONT = '"Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
 // Above WebReg's page and sticky nav, below MUI modals (1300) such as Notify Me and Final Exams.
 const Z_INDEX = 1200;
 
+/** Fill and text color for one kind of block. Blocks have no border: they're see-through tints, like WebReg. */
+interface Tint {
+  fill: string;
+  text: string;
+}
 interface Theme {
   surface: string;
-  border: string;
+  /** WebReg's cardinal: used only for the frame (tab outline, top edge, link), never for class blocks. */
+  frame: string;
+  bar: string;
   text: string;
   muted: string;
   note: string;
   gridLine: string;
-  block: string;
-  blockBorder: string;
-  blockText: string;
-  /** Fill, border and text for the previewed section and for overlaps. */
-  preview: { fill: string; border: string; text: string };
-  overlap: { fill: string; border: string; text: string };
-  link: string;
-  ring: string;
+  /** myCalendar's own status colors, as tints: green Registered, gold Scheduled, red Conflict. */
+  registered: Tint;
+  scheduled: Tint;
+  conflicted: Tint;
+  other: Tint;
+  /** Schedule Helper's own overlap color (the same as the peach Overlaps rows). */
+  overlap: Tint;
+  /** The hovered section: diagonal stripes, blue when it fits and orange when it overlaps. */
+  previewFits: Tint;
+  previewOverlap: Tint;
+  /** Row outline colors (at least 3:1 against the page). */
+  outlineFits: string;
+  outlineOverlap: string;
   focus: string;
   shadow: string;
 }
-// Non-text contrast (block borders, the button's ring) is at least 3:1 against what's behind it.
+const stripes = (rgb: string, strong: number, weak: number) =>
+  `repeating-linear-gradient(135deg, rgba(${rgb}, ${strong}) 0 5px, rgba(${rgb}, ${weak}) 5px 10px)`;
+// Every block's text is checked against its fill: 6.4:1 or better in light and dark.
 const LIGHT: Theme = {
   surface: "#ffffff",
-  border: "#cfcfcf",
-  text: "#222222",
+  frame: "#990000",
+  bar: "#f5f5f5",
+  text: "#333333",
   muted: "#595959",
-  note: "#f3f3f3",
+  note: "#f5f5f5",
   gridLine: "#e6e6e6",
-  block: "#e8edf5",
-  blockBorder: "#6b7fa3",
-  blockText: "#1f2a44",
-  preview: { fill: "rgba(37, 99, 235, 0.12)", border: "#2563eb", text: "#1e3a8a" },
-  overlap: { fill: "#fdebe1", border: "#c2410c", text: "#7c2d12" },
-  link: CARDINAL,
-  ring: "#ffffff",
+  registered: { fill: "rgba(60, 167, 15, 0.22)", text: "#1d5207" },
+  scheduled: { fill: "rgba(255, 204, 0, 0.30)", text: "#5c4700" },
+  conflicted: { fill: "rgba(255, 0, 0, 0.14)", text: "#7a0000" },
+  other: { fill: "rgba(0, 0, 0, 0.06)", text: "#333333" },
+  overlap: { fill: "rgba(255, 134, 47, 0.37)", text: "#5a2a06" },
+  previewFits: { fill: stripes("51, 122, 183", 0.28, 0.1), text: "#1f4a70" },
+  previewOverlap: { fill: stripes("255, 134, 47", 0.3, 0.12), text: "#5a2a06" },
+  outlineFits: "#337ab7",
+  outlineOverlap: "#cc6a1f",
   focus: "#1f5fbf",
-  shadow: "0 12px 32px rgba(0, 0, 0, 0.22)",
+  shadow: "0 -2px 16px rgba(0, 0, 0, 0.14)",
 };
-// Mirrors the --ush-* tokens in webregDark.css (see darkPalette.ts).
+// Mirrors the --ush-* surfaces in webregDark.css (see darkPalette.ts).
 const DARK: Theme = {
   surface: "#161616",
-  border: "#3d3d3d",
+  frame: "#ff9a9a",
+  bar: "#202020",
   text: "#e8e8ec",
   muted: "#9a9aa2",
   note: "#202020",
   gridLine: "#2a2a2a",
-  block: "#1f2a3d",
-  blockBorder: "#7a96cc",
-  blockText: "#dce6f7",
-  preview: { fill: "rgba(96, 150, 255, 0.18)", border: "#7aa7ff", text: "#dbe7ff" },
-  overlap: { fill: "rgba(234, 120, 60, 0.22)", border: "#f08a4b", text: "#ffd9c2" },
-  link: "#ff9a9a",
-  ring: "#e8e8ec",
+  registered: { fill: "rgba(60, 167, 15, 0.30)", text: "#c4ecb0" },
+  scheduled: { fill: "rgba(255, 204, 0, 0.24)", text: "#ffe48f" },
+  conflicted: { fill: "rgba(255, 0, 0, 0.26)", text: "#ffc4c4" },
+  other: { fill: "rgba(255, 255, 255, 0.08)", text: "#dddddd" },
+  overlap: { fill: "rgba(255, 134, 47, 0.32)", text: "#ffd6b8" },
+  previewFits: { fill: stripes("96, 150, 230", 0.36, 0.14), text: "#dbe8ff" },
+  previewOverlap: { fill: stripes("255, 134, 47", 0.34, 0.14), text: "#ffd6b8" },
+  outlineFits: "#7fb0e6",
+  outlineOverlap: "#f08a4b",
   focus: "#8fb4ff",
-  shadow: "0 12px 32px rgba(0, 0, 0, 0.6)",
+  shadow: "0 -2px 16px rgba(0, 0, 0, 0.6)",
 };
 
 function termName(termId: string | undefined) {
@@ -157,14 +176,14 @@ export function statusMessage(state: LoadState): string | null {
   }
 }
 
-function CalendarIcon({ size }: { size: number }) {
+function CalendarIcon({ size, color = "currentColor" }: { size: number; color?: string }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke={color}
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -195,8 +214,8 @@ function FocusStyle({ theme }: { theme: Theme }) {
   outline-offset: -2px !important;
   border-radius: 3px;
 }
-.${PREVIEWED_ROW_CLASS}[data-preview-tone="fits"] { outline-color: ${theme.preview.border} !important; }
-.${PREVIEWED_ROW_CLASS}[data-preview-tone="overlaps"] { outline-color: ${theme.overlap.border} !important; }`}</style>
+.${PREVIEWED_ROW_CLASS}[data-preview-tone="fits"] { outline-color: ${theme.outlineFits} !important; }
+.${PREVIEWED_ROW_CLASS}[data-preview-tone="overlaps"] { outline-color: ${theme.outlineOverlap} !important; }`}</style>
   );
 }
 
@@ -309,16 +328,16 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
     };
   }, [previewedRow, rowTone]);
 
-  const blockLook = (kind: BlockKind) => {
+  const blockLook = (kind: BlockKind, status?: MeetingStatus): Tint => {
     switch (kind) {
       case "scheduled":
-        return { fill: theme.block, border: `1px solid ${theme.blockBorder}`, text: theme.blockText };
+        return status ? theme[status] : theme.scheduled;
       case "overlapped":
-        return { fill: theme.overlap.fill, border: `2px solid ${theme.overlap.border}`, text: theme.overlap.text };
+        return theme.overlap;
       case "preview":
-        return { fill: theme.preview.fill, border: `2px dashed ${theme.preview.border}`, text: theme.preview.text };
+        return theme.previewFits;
       case "previewOverlap":
-        return { fill: theme.overlap.fill, border: `2px dashed ${theme.overlap.border}`, text: theme.overlap.text };
+        return theme.previewOverlap;
     }
   };
 
@@ -326,51 +345,71 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
     return null;
   }
 
+  // The tab on the window's bottom edge: a WebReg btn-default. It looks the same whatever you point at;
+  // the row outline and the calendar show the result. Open, it sits on top of the drawer and closes it.
+  const tab = (isOpen: boolean) => (
+    <button
+      type="button"
+      className={isOpen ? undefined : "usc-helper-week-preview"}
+      aria-expanded={isOpen}
+      title={isOpen ? "Minimize" : "Show your week"}
+      ref={toggleRef}
+      onClick={() => toggle(!isOpen)}
+      style={{
+        ...base,
+        position: isOpen ? "relative" : "fixed",
+        left: isOpen ? undefined : 20,
+        bottom: isOpen ? -1 : 0,
+        zIndex: isOpen ? 1 : Z_INDEX,
+        height: 32,
+        padding: "0 12px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        border: `1px solid ${theme.frame}`,
+        borderBottom: isOpen ? `1px solid ${theme.surface}` : 0,
+        borderRadius: "3px 3px 0 0",
+        background: theme.surface,
+        color: theme.text,
+        fontSize: 13,
+        cursor: "pointer",
+        boxShadow: isOpen ? "none" : theme.shadow,
+      }}
+    >
+      <CalendarIcon size={14} color={theme.frame} />
+      <span style={text(theme.text)}>My Week</span>
+      <span aria-hidden="true" style={text(theme.frame, { fontSize: 10 })}>
+        {isOpen ? "▾" : "▴"}
+      </span>
+    </button>
+  );
+
   if (!open) {
     return (
       <>
         <FocusStyle theme={theme} />
-        <button
-          type="button"
-          className="usc-helper-week-preview"
-          aria-label="Show your week"
-          title="Show your week"
-          ref={toggleRef}
-          onClick={() => toggle(true)}
-          style={{
-            ...base,
-            position: "fixed",
-            left: 24,
-            bottom: 24,
-            zIndex: Z_INDEX,
-            width: 56,
-            height: 56,
-            padding: 0,
-            borderRadius: "50%",
-            // The ring hints at the hovered section while the calendar is minimized.
-            border: `3px solid ${
-              hoverStatus?.tone === "overlaps"
-                ? theme.overlap.border
-                : hoverStatus?.tone === "fits"
-                  ? theme.preview.border
-                  : theme.ring
-            }`,
-            background: CARDINAL,
-            color: "#ffffff",
-            boxShadow: theme.shadow,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <CalendarIcon size={24} />
-        </button>
+        {tab(false)}
       </>
     );
   }
 
   const column = 100 / grid.days.length;
+  const statuses = new Set(meetings.map((m) => m.status));
+  const legend: [string, Tint][] = [];
+  if (statuses.has("registered")) {
+    legend.push(["Registered", theme.registered]);
+  }
+  if (statuses.has("scheduled") || statuses.has(undefined)) {
+    legend.push(["Scheduled", theme.scheduled]);
+  }
+  if (statuses.has("conflicted")) {
+    legend.push(["Conflict", theme.conflicted]);
+  }
+  if (statuses.has("other")) {
+    legend.push(["Other", theme.other]);
+  }
+  legend.push(["This section", theme.previewFits], ["Overlap", theme.overlap]);
+  const GUTTER = 44;
   return (
     <section
       className="usc-helper-week-preview"
@@ -384,317 +423,279 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
       style={{
         ...base,
         position: "fixed",
-        left: 24,
-        bottom: 24,
+        left: 20,
+        bottom: 0,
         zIndex: Z_INDEX,
-        width: 300,
-        maxHeight: "calc(100vh - 48px)",
-        overflowY: "auto",
-        padding: 0,
-        background: theme.surface,
+        width: 330,
         color: theme.text,
-        border: `1px solid ${theme.border}`,
-        borderRadius: "14px 14px 14px 28px",
-        boxShadow: theme.shadow,
         fontSize: 12,
         lineHeight: 1.4,
         textAlign: "left",
       }}
     >
       <FocusStyle theme={theme} />
+      {tab(true)}
       <div
+        data-testid="drawer-body"
         style={{
           ...base,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "10px 10px 10px 12px",
-          background: CARDINAL,
-          color: "#ffffff",
-          borderRadius: "13px 13px 0 0",
+          background: theme.surface,
+          border: `1px solid ${theme.frame}`,
+          borderBottom: 0,
+          boxShadow: theme.shadow,
+          maxHeight: "calc(100vh - 44px)",
+          overflowY: "auto",
         }}
       >
-        <CalendarIcon size={18} />
-        <div style={{ ...base, flex: 1, minWidth: 0 }}>
-          <div style={text("#ffffff", { fontSize: 13, fontWeight: 700 })}>Your week</div>
-          <div style={text("#ffffff", { fontSize: 11 })}>
+        <div
+          style={{
+            ...base,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "6px 8px",
+            background: theme.bar,
+            borderBottom: `1px solid ${theme.gridLine}`,
+          }}
+        >
+          <span style={text(theme.text, { fontSize: 12 })}>
             {schedule.status === "ready"
               ? `${termName(schedule.termId) ?? "This term"} · ${courseCount} ${courseCount === 1 ? "class" : "classes"}`
               : "From myCalendar"}
-          </div>
+          </span>
+          <a href={CALENDAR_URL} style={text(theme.frame, { fontSize: 12, textDecoration: "none" })}>
+            Open myCalendar
+            <span aria-hidden="true" style={text(theme.frame)}>
+              {" "}
+              ›
+            </span>
+          </a>
         </div>
-        <button
-          type="button"
-          aria-label="Minimize your week"
-          title="Minimize"
-          ref={toggleRef}
-          onClick={() => toggle(false)}
-          style={{
-            ...base,
-            width: 32,
-            height: 32,
-            padding: 0,
-            borderRadius: "50%",
-            border: "1px solid rgba(255,255,255,0.7)",
-            background: "transparent",
-            color: "#ffffff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <svg
-            width={16}
-            height={16}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            aria-hidden="true"
-            focusable="false"
-            style={{ width: 16, height: 16, display: "block" }}
+
+        <div style={{ ...base, padding: 8 }}>
+          {/* Always present, so screen readers announce the text when it changes. */}
+          <div
+            role="status"
+            style={
+              message
+                ? text(theme.text, {
+                    padding: "8px 10px",
+                    marginBottom: 8,
+                    background: theme.note,
+                    border: `1px solid ${theme.gridLine}`,
+                  })
+                : visuallyHidden
+            }
           >
-            <path d="M5 12h14" />
-          </svg>
-        </button>
-      </div>
-
-      <div style={{ ...base, padding: "10px 12px 12px" }}>
-        {/* Always present, so screen readers announce the text when it changes. */}
-        <div
-          role="status"
-          style={
-            message
-              ? text(theme.text, { padding: "8px 10px", marginBottom: 10, borderRadius: 6, background: theme.note })
-              : visuallyHidden
-          }
-        >
-          {message}
-        </div>
-
-        {/* Mouse shortcut to myCalendar. Hidden from assistive tech; the list and the button below cover it. */}
-        <div
-          aria-hidden="true"
-          title="Open myCalendar"
-          onClick={() => window.location.assign(CALENDAR_URL)}
-          style={{ ...base, cursor: "pointer" }}
-        >
-          <div style={{ ...base, display: "flex", gap: 4 }}>
-            <div style={{ ...base, width: 24 }} />
-            <div
-              style={{
-                ...base,
-                flex: 1,
-                display: "grid",
-                gridTemplateColumns: `repeat(${grid.days.length}, minmax(0, 1fr))`,
-                textAlign: "center",
-              }}
-            >
-              {grid.shortDays.map((day) => (
-                <span key={day} style={text(theme.muted, { fontSize: 10, fontWeight: 700 })}>
-                  {day}
-                </span>
-              ))}
-            </div>
+            {message}
           </div>
-          <div style={{ ...base, display: "flex", gap: 4, marginTop: 3 }}>
-            <div style={{ ...base, position: "relative", width: 24, height: grid.height }}>
-              {grid.hourMarks
-                .filter((mark) => (mark.hour - grid.startHour) % 2 === 0)
-                .map((mark) => (
-                  <span
-                    key={mark.hour}
-                    style={text(theme.muted, {
-                      position: "absolute",
-                      right: 0,
-                      top: mark.top,
-                      transform: "translateY(-50%)",
-                      fontSize: 10,
-                    })}
-                  >
-                    {mark.label}
-                  </span>
-                ))}
-            </div>
-            <div
-              style={{
-                ...base,
-                flex: 1,
-                position: "relative",
-                height: grid.height,
-                border: `1px solid ${theme.gridLine}`,
-                borderRadius: 4,
-                overflow: "hidden",
-              }}
-            >
-              {grid.hourMarks.map((mark) => (
-                <div
-                  key={mark.hour}
-                  style={{
-                    ...base,
-                    position: "absolute",
-                    left: 0,
-                    right: 0,
-                    top: mark.top,
-                    borderTop: `1px solid ${theme.gridLine}`,
-                  }}
-                />
-              ))}
-              {grid.days.slice(1).map((day, index) => (
-                <div
-                  key={day}
-                  style={{
-                    ...base,
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    left: `${(index + 1) * column}%`,
-                    borderLeft: `1px solid ${theme.gridLine}`,
-                  }}
-                />
-              ))}
-              {grid.blocks.map((block) => {
-                const laneWidth = column / block.lanes;
-                const dash = block.course.indexOf("-");
-                const twoLines = block.height >= 24 && dash > 0;
-                const look = blockLook(block.kind);
-                return (
-                  <div
-                    key={block.key}
-                    data-course={block.course}
-                    data-kind={block.kind}
-                    style={text(look.text, {
-                      position: "absolute",
-                      left: `calc(${block.dayIndex * column + block.lane * laneWidth}% + 1px)`,
-                      width: `calc(${laneWidth}% - 2px)`,
-                      top: block.top,
-                      height: Math.max(block.height - 1, 10),
-                      background: look.fill,
-                      border: look.border,
-                      borderRadius: 3,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      lineHeight: 1.15,
-                      padding: "2px 3px",
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                    })}
-                  >
-                    {/* Subject over number ("MATH" / "407") so the number isn't cut off in a narrow column. */}
-                    {twoLines ? (
-                      <>
-                        <span style={text(look.text, { display: "block" })}>{block.course.slice(0, dash)}</span>
-                        <span style={text(look.text, { display: "block", fontWeight: 400 })}>
-                          {block.course.slice(dash + 1)}
-                        </span>
-                      </>
-                    ) : (
-                      block.course
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
 
-        {/*
-          The full result for screen readers, always present so each change is announced. Sighted users see the
-          answer on the calendar and the row (outline, Overlaps button), so it isn't shown as text for them.
-        */}
-        <div aria-live="polite" data-testid="hover-status" style={visuallyHidden}>
-          {hoverStatus?.text ?? ""}
-        </div>
-        {/* Shown only when nothing can be drawn, so an empty preview doesn't look like the extension broke. */}
-        {hoverStatus && !hoverStatus.drawn ? (
+          {/* Mouse shortcut to myCalendar. Hidden from assistive tech; the list and the link above cover it. */}
           <div
             aria-hidden="true"
-            data-testid="hover-note"
-            style={text(theme.text, {
-              marginTop: 10,
-              padding: "8px 10px",
-              borderRadius: 6,
-              fontSize: 12,
-              background: theme.note,
-              border: `1px solid ${theme.border}`,
-            })}
+            title="Open myCalendar"
+            onClick={() => window.location.assign(CALENDAR_URL)}
+            style={{ ...base, cursor: "pointer" }}
           >
-            {hoverStatus.text}
+            <div style={{ ...base, display: "flex" }}>
+              <div style={{ ...base, width: GUTTER }} />
+              <div
+                style={{
+                  ...base,
+                  flex: 1,
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${grid.days.length}, minmax(0, 1fr))`,
+                  border: `1px solid ${theme.gridLine}`,
+                  borderBottom: 0,
+                  background: theme.bar,
+                }}
+              >
+                {grid.shortDays.map((day, index) => (
+                  <span
+                    key={day}
+                    style={text(theme.text, {
+                      fontSize: 11,
+                      fontWeight: 600,
+                      textAlign: "center",
+                      padding: "4px 0",
+                      borderLeft: index === 0 ? 0 : `1px solid ${theme.gridLine}`,
+                    })}
+                  >
+                    {day}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ ...base, display: "flex" }}>
+              <div style={{ ...base, position: "relative", width: GUTTER, height: grid.height }}>
+                {grid.hourMarks
+                  .filter((mark) => (mark.hour - grid.startHour) % 2 === 0 && mark.hour < grid.endHour)
+                  .map((mark) => (
+                    <span
+                      key={mark.hour}
+                      style={text(theme.muted, { position: "absolute", right: 5, top: mark.top + 1, fontSize: 9 })}
+                    >
+                      {`${mark.hour % 12 || 12}:00 ${mark.hour % 24 < 12 ? "AM" : "PM"}`}
+                    </span>
+                  ))}
+              </div>
+              <div
+                style={{
+                  ...base,
+                  flex: 1,
+                  position: "relative",
+                  height: grid.height,
+                  border: `1px solid ${theme.gridLine}`,
+                  overflow: "hidden",
+                }}
+              >
+                {grid.hourMarks.map((mark) => (
+                  <div
+                    key={mark.hour}
+                    style={{
+                      ...base,
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: mark.top,
+                      borderTop: `1px solid ${theme.gridLine}`,
+                    }}
+                  />
+                ))}
+                {grid.days.slice(1).map((day, index) => (
+                  <div
+                    key={day}
+                    style={{
+                      ...base,
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      left: `${(index + 1) * column}%`,
+                      borderLeft: `1px solid ${theme.gridLine}`,
+                    }}
+                  />
+                ))}
+                {grid.blocks.map((block) => {
+                  const laneWidth = column / block.lanes;
+                  const dash = block.course.indexOf("-");
+                  const twoLines = block.height >= 22 && dash > 0;
+                  const look = blockLook(block.kind, block.status);
+                  return (
+                    <div
+                      key={block.key}
+                      data-course={block.course}
+                      data-kind={block.kind}
+                      data-status={block.status ?? ""}
+                      style={text(look.text, {
+                        position: "absolute",
+                        left: `calc(${block.dayIndex * column + block.lane * laneWidth}% + 1px)`,
+                        width: `calc(${laneWidth}% - 2px)`,
+                        top: block.top + 1,
+                        height: Math.max(block.height - 2, 10),
+                        background: look.fill,
+                        borderRadius: 3,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        lineHeight: 1.15,
+                        padding: "2px 4px",
+                        overflow: "hidden",
+                        whiteSpace: "nowrap",
+                      })}
+                    >
+                      {/* Subject over number ("MATH" / "407") so the number isn't cut off in a narrow column. */}
+                      {twoLines ? (
+                        <>
+                          <span style={text(look.text, { display: "block" })}>{block.course.slice(0, dash)}</span>
+                          <span style={text(look.text, { display: "block", fontWeight: 400 })}>
+                            {block.course.slice(dash + 1)}
+                          </span>
+                        </>
+                      ) : (
+                        block.course
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        ) : null}
-        {/* The legend is always there: it explains the colors and hints that pointing at a section does something. */}
-        <div aria-hidden="true" data-testid="legend" style={{ ...base, display: "flex", gap: 12, marginTop: 8 }}>
-          {(
-            [
-              ["Your classes", blockLook("scheduled")],
-              ["This section", blockLook("preview")],
-              ["Overlap", blockLook("overlapped")],
-            ] as const
-          ).map(([label, look]) => (
+
+          {/*
+            The full result for screen readers, always present so each change is announced. Sighted users see the
+            answer on the calendar and the row (outline, Overlaps button), so it isn't shown as text for them.
+          */}
+          <div aria-live="polite" data-testid="hover-status" style={visuallyHidden}>
+            {hoverStatus?.text ?? ""}
+          </div>
+          {/* Shown only when nothing can be drawn, so an empty preview doesn't look like the extension broke. */}
+          {hoverStatus && !hoverStatus.drawn ? (
+            <div
+              aria-hidden="true"
+              data-testid="hover-note"
+              style={text(theme.text, {
+                marginTop: 8,
+                padding: "8px 10px",
+                fontSize: 12,
+                background: theme.note,
+                border: `1px solid ${theme.gridLine}`,
+              })}
+            >
+              {hoverStatus.text}
+            </div>
+          ) : null}
+
+          {schedule.status === "ready" && grid.blocks.length > 0 ? (
+            <ul aria-label="Your classes this week" style={visuallyHidden}>
+              {grid.blocks
+                .filter((block) => block.kind === "scheduled" || block.kind === "overlapped")
+                .map((block) => (
+                  <li key={block.key}>{`${block.course}, ${grid.days[block.dayIndex]}, ${block.timeLabel}${
+                    block.status === "registered"
+                      ? ", registered"
+                      : block.status === "conflicted"
+                        ? ", conflict"
+                        : block.status === "other"
+                          ? ", other"
+                          : ""
+                  }`}</li>
+                ))}
+            </ul>
+          ) : null}
+        </div>
+
+        {/* The legend explains the colors and hints that pointing at a section does something. */}
+        <div
+          aria-hidden="true"
+          data-testid="legend"
+          style={{
+            ...base,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "4px 12px",
+            padding: "6px 8px 8px",
+            background: theme.bar,
+            borderTop: `1px solid ${theme.gridLine}`,
+          }}
+        >
+          {legend.map(([label, tint]) => (
             <span
               key={label}
               style={text(theme.muted, { display: "flex", alignItems: "center", gap: 5, fontSize: 10 })}
             >
               <span
-                style={text(look.text, {
+                style={text(tint.text, {
                   display: "inline-block",
-                  width: 12,
-                  height: 9,
+                  width: 14,
+                  height: 10,
                   borderRadius: 2,
-                  background: look.fill,
-                  border: look.border,
+                  background: tint.fill,
                 })}
               />
               {label}
             </span>
           ))}
         </div>
-
-        {schedule.status === "ready" && grid.blocks.length > 0 ? (
-          <ul aria-label="Your classes this week" style={visuallyHidden}>
-            {grid.blocks
-              .filter((block) => block.kind === "scheduled" || block.kind === "overlapped")
-              .map((block) => (
-                <li key={block.key}>{`${block.course}, ${grid.days[block.dayIndex]}, ${block.timeLabel}`}</li>
-              ))}
-          </ul>
-        ) : null}
-
-        <a
-          href={CALENDAR_URL}
-          style={text(theme.link, {
-            marginTop: 10,
-            height: 34,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            border: `1px solid ${theme.link}`,
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 500,
-            textDecoration: "none",
-          })}
-        >
-          Open myCalendar
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            focusable="false"
-            style={{ width: 14, height: 14, display: "block" }}
-          >
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </a>
       </div>
     </section>
   );

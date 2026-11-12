@@ -1,6 +1,6 @@
 // Pure layout for the week preview calendar: which days and hours to show, and where each class block goes.
 // No React and no DOM, so every layout rule is unit-tested.
-import { findOverlaps, type WeeklyMeeting } from "@/extension/weekSchedule";
+import { findOverlaps, type MeetingStatus, type WeeklyMeeting } from "@/extension/weekSchedule";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
 const WEEKEND = ["Saturday", "Sunday"] as const;
@@ -51,6 +51,8 @@ export interface PreviewSummary {
 export interface GridBlock {
   key: string;
   kind: BlockKind;
+  /** For your own classes: myCalendar's status (Registered, Scheduled...), which picks the block's color. */
+  status?: MeetingStatus;
   course: string;
   section: string;
   /** Column in `days`. */
@@ -199,7 +201,7 @@ export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34, preview
   const blocks: GridBlock[] = [];
   days.forEach((day, dayIndex) => {
     for (const { meeting, lane, lanes } of assignLanes(placedMeetings.filter((m) => m.day === day))) {
-      blocks.push({
+      const block: GridBlock = {
         key: JSON.stringify([meeting.kind, meeting.course, meeting.section, day, meeting.start, meeting.end]),
         kind: meeting.kind,
         course: meeting.course,
@@ -210,7 +212,11 @@ export function buildWeekGrid(meetings: WeeklyMeeting[], pxPerHour = 34, preview
         top: top(meeting.start),
         height: top(meeting.end) - top(meeting.start),
         timeLabel: formatTimeRange(meeting.start, meeting.end),
-      });
+      };
+      if (meeting.status) {
+        block.status = meeting.status;
+      }
+      blocks.push(block);
     }
   });
 
