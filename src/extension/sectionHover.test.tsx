@@ -12,7 +12,7 @@ test("reads a real WebReg section row: course from the header, section, type, da
   const doc = await parseDetachedDocument(COURSE_BIN);
   assert.deepEqual(describeSection(doc.getElementById("section_10001")!), {
     course: "CSCI-201",
-    name: "10001 R",
+    name: "10001R",
     type: "Lab",
     meetings: [{ days: ["Wednesday"], time: { start: "08:00", end: "09:50" } }],
     unreadable: false,
@@ -31,7 +31,7 @@ test("never relies on visible text: WebReg hides the 'Time:' labels at desktop w
   }
   const described = describeSection(doc.getElementById("section_10001")!);
   assert.deepEqual(described.meetings[0]?.time, { start: "08:00", end: "09:50" });
-  assert.equal(described.name, "10001 R");
+  assert.equal(described.name, "10001R");
 });
 
 // Course-search pages title a course like "CSCI-104 L: Data Structures" inside .course-title-indent.
@@ -57,7 +57,7 @@ test("reads the course code from a course-search page header", async () => {
   );
   assert.deepEqual(describeSection(doc.getElementById("s")!), {
     course: "CSCI-104",
-    name: "30379 R",
+    name: "30379R",
     type: "Lab",
     meetings: [{ days: ["Thursday"], time: { start: "14:00", end: "15:50" } }],
     unreadable: false,
@@ -165,7 +165,7 @@ test("hovering a section shows it after a short delay, not instantly", async (t)
   await React.act(() => wait(HOVER_DELAY_MS / 3));
   assert.deepEqual(seen, [null], "not yet");
   await React.act(() => wait(HOVER_DELAY_MS));
-  assert.deepEqual(seen, [null, "1 R"]);
+  assert.deepEqual(seen, [null, "1R"]);
 });
 
 test("sweeping quickly across rows only shows where the pointer stops", async (t) => {
@@ -175,7 +175,7 @@ test("sweeping quickly across rows only shows where the pointer stops", async (t
   await fire("a", "mouseover");
   await fire("b", "mouseover");
   await settle();
-  assert.deepEqual(seen, [null, "2 R"]);
+  assert.deepEqual(seen, [null, "2R"]);
 });
 
 test("moving around inside the same section doesn't re-trigger it", async (t) => {
@@ -186,7 +186,7 @@ test("moving around inside the same section doesn't re-trigger it", async (t) =>
     dom.document.querySelector("#a button")!.dispatchEvent(new dom.window.Event("mouseover", { bubbles: true }));
   });
   await settle();
-  assert.deepEqual(seen, [null, "1 R"]);
+  assert.deepEqual(seen, [null, "1R"]);
 });
 
 test("pointing away from the sections, or leaving the window, clears it", async (t) => {
@@ -199,7 +199,7 @@ test("pointing away from the sections, or leaving the window, clears it", async 
   await settle();
   await fire("b", "mouseout", null);
   await settle();
-  assert.deepEqual(seen, [null, "1 R", null, "2 R", null]);
+  assert.deepEqual(seen, [null, "1R", null, "2R", null]);
 });
 
 test("keyboard focus works the same way, and tabbing out of the sections clears it", async (t) => {
@@ -211,7 +211,7 @@ test("keyboard focus works the same way, and tabbing out of the sections clears 
   await settle();
   await fire("b", "focusout", dom.document.getElementById("outside"));
   await settle();
-  assert.deepEqual(seen, [null, "1 R", "2 R", null]);
+  assert.deepEqual(seen, [null, "1R", "2R", null]);
 });
 
 test("unmounting removes every listener it added and cancels a pending update", async (t) => {
@@ -267,15 +267,15 @@ test("clicking text in the row you're pointing at keeps that row, even as focus 
   await settle();
   await fire("b", "mouseover");
   await settle();
-  assert.deepEqual(seen, [null, "1 R", "2 R"], "the pointer wins over keyboard focus");
+  assert.deepEqual(seen, [null, "1R", "2R"], "the pointer wins over keyboard focus");
   // Clicking plain text in b moves focus off a's button to nowhere.
   await fire("a", "focusout", null);
   await settle();
-  assert.deepEqual(seen, [null, "1 R", "2 R"]);
+  assert.deepEqual(seen, [null, "1R", "2R"]);
   // When the pointer leaves the sections, nothing is focused there either, so it clears.
   await fire("outside", "mouseover");
   await settle();
-  assert.deepEqual(seen, [null, "1 R", "2 R", null]);
+  assert.deepEqual(seen, [null, "1R", "2R", null]);
   void dom;
 });
 
@@ -289,5 +289,5 @@ test("moving the pointer onto the preview panel keeps what it shows", async (t) 
   await settle();
   await fire("panel", "mouseover");
   await settle();
-  assert.deepEqual(seen, [null, "1 R"]);
+  assert.deepEqual(seen, [null, "1R"]);
 });

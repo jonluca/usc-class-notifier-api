@@ -11,7 +11,9 @@ async function loadStorage() {
   const { fakeBrowser } = (await import(pathToFileURL(resolveFromWxt.resolve("@webext-core/fake-browser")).href)) as {
     fakeBrowser: {
       reset(): void;
-      storage: { local: { get(): Promise<{ showWeekPreview?: boolean; weekPreviewOpen?: boolean }> } };
+      storage: {
+        local: { get(): Promise<{ showWeekPreview?: boolean; weekPreviewOpen?: boolean; weekPreviewSide?: string }> };
+      };
     };
   };
   Object.assign(globalThis, { chrome: fakeBrowser, browser: fakeBrowser });
@@ -56,4 +58,15 @@ test("every setting has its own storage key, in local storage", async () => {
   const keys = items.map((item) => item.key);
   assert.equal(new Set(keys).size, keys.length);
   assert.ok(keys.every((key) => key.startsWith("local:")));
+});
+
+test("the week calendar sits bottom-left until someone picks a corner, and the pick is remembered on its own", async () => {
+  const storage = await loaded;
+  storage.fakeBrowser.reset();
+  assert.equal(await storage.weekPreviewSideStorage.getValue(), "left");
+  await storage.weekPreviewSideStorage.setValue("right");
+  assert.equal(await storage.weekPreviewSideStorage.getValue(), "right");
+  assert.equal(await storage.weekPreviewOpenStorage.getValue(), false);
+  assert.equal(await storage.showWeekPreviewStorage.getValue(), true);
+  assert.deepEqual(await storage.fakeBrowser.storage.local.get(), { weekPreviewSide: "right" });
 });

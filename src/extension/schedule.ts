@@ -3,6 +3,7 @@ import { parseTimeRange } from "@/extension/courseBinScrape";
 import {
   findOverlaps,
   sectionMeetingLines,
+  sectionRowName,
   sectionRowValue,
   sectionRows,
   splitDays,
@@ -73,7 +74,7 @@ export function parseSchedule(data: Schedule) {
             return;
           }
           const days = splitDays(sectionRowValue(rows, "Days"));
-          const name = sectionRowValue(rows, "Section") || "";
+          const name = sectionRowName(rows);
           [firstOverlap] = findOverlaps({ name, days, time, type: undefined }, meetings);
         } else {
           // Several patterns (one per line): an overlap with any of them counts. Unpairable cells aren't guessed.
@@ -84,7 +85,7 @@ export function parseSchedule(data: Schedule) {
             doAllSectionsOverlap = false;
             return;
           }
-          const name = sectionRowValue(rows, "Section") || "";
+          const name = sectionRowName(rows);
           firstOverlap = patterns
             .flatMap(({ days, time }) => findOverlaps({ name, days, time, type: undefined }, meetings))
             .sort((a, b) => meetings.indexOf(a) - meetings.indexOf(b))[0];

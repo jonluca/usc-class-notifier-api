@@ -46,6 +46,7 @@ const COURSE_SECTIONS = `<div class="course-header"><a class="course-title-inden
 
 interface Stored {
   weekPreviewOpen?: boolean;
+  weekPreviewSide?: "left" | "right";
 }
 
 async function setUp() {
@@ -196,6 +197,13 @@ async function setUp() {
       hoverStatus: () => dom.document.querySelector('[data-testid="hover-status"]')?.textContent ?? "",
       blocks: () => dom.document.querySelectorAll("[data-course]").length,
       stored: () => fakeBrowser.storage.local.get(),
+      // Change a setting the way the popup does, while the page is open.
+      store: async (items: Stored) => {
+        await React.act(async () => {
+          await fakeBrowser.storage.local.set(items);
+          await settle();
+        });
+      },
       unmount,
     };
   };
@@ -475,7 +483,7 @@ test("hovering a section that fits shows it as a preview and says it fits", asyn
   await page.hover("fits");
   assert.ok(page.kinds().includes("CSCI-104:preview"));
   assert.equal(page.kinds().filter((k) => k.endsWith(":overlapped")).length, 0);
-  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30394 R · Thu 10:00–10:50 AM · Fits your week.");
+  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30394R · Thu 10:00–10:50 AM · Fits your week.");
 });
 
 test("hovering a section that overlaps marks both classes and names the clash", async (t) => {
@@ -485,17 +493,17 @@ test("hovering a section that overlaps marks both classes and names the clash", 
   assert.ok(page.kinds().includes("CSCI-104:previewOverlap"));
   assert.ok(page.kinds().includes("MATH-407:overlapped"));
   assert.equal(page.kinds().filter((k) => k === "MATH-407:overlapped").length, 1, "only Thursday's MATH-407");
-  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30379 R · Thu 2:00–3:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).");
+  assert.equal(page.hoverStatus(), "CSCI-104 Lab 30379R · Thu 2:00–3:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).");
 });
 
 test("a section with no set time, or one already on your calendar, is described but not drawn", async (t) => {
   const { mount } = await ready;
   const page = await mount(t, { stored: { weekPreviewOpen: true } });
   await page.hover("tba");
-  assert.equal(page.hoverStatus(), "CSCI-104 Quiz 29972 R: no set meeting time.");
+  assert.equal(page.hoverStatus(), "CSCI-104 Quiz 29972R: no set meeting time.");
   assert.equal(page.kinds().filter((k) => k.includes("preview")).length, 0);
   await page.hover("mine");
-  assert.equal(page.hoverStatus(), "MATH-407 Lecture 39860 R is already on your calendar.");
+  assert.equal(page.hoverStatus(), "MATH-407 Lecture 39860R is already on your calendar.");
   assert.equal(page.kinds().filter((k) => k.includes("preview")).length, 0);
 });
 
@@ -542,7 +550,7 @@ test("a section with two meeting times shows both, and an overlap in either coun
   await page.hover("twice");
   assert.equal(
     page.hoverStatus(),
-    "CSCI-104 Lecture 29980 R · Mon 8:00–9:20 AM, Thu 2:00–2:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).",
+    "CSCI-104 Lecture 29980R · Mon 8:00–9:20 AM, Thu 2:00–2:50 PM · Overlaps MATH-407 (Thu 2:00–3:20 PM).",
   );
   assert.ok(page.kinds().includes("CSCI-104:preview"), "Monday fits");
   assert.ok(page.kinds().includes("CSCI-104:previewOverlap"), "Thursday overlaps");
@@ -649,10 +657,10 @@ test("when nothing can be drawn, the bar explains why (and isn't announced twice
   const { mount } = await ready;
   const page = await mount(t, { stored: { weekPreviewOpen: true } });
   await page.hover("tba");
-  assert.equal(page.note(), "CSCI-104 Quiz 29972 R: no set meeting time.");
+  assert.equal(page.note(), "CSCI-104 Quiz 29972R: no set meeting time.");
   assert.equal(document.querySelector('[data-testid="hover-note"]')!.getAttribute("aria-hidden"), "true");
   await page.hover("mine");
-  assert.equal(page.note(), "MATH-407 Lecture 39860 R is already on your calendar.");
+  assert.equal(page.note(), "MATH-407 Lecture 39860R is already on your calendar.");
   await page.hover("fits");
   assert.equal(page.note(), null, "gone again once something is drawn");
 });
@@ -791,4 +799,35 @@ test("the open drawer resizes with the window", async (t) => {
   assert.ok(blockHeight() < fullHeight, `${blockHeight()} < ${fullHeight}`);
   await page.resize(1300, 860);
   assert.equal(blockHeight(), fullHeight);
+});
+
+test("the tab and drawer sit in the corner chosen in the popup: bottom-left by default, or bottom-right", async (t) => {
+  const { mount, dispatch } = await ready;
+  const anchoredTo = (style: string | null) =>
+    /right:\s*20px/.test(style ?? "") ? "right" : /left:\s*20px/.test(style ?? "") ? "left" : "none";
+  const check = async (t: test.TestContext, stored: Stored, side: "left" | "right") => {
+    const page = await mount(t, { stored });
+    assert.equal(anchoredTo(page.q('button[aria-expanded="false"]')!.getAttribute("style")), side, "closed tab");
+    await page.act(() => dispatch(page.q('button[aria-expanded="false"]')!, "click"));
+    assert.equal(anchoredTo(page.q('section[aria-label="Your week"]')!.getAttribute("style")), side, "drawer");
+    // The open tab stays above the same corner instead of jumping across the drawer.
+    assert.match(
+      page.q('button[aria-expanded="true"]')!.parentElement!.getAttribute("style") ?? "",
+      side === "right" ? /justify-content:\s*flex-end/ : /justify-content:\s*flex-start/,
+    );
+  };
+  await t.test("never chosen", (t) => check(t, {}, "left"));
+  await t.test("bottom-right", (t) => check(t, { weekPreviewSide: "right" }, "right"));
+});
+
+test("changing the corner in the popup moves an open drawer right away, keeping what it shows", async (t) => {
+  const { mount } = await ready;
+  const page = await mount(t, { stored: { weekPreviewOpen: true } });
+  await page.hover("clash");
+  const showing = page.hoverStatus();
+  await page.store({ weekPreviewSide: "right" });
+  assert.match(page.q('section[aria-label="Your week"]')!.getAttribute("style") ?? "", /right:\s*20px/);
+  assert.equal(page.hoverStatus(), showing);
+  await page.store({ weekPreviewSide: "left" });
+  assert.match(page.q('section[aria-label="Your week"]')!.getAttribute("style") ?? "", /left:\s*20px/);
 });

@@ -2,7 +2,7 @@
 // One delegated listener set on the document, so it keeps working when WebReg expands accordions or re-renders rows.
 import { useEffect, useState } from "react";
 import { parseDays, parseTimeRange } from "@/extension/courseBinScrape";
-import { sectionMeetingLines, sectionRows, sectionRowValue } from "@/extension/weekSchedule";
+import { sectionMeetingLines, sectionRowName, sectionRows, sectionRowValue } from "@/extension/weekSchedule";
 
 /** One meeting pattern of a section: these days, at this time. */
 export interface SectionMeeting {
@@ -80,7 +80,7 @@ export function describeSection(section: Element): HoveredSection {
   }
   return {
     course: courseCodeFor(section),
-    name: sectionRowValue(rows, "Section") || "",
+    name: sectionRowName(rows),
     type: sectionRowValue(rows, "Type"),
     meetings,
     unreadable,

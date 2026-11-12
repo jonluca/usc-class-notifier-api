@@ -3,7 +3,7 @@
 // so WebReg's own CSS, including the extension's dark-mode stylesheet, doesn't restyle it.
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { CALENDAR_URL, loadSchedule, type ScheduleLoad } from "@/extension/scheduleSource";
-import { useStorageItem, weekPreviewOpenStorage } from "@/extension/storage";
+import { useStorageItem, weekPreviewOpenStorage, weekPreviewSideStorage } from "@/extension/storage";
 import { resolveTermIdentity } from "@/extension/uscTerms";
 import { type HoveredSection, useHoveredSection } from "@/extension/sectionHover";
 import {
@@ -318,6 +318,8 @@ const visuallyHidden: CSSProperties = {
 export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: string }) {
   const theme = darkMode ? DARK : LIGHT;
   const [open, setOpen, openLoaded] = useStorageItem(weekPreviewOpenStorage, false);
+  // The corner chosen in the popup; it moves immediately on open pages.
+  const [side, , sideLoaded] = useStorageItem(weekPreviewSideStorage, "left");
   // After the person opens or minimizes it, keep keyboard focus on the control that replaced the one they used.
   const focusAfterToggle = useRef(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -391,7 +393,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
     }
   };
 
-  if (!openLoaded) {
+  if (!openLoaded || !sideLoaded) {
     return null;
   }
 
@@ -408,7 +410,8 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
       style={{
         ...base,
         position: isOpen ? "relative" : "fixed",
-        left: isOpen ? undefined : 20,
+        left: !isOpen && side === "left" ? EDGE : undefined,
+        right: !isOpen && side === "right" ? EDGE : undefined,
         bottom: isOpen ? -1 : 0,
         zIndex: isOpen ? 1 : Z_INDEX,
         height: 32,
@@ -473,7 +476,8 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
       style={{
         ...base,
         position: "fixed",
-        left: 20,
+        left: side === "left" ? EDGE : undefined,
+        right: side === "right" ? EDGE : undefined,
         bottom: 0,
         zIndex: Z_INDEX,
         width: fit.width,
@@ -484,7 +488,10 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
       }}
     >
       <FocusStyle theme={theme} />
-      {tab(true)}
+      {/* The tab stays above the corner it sits in, so it doesn't jump sideways when the drawer opens. */}
+      <div style={{ ...base, display: "flex", justifyContent: side === "right" ? "flex-end" : "flex-start" }}>
+        {tab(true)}
+      </div>
       <div
         data-testid="drawer-body"
         style={{

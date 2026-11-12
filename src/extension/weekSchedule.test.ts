@@ -113,6 +113,15 @@ test("readSectionRow handles TTh, noon-crossing times, and padding around values
   assert.equal(info.name, "29901R");
 });
 
+test("readSectionRow reads the name WebReg prints with a break before the letter (live markup) as one word", async () => {
+  const doc = await parseDetachedDocument(
+    `<div class="section"><span class="section_row col-md-1"><span class="hidden-lg hidden-md table-headers-xsmall">Section: </span>
+      <b>30250
+        R</b></span><span class="section_row col-md-1"><span class="hidden-lg hidden-md table-headers-xsmall">Type: </span>Lab</span></div>`,
+  );
+  assert.equal(readSectionRow(doc.querySelector(".section")!).name, "30250R");
+});
+
 test("readSectionRow reports TBA and missing rows as unknown rather than guessing", async (t) => {
   t.mock.method(console, "error", () => {});
   assert.equal(readSectionRow(await sectionElement({ Section: "1R", Days: "", Time: "TBA" })).time, null);

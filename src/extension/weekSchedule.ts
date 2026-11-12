@@ -198,6 +198,14 @@ export function sectionRowValue(rows: HTMLElement[], label: "Section" | "Type" |
 }
 
 /**
+ * A section's name, e.g. "29905R". WebReg prints it with a line break or space before the letter ("29905 R"),
+ * which would show up in messages; the name never contains a space, so drop them all. "" if there's none.
+ */
+export function sectionRowName(rows: HTMLElement[]): string {
+  return sectionRowValue(rows, "Section")?.replace(/\s+/g, "") ?? "";
+}
+
+/**
  * A section's meeting patterns, as raw text. WebReg prints one line per pattern in both the Time and Days cells
  * (e.g. "01:00pm-05:50pm" / "02:00pm-03:50pm" with "M" / "W"); line i of Time goes with line i of Days, the same
  * rule Final Exams uses. null when the cells don't pair up, so nothing is guessed. [] for no time (or TBA).
@@ -219,7 +227,7 @@ export function readSectionRow(sectionElement: Element): SectionRowInfo {
   const rows = sectionRows(sectionElement);
   const time = parseTimeRange(sectionRowValue(rows, "Time"));
   return {
-    name: sectionRowValue(rows, "Section") || "",
+    name: sectionRowName(rows),
     type: sectionRowValue(rows, "Type"),
     days: splitDays(sectionRowValue(rows, "Days")),
     time,

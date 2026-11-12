@@ -34,6 +34,14 @@ export const weekPreviewOpenStorage = storage.defineItem<boolean>("local:weekPre
   fallback: false,
 });
 
+export type WeekPreviewSide = "left" | "right";
+
+// Which bottom corner the week calendar sits in. Left covers the start of course names; right covers the Add buttons.
+// Set in the popup; like the open state, not part of Options, so changing it never re-runs the extension.
+export const weekPreviewSideStorage = storage.defineItem<WeekPreviewSide>("local:weekPreviewSide", {
+  fallback: "left",
+});
+
 export function useStorageItem<T>(item: DefinedStorageItem<T>, initialValue: T) {
   const [value, setValue] = useState(initialValue);
   const [isLoaded, setIsLoaded] = useState(false);

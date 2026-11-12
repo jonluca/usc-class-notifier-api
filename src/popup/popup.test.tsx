@@ -10,7 +10,7 @@ const cssStub = `export async function load(url, context, next) {
 register(`data:text/javascript,${encodeURIComponent(cssStub)}`);
 
 type StoredSetting = "extensionEnabled" | "showConflicts" | "showUnits" | "darkMode" | "showWeekPreview";
-type StoredSettings = Partial<Record<StoredSetting, boolean>>;
+type StoredSettings = Partial<Record<StoredSetting, boolean>> & { weekPreviewSide?: "left" | "right" };
 interface FakeBrowser {
   reset(): void;
   storage: { local: { get(): Promise<StoredSettings>; set(items: StoredSettings): Promise<void> } };
@@ -35,6 +35,7 @@ async function setUp() {
     document: dom.document,
     HTMLElement: dom.window.HTMLElement,
     HTMLInputElement: dom.window.HTMLInputElement,
+    HTMLSelectElement: dom.window.HTMLSelectElement,
     Node: dom.window.Node,
     Event: dom.window.Event,
     IS_REACT_ACT_ENVIRONMENT: true,
@@ -63,8 +64,20 @@ async function setUp() {
         await settle();
       });
     };
+    // SAFETY: the one select the popup renders is the Week Preview corner.
+    const corner = () => dom.document.getElementById("week-preview-side") as HTMLSelectElement;
+    const pickCorner = async (value: string) => {
+      await React.act(async () => {
+        // LinkeDOM has no value setter on <select>; marking the option selected is what choosing it does.
+        for (const option of corner().querySelectorAll("option")) {
+          option.toggleAttribute("selected", option.value === value);
+        }
+        corner().dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+        await settle();
+      });
+    };
     const unmount = () => React.act(async () => root.unmount());
-    return { input, label, click, unmount, stored: () => fakeBrowser.storage.local.get() };
+    return { input, label, click, corner, pickCorner, unmount, stored: () => fakeBrowser.storage.local.get() };
   };
   return { mount, document: dom.document };
 }
@@ -121,4 +134,41 @@ test("it is disabled while the extension is off, styled exactly like the other s
   const dark = await mount({ extensionEnabled: false, darkMode: true });
   assert.notEqual(dark.label("show-week-preview").className, dark.label("enable-extension").className);
   await dark.unmount();
+});
+
+test("the Week Preview corner sits in the Show Week Preview row and is named for screen readers", async () => {
+  const { mount } = await ready;
+  const popup = await mount({});
+  assert.equal(popup.corner().parentElement, popup.input("show-week-preview").parentElement);
+  assert.equal(popup.corner().getAttribute("aria-label"), "Week Preview corner");
+  await popup.unmount();
+});
+
+test("the Week Preview corner shows the saved choice, bottom-left by default, and saves only itself", async () => {
+  const { mount } = await ready;
+  const fresh = await mount({});
+  assert.equal(fresh.corner().value, "left");
+  await fresh.pickCorner("right");
+  assert.deepEqual(await fresh.stored(), { weekPreviewSide: "right" });
+  assert.equal(fresh.corner().value, "right");
+  await fresh.pickCorner("left");
+  assert.deepEqual(await fresh.stored(), { weekPreviewSide: "left" });
+  await fresh.unmount();
+
+  const saved = await mount({ weekPreviewSide: "right" });
+  assert.equal(saved.corner().value, "right");
+  await saved.unmount();
+});
+
+test("the corner can't be changed while the extension or Week Preview is off", async () => {
+  const { mount } = await ready;
+  for (const [stored, disabled] of [
+    [{}, false],
+    [{ extensionEnabled: false }, true],
+    [{ showWeekPreview: false }, true],
+  ] as const) {
+    const popup = await mount(stored);
+    assert.equal(popup.corner().disabled, disabled, JSON.stringify(stored));
+    await popup.unmount();
+  }
 });
