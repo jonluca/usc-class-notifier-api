@@ -291,3 +291,27 @@ test("moving the pointer onto the preview panel keeps what it shows", async (t) 
   await settle();
   assert.deepEqual(seen, [null, "1R"]);
 });
+
+test("the panel keeps what it shows even when the pointer crosses a gap or other rows to get there", async (t) => {
+  const { seen, fire, settle, dom } = await mountHook(t);
+  const panel = dom.document.createElement("section");
+  panel.className = "usc-helper-week-preview";
+  panel.id = "panel";
+  dom.document.body.append(panel);
+  await fire("a", "mouseover");
+  await settle();
+  // On the way over: a gap, then another row, each too briefly to show (no settle in between).
+  await fire("outside", "mouseover");
+  await fire("b", "mouseover");
+  await fire("panel", "mouseover");
+  await settle();
+  assert.deepEqual(seen, [null, "1R"]);
+  // Focus moving elsewhere while the pointer rests on the panel doesn't bring back a row it merely crossed.
+  await fire("outside", "focusin");
+  await settle();
+  assert.deepEqual(seen, [null, "1R"]);
+  // Leaving the panel for a row works as usual.
+  await fire("b", "mouseover");
+  await settle();
+  assert.deepEqual(seen, [null, "1R", "2R"]);
+});

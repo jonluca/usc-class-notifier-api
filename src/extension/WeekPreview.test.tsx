@@ -295,7 +295,7 @@ test("Escape minimizes (and isn't passed on to the page); other keys don't", asy
   assert.ok(focusedIs(page.q('button[aria-expanded="false"]')));
 });
 
-test("the Minimize button goes back to the round button", async (t) => {
+test("the Minimize button goes back to the My Week tab", async (t) => {
   const { mount, dispatch } = await ready;
   const page = await mount(t, { stored: { weekPreviewOpen: true } });
   await page.act(() => dispatch(page.q('button[aria-expanded="true"]')!, "click"));

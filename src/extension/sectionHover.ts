@@ -15,7 +15,7 @@ export interface SectionMeeting {
 export interface HoveredSection {
   /** e.g. "CSCI-104"; "" when the course header can't be read. */
   course: string;
-  /** e.g. "30379 R" */
+  /** e.g. "30379R" */
   name: string;
   type: string | undefined;
   /** Its meeting patterns (most sections have one). Empty for TBA, or when they can't be read. */
@@ -134,6 +134,11 @@ export function useHoveredSection(root: Document = document, resetKey = ""): Hov
     };
     const onOver = (event: Event) => {
       if (insidePreview(event.target)) {
+        // Heading for the panel to look at it: keep what it shows, even if the pointer crossed a gap or other
+        // rows on the way (those started a delayed change that would otherwise land once it's there).
+        clearTimeout(timer);
+        timer = undefined;
+        pointed = shown;
         return;
       }
       pointed = sectionAt(event.target);

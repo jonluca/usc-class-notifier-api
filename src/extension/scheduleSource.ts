@@ -105,7 +105,8 @@ function currentPageKey(deps: ScheduleSourceDeps) {
  * The calendar for the page this tab is showing. The first caller starts the request; every later caller on the
  * same page shares it, in any order (the Overlaps markers and the week preview start independently).
  * A different page (navigation, or a different term) cancels the old request and starts a new one.
- * Settings changes don't refetch: your calendar doesn't change when you toggle dark mode.
+ * Settings changes don't refetch: your calendar doesn't change when you toggle dark mode. A failed load is the
+ * exception: it's forgotten once it settles, so the next caller retries.
  * Nothing is fetched until someone asks, so with conflicts and the preview both off there is no request.
  */
 export function loadSchedule(deps: ScheduleSourceDeps = browserScheduleSourceDeps): Promise<ScheduleLoad> {
@@ -113,7 +114,15 @@ export function loadSchedule(deps: ScheduleSourceDeps = browserScheduleSourceDep
   if (pending?.key !== key) {
     pending?.controller.abort();
     const controller = new AbortController();
-    pending = { key, controller, load: fetchSchedule(deps, controller.signal) };
+    const load: Promise<ScheduleLoad> = fetchSchedule(deps, controller.signal).then((result) => {
+      // A failed load isn't kept, so the next caller (e.g. a settings change) tries again instead of
+      // showing "couldn't load" for the rest of the page.
+      if (result.status === "unavailable" && pending?.load === load) {
+        pending = undefined;
+      }
+      return result;
+    });
+    pending = { key, controller, load };
   }
   return pending.load;
 }

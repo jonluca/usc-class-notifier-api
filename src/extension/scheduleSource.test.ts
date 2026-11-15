@@ -153,6 +153,53 @@ test("navigating to another page, or a different term in this tab, starts a new 
   assert.equal(signals[2]!.aborted, true, "a reset cancels too");
 });
 
+test("a failed load isn't kept: the next caller on the page tries again, but a wrong-term answer is kept", async () => {
+  resetScheduleLoad();
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
+  let fail = true;
+  let requests = 0;
+  const { deps: d } = await deps({
+    fetchCalendarHtml: () => {
+      requests += 1;
+      return fail
+        ? Promise.reject(new Error("offline for a moment"))
+        : Promise.resolve(calendarHtml("Spring 2027 Classes"));
+    },
+  });
+  assert.equal((await loadSchedule(d)).status, "unavailable");
+  fail = false;
+  assert.equal((await loadSchedule(d)).status, "ready", "e.g. a settings change after the network came back");
+  await loadSchedule(d);
+  assert.equal(requests, 2, "a good load is still shared");
+
+  resetScheduleLoad();
+  const other = await deps({ html: calendarHtml("Fall 2026 Classes") });
+  assert.equal((await loadSchedule(other.deps)).status, "termMismatch");
+  await loadSchedule(other.deps);
+  assert.equal(other.fetches(), 1, "retrying wouldn't change another tab's term");
+});
+
+test("an old page's failed load can't drop the newer page's load", async () => {
+  resetScheduleLoad();
+  at("https://webreg.usc.edu/Courses?DeptId=CSCI");
+  let requests = 0;
+  const { deps: d } = await deps({
+    fetchCalendarHtml: (signal) => {
+      requests += 1;
+      return currentHref.endsWith("CSCI")
+        ? new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))))
+        : Promise.resolve(calendarHtml("Spring 2027 Classes"));
+    },
+  });
+  const old = loadSchedule(d);
+  at("https://webreg.usc.edu/Courses?DeptId=MATH");
+  const current = loadSchedule(d);
+  assert.equal((await old).status, "unavailable");
+  assert.equal((await current).status, "ready");
+  await loadSchedule(d);
+  assert.equal(requests, 2, "the MATH page's load is still shared after the CSCI one failed");
+});
+
 test("a reset makes the next caller fetch again", async () => {
   resetScheduleLoad();
   at("https://webreg.usc.edu/Courses?DeptId=CSCI");

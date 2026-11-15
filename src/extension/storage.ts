@@ -23,7 +23,7 @@ export const darkModeStorage = storage.defineItem<boolean>("local:darkMode", {
   fallback: false,
 });
 
-// Floating week calendar on course-search pages. On by default so people find it.
+// The My Week tab and drawer on course-search pages. On by default so people find it.
 export const showWeekPreviewStorage = storage.defineItem<boolean>("local:showWeekPreview", {
   fallback: true,
 });

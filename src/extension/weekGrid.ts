@@ -29,7 +29,7 @@ export const DEFAULT_END_HOUR = 18;
 export interface PreviewSection {
   /** e.g. "CSCI-104"; "" if unknown. */
   course: string;
-  /** e.g. "30379 R" */
+  /** e.g. "30379R" */
   name: string;
   /** One entry per meeting pattern; most sections have one. */
   meetings: { days: string[]; time: { start: string; end: string } }[];

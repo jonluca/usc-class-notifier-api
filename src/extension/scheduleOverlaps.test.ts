@@ -1,5 +1,6 @@
-// Characterization tests for the course-page "Overlaps X" markers. These pin what parseSchedule does
-// today, before its parsing is shared with the week preview, so the refactor provably changes nothing.
+// Tests for the course-page "Overlaps X" markers. They started as characterization tests pinning what
+// parseSchedule did before its parsing was shared with the week preview; the deliberate changes since
+// (sections with several meeting times, values read from WebReg's hidden labels) have their own tests below.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";

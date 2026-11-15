@@ -114,8 +114,9 @@ function useViewport() {
 
 const NO_MEETINGS: WeeklyMeeting[] = [];
 const FONT = '"Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
-// Above WebReg's page and sticky nav, below MUI modals (1300) such as Notify Me and Final Exams.
-const Z_INDEX = 1200;
+// Above WebReg's page and Bootstrap dropdowns (1000), below any WebReg dialog (Foundation reveal 1004/1005,
+// Bootstrap modal 1040/1050) and the extension's MUI modals (1300) such as Notify Me and Final Exams.
+const Z_INDEX = 1003;
 
 /** Fill and text color for one kind of block. Blocks have no border: they're see-through tints, like WebReg. */
 interface Tint {
@@ -397,7 +398,7 @@ export function WeekPreview({ darkMode, href }: { darkMode: boolean; href: strin
     return null;
   }
 
-  // The tab on the window's bottom edge: a WebReg btn-default. It looks the same whatever you point at;
+  // The tab on the window's bottom edge, styled inline to look like WebReg's default buttons. It looks the same whatever you point at;
   // the row outline and the calendar show the result. Open, it sits on top of the drawer and closes it.
   const tab = (isOpen: boolean) => (
     <button
