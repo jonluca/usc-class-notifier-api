@@ -2,7 +2,8 @@ import $ from "jquery";
 import { cleanupCoursePage, initCoursePage } from "@/extension/coursesPage";
 import { parseWebRegPage } from "@/extension/webRegPage";
 import type { Options } from "@/extension/utils";
-import { getCurrentSchedule, parseSchedule } from "@/extension/schedule";
+import { parseSchedule } from "@/extension/schedule";
+import { loadSchedule } from "@/extension/scheduleSource";
 import { ICS_EXPORT_BUTTON_CLASS, insertCalendarExportButton } from "@/extension/calendarExport";
 import { setDarkModeActive, shouldEnableDarkMode } from "@/extension/darkMode";
 import { insertFinalExamsButton, removeFinalExamsButton } from "@/extension/finalExamsButton";
@@ -91,9 +92,11 @@ export const initExtension = (options: Options) => {
     }
     if (!currentURL.includes("/myCourseBin")) {
       if (options.showConflicts) {
-        getCurrentSchedule().then((data) => {
-          if (currentInitialization === initializationId && data) {
-            parseSchedule(data);
+        // Shared with the week preview: one calendar request per page (and term), whichever asks first.
+        loadSchedule().then((result) => {
+          // A different term (another tab switched it) or an unreadable calendar marks nothing.
+          if (currentInitialization === initializationId && result.status === "ready") {
+            parseSchedule(result.schedule);
           }
         });
       }

@@ -6,7 +6,9 @@ import {
   extensionEnabledStorage,
   showConflictsStorage,
   showUnitsStorage,
+  showWeekPreviewStorage,
   useStorageItem,
+  weekPreviewSideStorage,
 } from "@/extension/storage";
 
 function IndexPopup() {
@@ -15,12 +17,19 @@ function IndexPopup() {
   const [showConflicts, setShowConflicts] = useStorageItem(showConflictsStorage, true);
   const [showUnits, setShowUnits] = useStorageItem(showUnitsStorage, true);
   const [darkMode, setDarkMode] = useStorageItem(darkModeStorage, false);
+  const [showWeekPreview, setShowWeekPreview] = useStorageItem(showWeekPreviewStorage, true);
+  const [weekPreviewSide, setWeekPreviewSide] = useStorageItem(weekPreviewSideStorage, "left");
 
   const labelClass = (disabled: boolean) =>
     `ml-2 text-sm font-medium ${darkMode ? (disabled ? darkPalette.textMuted : darkPalette.textPrimary) : "text-gray-900"}`;
   const checkboxClass = darkMode
     ? `w-5 h-5 rounded-sm bg-transparent ${darkPalette.borderStrong} ${darkPalette.accentCardinal} focus:outline-none`
     : "w-5 h-5 text-blue-600 bg-gray-100 rounded-sm border-gray-300 focus:ring-blue-500";
+  const selectClass = `ml-2 text-sm rounded-sm border px-1 ${
+    darkMode
+      ? `${darkPalette.bgSurface} ${darkPalette.borderStrong} ${darkPalette.textPrimary}`
+      : "bg-white border-gray-300 text-gray-900"
+  }`;
   const footerLinkClass = darkMode ? `${darkPalette.linkText} ${darkPalette.linkHoverText}` : "";
 
   return (
@@ -58,6 +67,30 @@ function IndexPopup() {
             <label htmlFor="show-conflicts" className={labelClass(!enabled)}>
               Show Class Conflicts
             </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              id="show-week-preview"
+              className={checkboxClass}
+              type="checkbox"
+              checked={showWeekPreview}
+              onChange={() => setShowWeekPreview(!showWeekPreview)}
+              disabled={!enabled}
+            />
+            <label htmlFor="show-week-preview" className={labelClass(!enabled)}>
+              Show Week Preview
+            </label>
+            <select
+              id="week-preview-side"
+              aria-label="Week Preview corner"
+              className={selectClass}
+              value={weekPreviewSide}
+              onChange={(event) => setWeekPreviewSide(event.target.value === "right" ? "right" : "left")}
+              disabled={!enabled || !showWeekPreview}
+            >
+              <option value="left">Bottom left</option>
+              <option value="right">Bottom right</option>
+            </select>
           </div>
           <div className="flex items-center">
             <input

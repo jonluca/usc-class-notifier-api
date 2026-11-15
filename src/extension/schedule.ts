@@ -1,59 +1,19 @@
-import { splitDays } from "@/extension/utils";
-import { parseScheduleDocument, type Schedule } from "@/extension/scheduleDocument";
+import type { Schedule } from "@/extension/scheduleDocument";
 import { parseTimeRange } from "@/extension/courseBinScrape";
+import {
+  findOverlaps,
+  sectionMeetingLines,
+  sectionRowName,
+  sectionRowValue,
+  sectionRows,
+  splitDays,
+  weeklyMeetings,
+} from "@/extension/weekSchedule";
 import $ from "jquery";
 import { insertAllOverlap } from "./insert-class-info";
 
 export { parseScheduleDocument } from "@/extension/scheduleDocument";
 export type { Schedule, ScheduleEntry } from "@/extension/scheduleDocument";
-
-const USC_TIMEZONE = "America/Los_Angeles";
-const uscDayFormatter = new Intl.DateTimeFormat("en-US", {
-  weekday: "long",
-  timeZone: USC_TIMEZONE,
-});
-const uscTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: USC_TIMEZONE,
-});
-function parseScheduleDate(dateLike: string | Date) {
-  if (dateLike instanceof Date) {
-    return Number.isNaN(dateLike.getTime()) ? null : dateLike;
-  }
-  const microsoftJsonDateMatch = dateLike.match(/\/Date\((\d+)(?:[-+]\d+)?\)\//);
-  if (microsoftJsonDateMatch) {
-    const parsedDate = new Date(Number(microsoftJsonDateMatch[1]));
-    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-  }
-  const parsedDate = new Date(dateLike);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-}
-
-function formatScheduleDayInLosAngeles(dateLike: string | Date) {
-  const parsedDate = parseScheduleDate(dateLike);
-  if (!parsedDate) {
-    return null;
-  }
-  return uscDayFormatter.format(parsedDate);
-}
-
-function formatScheduleTimeInLosAngeles(dateLike: string | Date) {
-  const parsedDate = parseScheduleDate(dateLike);
-  if (!parsedDate) {
-    return null;
-  }
-  return uscTimeFormatter.format(parsedDate);
-}
-
-export async function getCurrentSchedule(): Promise<Schedule | null> {
-  const response = await fetch("https://webreg.usc.edu/Calendar");
-  if (!response.ok) {
-    return null;
-  }
-  return parseScheduleDocument(await response.text());
-}
 
 function addConflictOverlay(row: HTMLElement, name: string) {
   const addToCourseBin = $(row).find(".addtomycb, .add-to-course-bin")[0];
@@ -90,39 +50,9 @@ function addConflictOverlay(row: HTMLElement, name: string) {
 }
 
 export function parseSchedule(data: Schedule) {
-  if (!data || !data.Data || !data.Data.length) {
-    return;
-  }
-  const currentScheduleArr: {
-    day: string[];
-    start: string;
-    end: string;
-    section: string;
-    classname: string;
-  }[] = [];
-  for (const singleClass of data.Data) {
-    const startDay = formatScheduleDayInLosAngeles(singleClass.Start);
-    const startTime = formatScheduleTimeInLosAngeles(singleClass.Start);
-    const endTime = formatScheduleTimeInLosAngeles(singleClass.End);
-    if (!startDay || !startTime || !endTime) {
-      continue;
-    }
-    const classInfo = singleClass.Title.split(" ");
-    const [className, sectionName] = classInfo;
-    if (!className || !sectionName) {
-      continue;
-    }
-    const time = {
-      day: [startDay],
-      start: startTime,
-      end: endTime,
-      section: sectionName.slice(1, -2),
-      classname: className,
-    };
-    currentScheduleArr.push(time);
-  }
+  const meetings = weeklyMeetings(data);
   //bail if no classes
-  if (currentScheduleArr.length === 0) {
+  if (meetings.length === 0) {
     return;
   }
   //Iterate over every div. The layout of webreg is alternating divs for class name/code and then its content
@@ -132,46 +62,39 @@ export function parseSchedule(data: Schedule) {
 
     sections.each(function () {
       try {
-        const rows = $(this).find(".section_row").toArray();
-        //Get hours for current section
-        const secHours = parseTimeRange(
-          rows
-            .find((r) => r.innerText.includes("Time:"))
-            ?.innerText?.replace("Time: ", "")
-            ?.trim(),
-        );
-        if (!secHours) {
-          doAllSectionsOverlap = false;
+        // Fields are read lazily, in this order, so a section stops being read as soon as its outcome is known.
+        const rows = sectionRows(this);
+        const timeValue = sectionRowValue(rows, "Time");
+        let firstOverlap;
+        if (!timeValue?.includes("\n")) {
+          // One meeting pattern: exactly the original checks.
+          const time = parseTimeRange(timeValue);
+          if (!time) {
+            doAllSectionsOverlap = false;
+            return;
+          }
+          const days = splitDays(sectionRowValue(rows, "Days"));
+          const name = sectionRowName(rows);
+          [firstOverlap] = findOverlaps({ name, days, time, type: undefined }, meetings);
+        } else {
+          // Several patterns (one per line): an overlap with any of them counts. Unpairable cells aren't guessed.
+          const patterns = (sectionMeetingLines(rows) ?? [])
+            .map((line) => ({ days: splitDays(line.days), time: parseTimeRange(line.time) }))
+            .filter((pattern) => pattern.time !== null);
+          if (patterns.length === 0) {
+            doAllSectionsOverlap = false;
+            return;
+          }
+          const name = sectionRowName(rows);
+          firstOverlap = patterns
+            .flatMap(({ days, time }) => findOverlaps({ name, days, time, type: undefined }, meetings))
+            .sort((a, b) => meetings.indexOf(a) - meetings.indexOf(b))[0];
+        }
+        if (firstOverlap) {
+          addConflictOverlay(this, firstOverlap.course);
           return;
         }
-        //Get days for class for current section
-        let secDays = rows.find((r) => r.innerText.includes("Days:"))?.innerText;
-        secDays = secDays?.replace("Days: ", "")?.trim();
-        const days = splitDays(secDays);
-        //Get section name to compare if you already have that class
-        let secName = rows.find((r) => r.innerText.includes("Section:"))?.innerText;
-        secName = secName?.replace("Section: ", "")?.trim() || "";
-        //Get section name to compare if you already have that class
-
-        for (const currClass of currentScheduleArr) {
-          if (secName.startsWith(currClass.section)) {
-            continue;
-          }
-          for (const currClassDay of currClass.day) {
-            const secDay = days.find((d) => d === currClassDay);
-            if (!secDay) {
-              continue;
-            }
-            // Both ranges use fixed-width HH:mm in USC's local time; touching endpoints do not overlap.
-            if (currClass.start < secHours.end && secHours.start < currClass.end) {
-              addConflictOverlay(this, currClass.classname);
-              return;
-            }
-          }
-        }
-        let secType = rows.find((r) => r.innerText.includes("Type:"))?.innerText;
-        secType = secType?.replace("Type: ", "")?.trim();
-        if (secType?.startsWith("Lecture")) {
+        if (sectionRowValue(rows, "Type")?.startsWith("Lecture")) {
           doAllSectionsOverlap = false;
         }
       } catch (e) {

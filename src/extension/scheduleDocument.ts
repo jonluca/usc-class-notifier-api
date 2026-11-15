@@ -8,6 +8,8 @@ export interface ScheduleEntry {
   Title: string;
   Start: string | Date;
   End: string | Date;
+  /** myCalendar's status for the entry: "Registered", "Scheduled", "Conflicted" or "Blocked". */
+  Status?: string;
 }
 
 const scheduleSchema = z.object({
@@ -16,6 +18,8 @@ const scheduleSchema = z.object({
       Title: z.string(),
       Start: z.string(),
       End: z.string(),
+      // A missing, null or odd Status only loses the color; it never rejects the whole calendar.
+      Status: z.string().optional().catch(undefined),
     }),
   ),
 });
