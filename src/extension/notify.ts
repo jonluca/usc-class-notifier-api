@@ -2,6 +2,7 @@ import $ from "jquery";
 import { context } from "@/extension/context";
 import { getCurrentTerm } from "@/extension/getCurrentTerm";
 import { type NotifyButtonData, syncNotifyButtonDataset } from "@/extension/notifyButtonData";
+import { getWebRegNotifyData } from "@/extension/webRegNotifyData";
 
 const COURSE_ID_PATTERN = /\b([A-Z]{2,5}\s+\d+[A-Z]?)\b/;
 
@@ -125,62 +126,7 @@ $(document).on("click", ".notify", function () {
       setSelectedClass(getClassesPageRowData(this));
       return;
     }
-    const form = $(section).find("form")[0];
-    const strings = form?.attributes?.getNamedItem("data-ajax-url")?.textContent?.split("/");
-    let id = strings?.[4];
-    if (!id) {
-      // try and find the id from the parent
-      const parent = $(this).closest(".section_crsbin");
-      if (parent) {
-        const rows = $(parent).find(".section_row").toArray();
-        const sectionRow = rows.find((r) => r.innerText.includes("Section"));
-        if (sectionRow) {
-          // replace any non number characters
-          const section = sectionRow.innerText.replace(/\D/g, "");
-          if (section) {
-            id = section;
-          }
-        }
-      }
-    }
-    if (!id && form) {
-      const inputs = $(form).find("input");
-      const sectionInput = inputs.toArray().find((i) => i.id === "sectionid" || i.name === "sectionid");
-      if (sectionInput) {
-        id = sectionInput.value;
-      }
-    }
-    const titleTopbar = form ? $(form).parents(".accordion-content-area") : $();
-    const header = $(titleTopbar).prev();
-    //get the department by matching form ID to the row above
-    const courseSearch = $(header).find(".crsID");
-    let departmentFromAbove = "";
-    if (courseSearch.length) {
-      const spanElem = courseSearch.first().text();
-      const departmentString = spanElem.split("-");
-      departmentFromAbove = departmentString[0] ?? "";
-    }
-
-    let fullCourseId;
-    if (titleTopbar) {
-      const header = $(titleTopbar).prev();
-      const text = $(header).find(".crsID").text();
-      if (text) {
-        const splitcrsId = text.split("-");
-        fullCourseId = text.split(" ")[0];
-        if (splitcrsId[0] && !departmentFromAbove) {
-          departmentFromAbove = splitcrsId[0];
-        }
-      }
-    }
-    const semester = getPageSemester();
-    if (!id) {
-      context.getState().setSelectedClass({ isInvalid: true });
-      return;
-    }
-    // we need to construct the class object by pulling info from the section
-    const classData = { sectionId: id, fullCourseId, department: departmentFromAbove, semester };
-    context.getState().setSelectedClass(classData);
+    setSelectedClass(getWebRegNotifyData(section, getPageSemester()));
   } catch (e) {
     console.error(e);
     context.getState().setSelectedClass({ isInvalid: true });
