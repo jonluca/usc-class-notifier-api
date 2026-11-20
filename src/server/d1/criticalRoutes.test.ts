@@ -72,12 +72,24 @@ test("real workerd D1 signup, transfers and notifications preserve application i
 
   const created = await publicCaller.addWatchedClass({
     ...signup,
-    email: "new@example.invalid",
+    email: " synthetic.new @ GMAL.COM ",
     sectionNumber: "03171",
   });
   assert.match(created.paidId, /^\d{8}$/);
+  assert.equal(created.email, "synthetic.new@gmail.com");
   assert.equal(signupEmails, 3);
   assert.equal(await database.student.count(), 2);
+  const correctedStudent = await database.student.findUniqueOrThrow({ where: { email: created.email } });
+  assert.ok("studentId" in created);
+  assert.equal(created.studentId, correctedStudent.id);
+  const sameWatch = await publicCaller.addWatchedClass({
+    ...signup,
+    email: "synthetic.new@gmail.com",
+    sectionNumber: "03171",
+  });
+  assert.equal("loginRequired" in sameWatch && sameWatch.loginRequired, true);
+  assert.equal(await database.student.count(), 2);
+  assert.equal(signupEmails, 3);
 
   await database.watchedSection.updateMany({ where: { id: legacy.id }, data: { isPaid: true, paidNotified: true } });
   const moved = await caller.changeWatchedClass({ id: legacy.id, sectionNumber: "03172", semester });

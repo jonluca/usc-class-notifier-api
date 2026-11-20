@@ -18,6 +18,7 @@ import {
   selectAvailablePaidReference,
 } from "@/server/paidReference";
 import { parsePhoneNumber, PHONE_NUMBER_ERROR } from "@/utils/phoneNumber";
+import { emailAddressSchema, normalizeEmailAddress } from "@/utils/emailAddress";
 import type { Prisma } from "@app/prisma";
 import { cancelWatchedSection } from "@/server/api/watchedSectionCancellation";
 import { getSavedNotificationPhone } from "@/server/notificationPhone";
@@ -64,7 +65,10 @@ const phoneNumberSchema = z
     return parsed;
   });
 
-export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
+export const createUserRouter = (
+  sendNowWatchingEmail = nowWatchingEmail,
+  sendVerificationEmail = verificationEmail,
+) => ({
   verifyByKey: publicProcedure
     .input(
       z.object({
@@ -126,7 +130,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     .input(
       z.object({
         sectionNumber: z.string(),
-        email: z.email(),
+        email: emailAddressSchema,
         department: z.string(),
         phone: optionalPhoneNumberSchema,
         uscId: z.string().optional(),
@@ -135,6 +139,9 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
     )
     .mutation(async ({ ctx, input }) => {
       assertMonitoredSemester(input.semester);
+      // The dashboard submits the signed-in profile's saved address. Keep its
+      // identity even if a legacy address would now receive a typo correction.
+      const email = ctx.user && input.email === normalizeEmailAddress(ctx.user.email) ? ctx.user.email : input.email;
       const d1 = getD1Executor(ctx.prisma);
 
       const [classInfo, foundStudent] = await Promise.all([
@@ -149,7 +156,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         }),
         ctx.prisma.student.findUnique({
           where: {
-            email: input.email,
+            email,
           },
         }),
       ]);
@@ -163,9 +170,9 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           const inserted = await d1.query<{ id: string }>(
             `INSERT INTO Student(id, createdAt, updatedAt, email, verificationKey, uscID)
              VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING RETURNING id`,
-            [uuid(), now, now, input.email, uuid(), input.uscId ?? null],
+            [uuid(), now, now, email, uuid(), input.uscId ?? null],
           );
-          student = await ctx.prisma.student.findUniqueOrThrow({ where: { email: input.email } });
+          student = await ctx.prisma.student.findUniqueOrThrow({ where: { email } });
           // A concurrent creator owns the saved profile; the public caller must
           // not gain permission to install its own phone override on that row.
           if (!inserted.length) {
@@ -174,7 +181,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         } else {
           student = await ctx.prisma.student.create({
             data: {
-              email: input.email,
+              email,
               verificationKey: uuid(),
               uscID: input.uscId,
             },
@@ -202,7 +209,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
             // Keep the 15.5.0 extension usable while 15.5.1 clears store
             // review. These values disclose nothing beyond this request and
             // ensure the old client shows a safe, payment-free recovery state.
-            email: input.email,
+            email,
             isVerifiedAccount: true,
             isPaid: false,
             showVenmoInfo: false,
@@ -308,7 +315,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
           alreadyWatching: !section.cancelledAt,
           isVerifiedAccount: student.validAccount,
           showVenmoInfo: shouldShowVenmoInfo,
-          email: input.email,
+          email,
         };
       }
 
@@ -391,7 +398,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         alreadyWatching: false,
         isVerifiedAccount: student.validAccount,
         showVenmoInfo,
-        email: input.email,
+        email,
       };
     }),
 
@@ -502,7 +509,7 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
   sendLoginEmail: publicProcedure
     .input(
       z.object({
-        email: z.email(),
+        email: emailAddressSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -521,8 +528,8 @@ export const createUserRouter = (sendNowWatchingEmail = nowWatchingEmail) => ({
         });
       }
       const isVerifiedAlready = student.validAccount;
-      await verificationEmail({ email: student.email, isVerifiedAlready, key: student.verificationKey });
-      // send email
+      await sendVerificationEmail({ email: student.email, isVerifiedAlready, key: student.verificationKey });
+      return { email: student.email };
     }),
   updatePhoneNumberForUser: publicProcedureWithUser
     .input(

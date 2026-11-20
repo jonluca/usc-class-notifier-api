@@ -256,22 +256,28 @@ function createSignupFixture(
   context: TestContext,
   {
     newProfile = false,
+    email = student.email,
     accountPhone = null,
     savedPhone = "+12135550100",
   }: {
     newProfile?: boolean;
+    email?: string;
     accountPhone?: string | null;
     savedPhone?: string | null;
   } = {},
 ) {
   const client = createTestClient(context);
-  const profile = { ...student, phone: accountPhone, validAccount: !newProfile };
+  const profile = { ...student, email, phone: accountPhone, validAccount: !newProfile };
   const creates: Prisma.WatchedSectionCreateArgs[] = [];
   const studentCreates: Prisma.StudentCreateArgs[] = [];
+  const studentLookups: Prisma.StudentFindUniqueArgs[] = [];
   const emails: NowWatchingEmailProps[] = [];
   Object.assign(client.classInfo, { findUnique: async () => ({ id: classInfo.id }) });
   Object.assign(client.student, {
-    findUnique: async () => (newProfile ? null : profile),
+    findUnique: async (args: Prisma.StudentFindUniqueArgs) => {
+      studentLookups.push(args);
+      return newProfile ? null : profile;
+    },
     create: async (args: Prisma.StudentCreateArgs) => {
       studentCreates.push(args);
       return profile;
@@ -306,10 +312,162 @@ function createSignupFixture(
     profile,
     creates,
     studentCreates,
+    studentLookups,
     emails,
     caller: (user?: Student) => router.createCaller({ prisma: client, user }),
   };
 }
+
+test("signup corrects bounced domains before looking up, creating and emailing an account", async (context) => {
+  for (const [submitted, email] of [
+    [" student @ USC.DU ", "student@usc.edu"],
+    ["student@gamil.com", "student@gmail.com"],
+  ]) {
+    for (const newProfile of [true, false]) {
+      const fixture = createSignupFixture(context, { email, newProfile, savedPhone: null });
+      const result = await fixture.caller().addWatchedClass({ ...signup, email: submitted! });
+
+      assert.deepEqual(fixture.studentLookups, [{ where: { email } }]);
+      assert.equal(fixture.studentCreates.length, newProfile ? 1 : 0);
+      if (newProfile) {
+        assert.equal(fixture.studentCreates[0]?.data.email, email);
+      }
+      assert.equal(fixture.creates[0]?.data.studentId, fixture.profile.id);
+      assert.equal(result.email, email);
+      assert.equal(fixture.emails.length, 1);
+      assert.equal(fixture.emails[0]?.email, email);
+      assert.equal(fixture.emails[0]?.verificationKey, fixture.profile.verificationKey);
+    }
+  }
+});
+
+test("authenticated signup keeps a legacy profile even when the corrected address belongs to another account", async (context) => {
+  for (const email of ["student@usc.du", "student@USC.EDU"]) {
+    const fixture = createSignupFixture(context, { email, savedPhone: null });
+    const otherStudent = {
+      ...student,
+      id: "canonical-student-id",
+      email: "student@usc.edu",
+      verificationKey: "canonical-verification-key",
+    };
+    const lookups: Prisma.StudentFindUniqueArgs[] = [];
+    Object.assign(fixture.client.student, {
+      findUnique: async (args: Prisma.StudentFindUniqueArgs) => {
+        lookups.push(args);
+        return args.where.email === email ? fixture.profile : otherStudent;
+      },
+    });
+
+    const result = await fixture.caller(fixture.profile).addWatchedClass({ ...signup, email });
+
+    assert.deepEqual(lookups, [{ where: { email } }]);
+    assert.equal(fixture.studentCreates.length, 0);
+    assert.equal(fixture.creates[0]?.data.studentId, fixture.profile.id);
+    assert.equal(result.email, email);
+    assert.equal(fixture.emails[0]?.email, email);
+    assert.equal(fixture.emails[0]?.verificationKey, fixture.profile.verificationKey);
+  }
+});
+
+test("login corrects the address before account lookup and creation, and sends only that account's key", async (context) => {
+  for (const [submitted, email] of [
+    [" student @ USC.EFU ", "student@usc.edu"],
+    ["student@gmal.com", "student@gmail.com"],
+  ]) {
+    for (const newProfile of [true, false]) {
+      const client = createTestClient(context);
+      const profile = { ...student, email: email!, validAccount: !newProfile };
+      const lookups: Prisma.StudentFindUniqueArgs[] = [];
+      const creates: Prisma.StudentCreateArgs[] = [];
+      const emails: { email: string; isVerifiedAlready: boolean; key: string }[] = [];
+      Object.assign(client.student, {
+        findUnique: async (args: Prisma.StudentFindUniqueArgs) => {
+          lookups.push(args);
+          return newProfile ? null : profile;
+        },
+        create: async (args: Prisma.StudentCreateArgs) => {
+          creates.push(args);
+          return profile;
+        },
+      });
+      const caller = createTRPCRouter(
+        createUserRouter(
+          async () => assert.fail("login must not send a watch confirmation"),
+          async (message) => {
+            emails.push(message);
+          },
+        ),
+      ).createCaller({ prisma: client });
+
+      assert.deepEqual(await caller.sendLoginEmail({ email: submitted! }), { email });
+      assert.deepEqual(lookups, [{ where: { email } }]);
+      assert.equal(creates.length, newProfile ? 1 : 0);
+      if (newProfile) {
+        assert.equal(creates[0]?.data.email, email);
+        assert.ok(creates[0]?.data.verificationKey);
+      }
+      assert.deepEqual(emails, [{ email, isVerifiedAlready: !newProfile, key: profile.verificationKey }]);
+    }
+  }
+});
+
+test("login preserves valid domain casing to find the existing account after logout", async (context) => {
+  for (const email of ["Student@USC.EDU", "Student@GMAIL.COM"]) {
+    const client = createTestClient(context);
+    const profile = { ...student, email };
+    const emails: { email: string; isVerifiedAlready: boolean; key: string }[] = [];
+    Object.assign(client.student, {
+      findUnique: async (args: Prisma.StudentFindUniqueArgs) => {
+        assert.equal(args.where.email, email, "lookup must preserve the existing stored address");
+        return args.where.email === email ? profile : null;
+      },
+      create: async () => assert.fail("logging back in must not create a second account"),
+    });
+    const caller = createTRPCRouter(
+      createUserRouter(
+        async () => assert.fail("login must not send a watch confirmation"),
+        async (message) => {
+          emails.push(message);
+        },
+      ),
+    ).createCaller({ prisma: client });
+
+    assert.deepEqual(await caller.sendLoginEmail({ email }), { email });
+    assert.deepEqual(emails, [{ email, isVerifiedAlready: true, key: profile.verificationKey }]);
+  }
+});
+
+test("invalid signup and login addresses are rejected before database access or email delivery", async (context) => {
+  const client = createTestClient(context);
+  let effects = 0;
+  const unexpectedEffect = async () => {
+    effects += 1;
+    assert.fail("invalid email must be rejected before any side effect");
+  };
+  Object.assign(client.student, { findUnique: unexpectedEffect, create: unexpectedEffect });
+  Object.assign(client.classInfo, { findUnique: unexpectedEffect });
+  const caller = createTRPCRouter(createUserRouter(unexpectedEffect, unexpectedEffect)).createCaller({
+    prisma: client,
+  });
+
+  for (const email of [
+    "",
+    "student",
+    "student@@usc.edu",
+    "student@usc.edu,another@gmail.com",
+    "student@gmail.com\r\nBcc:other@gmail.com",
+  ]) {
+    await assert.rejects(
+      caller.sendLoginEmail({ email }),
+      (error) => error instanceof TRPCError && error.code === "BAD_REQUEST",
+    );
+    await assert.rejects(
+      caller.addWatchedClass({ ...signup, email }),
+      (error) => error instanceof TRPCError && error.code === "BAD_REQUEST",
+    );
+  }
+  assert.equal(effects, 0);
+});
 
 test("public signup inherits a saved phone for payment eligibility without persisting or revealing it", async (context) => {
   const fixture = createSignupFixture(context);

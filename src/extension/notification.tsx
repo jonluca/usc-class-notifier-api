@@ -4,7 +4,7 @@ import Modal from "@mui/material/Modal";
 import { CircularProgress, TextField, Typography } from "@mui/material";
 import { trpc } from "@/extension/data";
 import { toast } from "react-toastify";
-import * as EmailValidator from "email-validator";
+import { EMAIL_ADDRESS_ERROR, emailAddressSchema } from "@/utils/emailAddress";
 import { getCurrentTerm } from "@/extension/getCurrentTerm";
 import { VenmoPaymentPanel } from "@/components/VenmoPaymentPanel";
 import { shouldEnableDarkMode } from "@/extension/darkMode";
@@ -48,8 +48,7 @@ const Input = ({
         }}
         placeholder={label}
         onChange={(e) => {
-          // Ensure the length isn't over 35 characters
-          if (e.target.value.length > 35) {
+          if (e.target.value.length > (type === "email" ? 254 : 35)) {
             return;
           }
           onChange(e.target.value);
@@ -70,7 +69,12 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
   const selectedClass = useScheduleHelperContext((state) => state.selectedClass)!;
 
   const { mutateAsync, isPending, data, error } = trpc.user.addWatchedClass.useMutation();
-  const { mutateAsync: sendLoginEmail, isPending: isPendingLogin, isSuccess } = trpc.user.sendLoginEmail.useMutation();
+  const {
+    mutateAsync: sendLoginEmail,
+    isPending: isPendingLogin,
+    data: loginEmail,
+    reset: resetLoginEmail,
+  } = trpc.user.sendLoginEmail.useMutation();
   const [email, setEmail] = useState(() => window.localStorage.getItem(localStorageEmailKey) ?? "");
   const [phone, setPhone] = useState(() => window.localStorage.getItem(localStoragePhoneKey) ?? "");
 
@@ -84,21 +88,45 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
     toast.error("Invalid class");
     return null;
   }
-  const isValidEmail = EmailValidator.validate(email);
+  const parsedEmail = emailAddressSchema.safeParse(email);
+  const isValidEmail = parsedEmail.success;
   const onSubmit = async () => {
+    if (isPending || !parsedEmail.success) {
+      return;
+    }
     const semester = selectedClass.semester || getCurrentTerm();
     if (!semester) {
       toast.error("Unable to determine the semester. Refresh the page and select the section again.");
       return;
     }
 
-    await mutateAsync({
-      sectionNumber: selectedClass.sectionId,
-      email,
-      department: selectedClass.department,
-      phone: phone || undefined,
-      semester,
-    });
+    setEmail(parsedEmail.data);
+    try {
+      await mutateAsync({
+        sectionNumber: selectedClass.sectionId,
+        email: parsedEmail.data,
+        department: selectedClass.department,
+        phone: phone || undefined,
+        semester,
+      });
+    } catch {
+      // The mutation error is displayed below the form.
+    }
+  };
+  const onSendLoginEmail = async () => {
+    if (isPendingLogin || !parsedEmail.success) {
+      return;
+    }
+    setEmail(parsedEmail.data);
+    try {
+      await toast.promise(sendLoginEmail({ email: parsedEmail.data }), {
+        pending: "Sending login email...",
+        success: { render: ({ data }) => `Login link sent to ${data.email}` },
+        error: "Error sending login email. Please try again.",
+      });
+    } catch {
+      // toast.promise displays the failure; keep the button available for retry.
+    }
   };
 
   const renderContent = () => {
@@ -151,7 +179,24 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
         <div
           className={`flex flex-col items-center gap-1 rounded-xl p-1 w-full ${darkMode ? darkPalette.bgSurfaceRaised : "bg-gray-100"}`}
         >
-          <Input label="Email" value={email} onChange={setEmail} type={"email"} darkMode={darkMode} />
+          <Input
+            label="Email"
+            value={email}
+            onChange={(value) => {
+              setEmail(value);
+              resetLoginEmail();
+            }}
+            type={"email"}
+            darkMode={darkMode}
+          />
+          {!parsedEmail.success && email.length > 0 && (
+            <span className="text-sm text-red-400" role="alert">
+              {EMAIL_ADDRESS_ERROR}
+            </span>
+          )}
+          {parsedEmail.success && parsedEmail.data !== email && (
+            <span className="text-sm">Emails will be sent to {parsedEmail.data}</span>
+          )}
           <Input
             label="Phone (optional, $1 per section per semester)"
             type={"tel"}
@@ -175,6 +220,7 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
         </span>
       </div>
       {renderContent()}
+      {loginEmail && <span role="status">Check {loginEmail.email} for your login link.</span>}
       {error && (
         <div className="flex flex-col gap-2 w-full">
           <span className={"text-red-400 font-bold"}>There was an error processing your class:</span>
@@ -205,20 +251,20 @@ const CollectInfo = ({ onClose, darkMode }: { onClose: () => void; darkMode: boo
               disabled={isPendingLogin}
               className="flex items-center gap-1 rounded-lg border! border-[#8b0000]! bg-transparent! px-2 py-1 text-sm font-bold text-[#8b0000]! hover-scale"
               onClick={() => {
-                sendLoginEmail({ email });
+                void onSendLoginEmail();
               }}
             >
-              {isSuccess ? "Check your email for the login link" : "View Dashboard"}
+              View Dashboard
             </button>
           )}
           <button
-            disabled={isPending || !isValidEmail}
+            disabled={isPending || (!data && !error && !isValidEmail)}
             className="flex items-center gap-1 rounded-lg bg-[#8b0000]! px-3 py-1 text-sm font-bold text-white! hover-scale"
             onClick={() => {
               if (data || error) {
                 onClose();
               } else {
-                onSubmit();
+                void onSubmit();
               }
             }}
           >
